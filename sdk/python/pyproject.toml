@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memsidecar"
+version = "0.1.0"
+description = "Python client for the memsidecar agent memory sidecar."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "memsidecar contributors" }]
+dependencies = [
+    "grpcio>=1.60",
+    # gencode comes from `buf generate --template buf.gen.python.yaml` which
+    # uses a recent protocolbuffers/python plugin; runtime must match or newer.
+    "protobuf>=7.34",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/memsidecar"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/memsidecar/**", "README.md"]

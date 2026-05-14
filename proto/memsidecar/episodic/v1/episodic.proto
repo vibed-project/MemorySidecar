@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package memsidecar.episodic.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "memsidecar/gen/memsidecar/episodic/v1;episodicv1";
+
+// Episodic is an append-only log of agent events scoped by namespace.
+// Every RPC requires a capability token in the gRPC metadata key
+// "x-memsidecar-capability" with value "Bearer <token>".
+//
+// Cursors are monotonic within a namespace. A reader can replay history
+// (Range) or follow live (Tail) from any cursor.
+service Episodic {
+  rpc Append(AppendRequest) returns (AppendResponse);
+  rpc Range(RangeRequest) returns (stream Event);
+  rpc Tail(TailRequest) returns (stream Event);
+}
+
+message Event {
+  // Server-assigned identifier (UUID v4).
+  string id = 1;
+  // Monotonic per namespace. The first event in a namespace has cursor=1.
+  uint64 cursor = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  // Application-defined event type, e.g. "tool_call", "message", "observation".
+  string type = 4;
+  bytes payload = 5;
+  map<string, string> metadata = 6;
+}
+
+message AppendRequest {
+  string namespace = 1;
+  string type = 2;
+  bytes payload = 3;
+  map<string, string> metadata = 4;
+}
+
+message AppendResponse {
+  Event event = 1;
+}
+
+message RangeRequest {
+  string namespace = 1;
+  // Exclusive lower bound. 0 = from the start.
+  uint64 after_cursor = 2;
+  // Exclusive upper bound. 0 = no upper bound.
+  uint64 before_cursor = 3;
+  // 0 = unbounded.
+  uint32 limit = 4;
+  // false = ascending by cursor; true = descending.
+  bool reverse = 5;
+}
+
+message TailRequest {
+  string namespace = 1;
+  // Exclusive lower bound. 0 = start from current HEAD (live only).
+  uint64 after_cursor = 2;
+  // If true, replay events with cursor > after_cursor before going live.
+  // If false (the default), start at the live edge and ignore after_cursor.
+  bool include_historical = 3;
+}

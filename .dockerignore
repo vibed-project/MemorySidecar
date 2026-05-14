@@ -1,0 +1,24 @@
+.git
+.github
+.idea
+.vscode
+.venv
+
+bin/
+dist/
+sdk/python/.venv
+sdk/python/.pytest_cache
+**/__pycache__/
+*.log
+*.sock
+*.pid
+*.tmp
+
+# Test cache + coverage
+*.out
+*.test
+coverage.html
+.pytest_cache
+
+# Local-only docs
+docs/decisions/*.docx

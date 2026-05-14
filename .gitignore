@@ -1,0 +1,45 @@
+# Binaries
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test output
+*.out
+*.test
+coverage.out
+coverage.html
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Runtime
+*.sock
+*.pid
+*.log
+
+# Python
+__pycache__/
+*.py[co]
+.venv/
+.pytest_cache/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Docusaurus
+website/node_modules/
+website/build/
+website/.docusaurus/
+website/.cache-loader/

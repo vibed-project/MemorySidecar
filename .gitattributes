@@ -1,0 +1,3 @@
+gen/**         linguist-generated=true
+*.pb.go        linguist-generated=true
+*_grpc.pb.go   linguist-generated=true

@@ -1,0 +1,154 @@
+# memsidecar — example config
+#
+# DEV KEYPAIR — DO NOT USE IN PRODUCTION.
+# Mint tokens with:
+#   export MEMSIDECAR_PASETO_SECRET_HEX=38fb82e74985d41969ce39904d7cbe01dd31ea0b573dc8fc35c5689b8212ccc961a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9
+#   memctl token issue --tenant acme --agent agent-1 --ns 'kv/scratchpad' --ops get,put,delete,scan --ttl 1h
+
+server:
+  grpc:
+    tcp: "127.0.0.1:7777"
+    uds: "/tmp/memsidecar.sock"
+    # TLS on the TCP listener. UDS stays plaintext (filesystem permissions
+    # are the authz boundary). Uncomment to enable.
+    # tls:
+    #   cert_file: /etc/memsidecar/tls/server.crt
+    #   key_file: /etc/memsidecar/tls/server.key
+    #   # Enable mTLS by pointing at a CA bundle every client cert chains to:
+    #   client_ca_file: /etc/memsidecar/tls/client-ca.crt
+    #   require_client_cert: true
+  http:
+    # grpc-gateway: HTTP/JSON over the same services.
+    #   POST /<package>.<service>/<method>  with JSON body
+    # Empty addr disables it.
+    addr: "127.0.0.1:8080"
+  shutdown_timeout: 10s
+
+observability:
+  tracing:
+    exporter: stdout        # stdout | otlp | none
+    sample_ratio: 1.0
+    # OTLP/gRPC example — point at a local collector or a managed backend:
+    # otlp:
+    #   endpoint: localhost:4317
+    #   insecure: true        # plaintext for localhost; omit for TLS
+    #   compression: gzip
+    #   headers_env:
+    #     x-honeycomb-team: HONEYCOMB_API_KEY
+  metrics:
+    exporter: prometheus    # prometheus | none
+    prometheus:
+      addr: ":9090"
+      path: /metrics
+  logging:
+    level: info
+    format: json
+
+auth:
+  verifier: paseto
+  paseto:
+    # Singular form, for back-compat:
+    public_key_hex: "61a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9"
+    # Or list multiple keys to support graceful rotation — every key in the
+    # set is trusted; tokens minted by any of them verify. Adopt by adding
+    # the new key first (so existing tokens keep working), then drop the
+    # old key once all minted tokens have expired.
+    # public_key_hexes:
+    #   - "<new-public-key-hex>"
+    #   - "61a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9"
+
+# Policy rules are evaluated in order. Each request gets one of:
+#   - allow      → request permitted
+#   - deny       → request rejected with rule.reason
+#   - rate_limit → consume a token from rule.bucket; reject if exhausted, else
+#                  fall through to subsequent rules.
+# If no rule matches, policy.default (allow|deny) decides.
+policy:
+  default: allow
+  rules:
+    - name: block-secret-namespaces
+      effect: deny
+      reason: "secret-* namespaces are off-limits"
+      match:
+        namespace: ["secret-*"]
+    - name: throttle-semantic-search
+      effect: rate_limit
+      match:
+        op: ["semantic.search"]
+      bucket:
+        per_tenant: true
+        rate_per_second: 5
+        burst: 10
+  # Or, for JWT:
+  # verifier: jwt
+  # jwt:
+  #   alg: HS256
+  #   secret_env: MEMSIDECAR_JWT_SECRET
+
+backends:
+  - name: mem-default
+    driver: memory
+  - name: blob-local
+    driver: fs
+    options:
+      base_dir: /tmp/memsidecar-blobs
+  # - name: pg-main
+  #   driver: postgres
+  #   options:
+  #     dsn_env: MEMSIDECAR_PG_DSN
+  #     max_conns: 10
+  #     sweeper_interval: 5m
+  # - name: blob-s3
+  #   driver: s3
+  #   options:
+  #     endpoint: localhost:9000           # MinIO; "s3.amazonaws.com" for AWS
+  #     bucket: memsidecar
+  #     use_ssl: false
+  #     access_key_env: MEMSIDECAR_S3_ACCESS_KEY
+  #     secret_key_env: MEMSIDECAR_S3_SECRET_KEY
+
+namespaces:
+  - block: kv
+    name: scratchpad
+    backend: mem-default
+  - block: kv
+    name: tool-cache
+    backend: mem-default
+  - block: episodic
+    name: events
+    backend: mem-default
+  - block: semantic
+    name: notes
+    backend: mem-default
+    embedder:
+      provider: fake       # deterministic content-hash embedder (dev only)
+      model: fake-64
+      dimensions: 64
+  - block: artifact
+    name: blobs
+    backend: blob-local
+  - block: lease
+    name: locks
+    backend: mem-default
+  # Ollama example — requires a running Ollama and `ollama pull nomic-embed-text`:
+  # - block: semantic
+  #   name: notes-real
+  #   backend: mem-default
+  #   embedder:
+  #     provider: ollama
+  #     model: nomic-embed-text
+  #     dimensions: 768
+  #     options:
+  #       base_url: http://localhost:11434
+  #       timeout: 30s
+  # OpenAI example — requires OPENAI_API_KEY:
+  # - block: semantic
+  #   name: notes-prod
+  #   backend: mem-default
+  #   embedder:
+  #     provider: openai
+  #     model: text-embedding-3-small
+  #     dimensions: 1536
+  #     options:
+  #       api_key_env: OPENAI_API_KEY
+  #       timeout: 30s

@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package memsidecar.semantic.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "memsidecar/gen/memsidecar/semantic/v1;semanticv1";
+
+// Semantic provides embed-and-search over arbitrary records, scoped by
+// namespace. Every namespace is bound to a single embedding model at config
+// time. Every RPC requires a capability token in the gRPC metadata key
+// "x-memsidecar-capability" with value "Bearer <token>".
+service Semantic {
+  rpc Upsert(UpsertRequest) returns (UpsertResponse);
+  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+}
+
+message Record {
+  // Client-provided id. If empty, the server assigns a UUID.
+  string id = 1;
+  // Source text. If non-empty and vector is empty, the server embeds it.
+  string content = 2;
+  // Optional opaque payload returned alongside hits.
+  bytes payload = 3;
+  // Optional precomputed vector. If non-empty, content is NOT re-embedded.
+  // Length must equal the namespace's embedder dimensions.
+  repeated float vector = 4;
+  map<string, string> metadata = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message UpsertRequest {
+  string namespace = 1;
+  repeated Record records = 2;
+}
+
+message UpsertResponse {
+  // Echoes ids (server-assigned where the client left id empty), in the same
+  // order as the request.
+  repeated string ids = 1;
+}
+
+message SearchRequest {
+  string namespace = 1;
+  // Either query_text or query_vector must be set, not both.
+  string query_text = 2;
+  repeated float query_vector = 3;
+  // Result count. 0 means use the server default (10).
+  uint32 top_k = 4;
+  // Exact-match metadata filter; record matches when every (k,v) pair is
+  // present in its metadata.
+  map<string, string> filter = 5;
+  bool include_payload = 6;
+  bool include_vector = 7;
+}
+
+message SearchResponse {
+  repeated Hit hits = 1;
+}
+
+message Hit {
+  Record record = 1;
+  // Cosine similarity, in [-1, 1]. Higher is more similar.
+  float score = 2;
+}
+
+message DeleteRequest {
+  string namespace = 1;
+  string id = 2;
+}
+
+message DeleteResponse {
+  bool existed = 1;
+}

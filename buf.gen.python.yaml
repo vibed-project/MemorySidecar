@@ -1,0 +1,8 @@
+version: v2
+plugins:
+  - remote: buf.build/protocolbuffers/python
+    out: sdk/python/src
+  - remote: buf.build/grpc/python
+    out: sdk/python/src
+inputs:
+  - directory: proto

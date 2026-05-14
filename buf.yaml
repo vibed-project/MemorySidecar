@@ -1,0 +1,14 @@
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - STANDARD
+  except:
+    - PACKAGE_VERSION_SUFFIX
+    - SERVICE_SUFFIX                    # ADR uses KV, not KVService
+    - RPC_RESPONSE_STANDARD_NAME        # stream KVItem instead of KVScanResponse
+    - RPC_REQUEST_RESPONSE_UNIQUE       # Episodic Range and Tail both stream Event by design
+breaking:
+  use:
+    - FILE

@@ -1,0 +1,192 @@
+---
+title: YAML reference
+sidebar_position: 1
+---
+
+# YAML reference
+
+memsidecar takes a single YAML file via `--config`. The example shipped at
+`configs/example.yaml` is annotated; this page is the per-field reference.
+
+Environment variables override fields via the `MEMSIDECAR_` prefix with
+double-underscore as section separator:
+
+```bash
+MEMSIDECAR_SERVER__GRPC__TCP="0.0.0.0:9000"
+```
+
+## Top-level shape
+
+```yaml
+server: {...}
+observability: {...}
+auth: {...}
+policy: {...}
+backends: [...]
+namespaces: [...]
+```
+
+## server
+
+```yaml
+server:
+  grpc:
+    tcp: "127.0.0.1:7777"        # leave empty to disable
+    uds: "/tmp/memsidecar.sock"
+    tls:                          # optional; UDS stays plaintext either way
+      cert_file: /etc/.../server.crt
+      key_file:  /etc/.../server.key
+      client_ca_file: /etc/.../client-ca.crt   # set → mTLS
+      require_client_cert: true
+  http:
+    addr: "127.0.0.1:8080"        # grpc-gateway; empty = disabled
+  shutdown_timeout: 10s
+```
+
+At least one of `tcp` and `uds` must be set.
+
+## observability
+
+```yaml
+observability:
+  tracing:
+    exporter: stdout              # stdout | otlp | none
+    sample_ratio: 1.0
+    otlp:                         # only when exporter=otlp
+      endpoint: localhost:4317
+      insecure: true              # plaintext for localhost
+      compression: gzip
+      headers:
+        x-some-team: literal
+      headers_env:
+        x-api-key: MY_API_KEY_ENV  # value comes from env at start
+  metrics:
+    exporter: prometheus          # prometheus | none
+    prometheus:
+      addr: ":9090"
+      path: /metrics
+  logging:
+    level: info                   # debug | info | warn | error (hot-reloadable)
+    format: json                  # json | text
+```
+
+## auth
+
+```yaml
+auth:
+  verifier: paseto                # paseto | jwt
+  paseto:
+    public_key_hex: "..."         # singular; back-compat
+    public_key_hexes:             # rotation list — all keys are trusted
+      - "<new>"
+      - "<old>"
+  jwt:
+    alg: HS256                    # HS256 | RS256
+    secret_env: MEMSIDECAR_JWT_SECRET   # HS256 only
+    public_pem: /etc/.../jwt.pem        # RS256 singular
+    public_pems:                        # RS256 rotation
+      - /etc/.../jwt-new.pem
+      - /etc/.../jwt-old.pem
+```
+
+Only one verifier is active at a time. `auth.verifier=paseto` requires at
+least one PASETO public key; `auth.verifier=jwt` requires `alg`.
+
+## policy
+
+See [Policy](../concepts/policy.md) for semantics.
+
+```yaml
+policy:
+  default: allow                  # allow | deny
+  rules:
+    - name: block-secrets
+      effect: deny                # allow | deny | rate_limit
+      reason: "secret-* namespaces are off-limits"
+      match:
+        tenant:    ["acme"]       # any field optional; empty = match anything
+        agent:     ["agent-1"]
+        block:     ["kv"]
+        namespace: ["secret-*"]   # glob, single trailing *
+        op:        ["put", "delete"]   # dotted or verb-only
+      bucket:                     # only used when effect=rate_limit
+        per_tenant: true
+        per_agent: false
+        per_namespace: false
+        per_op: true
+        rate_per_second: 5.0
+        burst: 10
+```
+
+The whole `policy` block is reloaded on `SIGHUP`. See
+[Hot reload](./hot-reload.md).
+
+## backends
+
+```yaml
+backends:
+  - name: mem-default
+    driver: memory                 # always available
+  - name: pg-main
+    driver: postgres
+    options:
+      dsn: "postgres://..."        # OR
+      dsn_env: MEMSIDECAR_PG_DSN
+      max_conns: 10
+      sweeper_interval: 5m         # kv: kv_items expiry sweep
+      tail_interval: 250ms         # episodic: Tail poll cadence
+      poll_interval: 100ms         # lease: wait_for poll cadence
+  - name: blob-local
+    driver: fs
+    options:
+      base_dir: /var/lib/memsidecar/blobs
+  - name: blob-s3
+    driver: s3
+    options:
+      endpoint: s3.amazonaws.com
+      bucket: my-bucket
+      use_ssl: true
+      region: eu-west-1
+      prefix: "memsidecar/"
+      access_key_env: AWS_ACCESS_KEY_ID
+      secret_key_env: AWS_SECRET_ACCESS_KEY
+```
+
+Not every driver fits every block — `fs` and `s3` only serve `artifact`;
+`memory` and `postgres` serve everything except artifact-on-`postgres`
+(which isn't implemented).
+
+## namespaces
+
+```yaml
+namespaces:
+  - { block: kv,       name: scratchpad, backend: mem-default }
+  - { block: episodic, name: events,     backend: pg-main }
+  - { block: artifact, name: blobs,      backend: blob-local }
+  - { block: lease,    name: locks,      backend: pg-main }
+  - block: semantic
+    name: notes
+    backend: pg-main
+    embedder:
+      provider: openai             # fake | ollama | openai
+      model: text-embedding-3-small
+      dimensions: 1536
+      options:
+        api_key_env: OPENAI_API_KEY
+        timeout: 30s
+```
+
+Semantic namespaces require an `embedder` block. The driver chosen for the
+backend must support the block (e.g. you can't use `driver: fs` for
+`block: kv`).
+
+## What hot-reloads
+
+| Section | Hot-reloadable? |
+|---|---|
+| `auth.verifier` / keys | yes |
+| `policy.*` | yes |
+| `observability.logging.level` | yes |
+| `server.*`, `observability.tracing/metrics`, `backends`, `namespaces` | restart required |
+
+See [Hot reload](./hot-reload.md) for the contract.
