@@ -53,8 +53,7 @@ What works:
 - Python SDK with idiomatic per-block clients.
 - Multi-stage Docker image (distroless `nonroot`) + Helm chart.
 
-What's not in yet: bidi-streaming RPCs, alternative vector DBs (Qdrant,
-Pinecone, Weaviate), a TypeScript SDK, real release tooling.
+What's not in yet: bidi-streaming RPCs, a TypeScript SDK, real release tooling.
 
 ## Quickstart
 

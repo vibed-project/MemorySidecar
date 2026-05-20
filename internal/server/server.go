@@ -203,6 +203,21 @@ func (s *Server) Start() (<-chan error, error) {
 	return errs, nil
 }
 
+// ServeListener serves on the given listener in a background goroutine. It
+// exists so tests can plug in an in-memory transport (e.g. bufconn) without
+// going through the network. Shutdown still tears the server down cleanly.
+func (s *Server) ServeListener(lis net.Listener) <-chan error {
+	errs := make(chan error, 1)
+	s.listeners = append(s.listeners, lis)
+	go func() {
+		defer close(errs)
+		if err := s.grpcSrv.Serve(lis); err != nil {
+			errs <- err
+		}
+	}()
+	return errs
+}
+
 // Shutdown gracefully stops the gRPC server. If ctx is cancelled before
 // shutdown completes, the server is force-stopped.
 func (s *Server) Shutdown(ctx context.Context) error {

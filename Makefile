@@ -22,7 +22,7 @@ DOCKER_TAG     ?= $(VERSION)
 HELM_CHART     := deploy/helm/memsidecar
 
 .PHONY: all build server memctl proto test lint run-dev tidy clean \
-        docker helm-lint helm-template docs-dev docs-build docs-clean
+        docker docker-multiarch helm-lint helm-template docs-dev docs-build docs-clean
 
 all: build
 
@@ -66,6 +66,16 @@ clean:
 
 docker:
 	docker build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg BUILD_DATE=$(BUILD_DATE) \
+		-t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+
+DOCKER_PLATFORMS ?= linux/amd64,linux/arm64
+
+docker-multiarch:
+	docker buildx build \
+		--platform $(DOCKER_PLATFORMS) \
 		--build-arg VERSION=$(VERSION) \
 		--build-arg COMMIT=$(COMMIT) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
