@@ -103,6 +103,39 @@ histogram_quantile(0.99,
   sum by (le) (rate(memsidecar_op_duration_seconds_bucket{op_class="query",namespace="notes"}[5m])))
 ```
 
+### Backend vs. sidecar overhead
+
+`op.duration` is the whole RPC. The semantic service additionally records how
+much of that was spent **inside the engine** (pgvector / the in-memory driver),
+so you can see the sidecar's own overhead — the payoff of the "we front engines"
+design:
+
+```
+memsidecar_backend_duration_seconds{block="semantic",op="semantic.search",namespace="notes"} ...
+memsidecar_result_size{block="semantic",op="semantic.search",namespace="notes"}          ...
+memsidecar_result_top_score{block="semantic",namespace="notes"}                            ...
+```
+
+- `memsidecar.backend.duration` — driver-call time by `block`, `op`, `namespace`.
+- `memsidecar.result.size` — records returned (Search) or affected (Upsert / Expire).
+- `memsidecar.result.top_score` — top-1 cosine of a Search, a cheap
+  evidence-completion proxy (retrieval quality, not just latency).
+
+`backend.duration` shares the `block` / `op` / `namespace` labels with
+`op.duration`, so **sidecar overhead is a direct subtraction** — no extra
+instrument needed:
+
+```
+# mean sidecar overhead (s) for one namespace's queries
+  sum(rate(memsidecar_op_duration_seconds_sum{op_class="query",namespace="notes"}[5m]))
+    / sum(rate(memsidecar_op_duration_seconds_count{op_class="query",namespace="notes"}[5m]))
+- sum(rate(memsidecar_backend_duration_seconds_sum{op="semantic.search",namespace="notes"}[5m]))
+    / sum(rate(memsidecar_backend_duration_seconds_count{op="semantic.search",namespace="notes"}[5m]))
+```
+
+These service-layer metrics currently cover the `semantic` block; extending
+`backend.duration`/`result.size` to the other blocks is a mechanical follow-up.
+
 ## Logs
 
 slog JSON to stderr. Two lines per RPC:
