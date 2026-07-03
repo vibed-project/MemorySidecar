@@ -64,6 +64,24 @@ func (d *Driver) Upsert(_ context.Context, records []semantic.Record) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	// U4: validate every if_version precondition before mutating, so a failing
+	// CAS leaves the whole batch unapplied (parity with the pg tx).
+	for i := range records {
+		r := records[i]
+		if r.IfVersion == nil {
+			continue
+		}
+		var current uint64
+		if r.ID != "" {
+			if existing, ok := d.byID[r.ID]; ok {
+				current = existing.Version
+			}
+		}
+		if *r.IfVersion != current {
+			return semantic.ErrVersionMismatch
+		}
+	}
+
 	for i := range records {
 		r := records[i]
 		if len(r.Vector) != d.dim {
@@ -72,21 +90,97 @@ func (d *Driver) Upsert(_ context.Context, records []semantic.Record) error {
 		if r.ID == "" {
 			r.ID = d.newID()
 		}
+		existing, exists := d.byID[r.ID]
+		var current uint64
+		if exists {
+			current = existing.Version
+		}
 		if r.CreatedAt.IsZero() {
 			r.CreatedAt = d.now().UTC()
 		}
+		if r.ValidFrom.IsZero() {
+			r.ValidFrom = d.now().UTC()
+		}
+		r.Version = current + 1
 		stored := r // copy
+		stored.IfVersion = nil
 		stored.Vector = normalised(r.Vector)
 		stored.Payload = cloneBytes(r.Payload)
 		stored.Metadata = cloneMeta(r.Metadata)
-		if _, exists := d.byID[stored.ID]; !exists {
+		stored.Supersedes = cloneStrings(r.Supersedes)
+		if !exists {
 			d.order = append(d.order, stored.ID)
 		}
 		d.byID[stored.ID] = &stored
-		// Reflect server-assigned id back to caller for UpsertResponse.
+		// Reflect server-assigned id and new version back to the caller.
 		records[i].ID = stored.ID
+		records[i].Version = stored.Version
+
+		// U2 (ADR-0003): bind a later fact to what it revises — invalidate each
+		// named live record as of this record's valid_from. Localized: touches
+		// only the named ids; self-references are ignored.
+		for _, sid := range stored.Supersedes {
+			if sid == stored.ID {
+				continue
+			}
+			target, ok := d.byID[sid]
+			if !ok || !target.DeletedAt.IsZero() {
+				continue
+			}
+			if target.ValidTo.IsZero() || target.ValidTo.After(stored.ValidFrom) {
+				target.ValidTo = stored.ValidFrom
+			}
+		}
 	}
 	return nil
+}
+
+// Expire applies opts.Action to at most opts.MaxRows records matching
+// opts.Filter (ADR-0003, U3). Iterates in insertion order for determinism.
+func (d *Driver) Expire(_ context.Context, opts semantic.ExpireOptions) (uint64, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	now := d.now().UTC()
+	var affected uint64
+	var hardDeleted bool
+	for _, id := range d.order {
+		if affected >= uint64(opts.MaxRows) {
+			break
+		}
+		r, ok := d.byID[id]
+		if !ok || !matchesFilter(r.Metadata, opts.Filter) {
+			continue
+		}
+		switch opts.Action {
+		case semantic.ExpireInvalidate:
+			if r.DeletedAt.IsZero() && (r.ValidTo.IsZero() || r.ValidTo.After(now)) {
+				r.ValidTo = now
+				affected++
+			}
+		case semantic.ExpireSoftDelete:
+			if r.DeletedAt.IsZero() {
+				r.DeletedAt = now
+				affected++
+			}
+		case semantic.ExpireHardDelete:
+			delete(d.byID, id)
+			hardDeleted = true
+			affected++
+		default:
+			return 0, fmt.Errorf("semantic/memory: unknown expire action %d", opts.Action)
+		}
+	}
+	if hardDeleted {
+		kept := d.order[:0]
+		for _, id := range d.order {
+			if _, ok := d.byID[id]; ok {
+				kept = append(kept, id)
+			}
+		}
+		d.order = kept
+	}
+	return affected, nil
 }
 
 func (d *Driver) Search(_ context.Context, opts semantic.SearchOptions) ([]semantic.Hit, error) {
@@ -95,10 +189,18 @@ func (d *Driver) Search(_ context.Context, opts semantic.SearchOptions) ([]seman
 	}
 	q := normalised(opts.QueryVector)
 
+	asOf := opts.AsOf
+	if asOf.IsZero() {
+		asOf = d.now()
+	}
+
 	d.mu.RLock()
 	hits := make([]semantic.Hit, 0, len(d.byID))
 	for _, r := range d.byID {
 		if !matchesFilter(r.Metadata, opts.Filter) {
+			continue
+		}
+		if !opts.IncludeInvalidated && !liveAt(r, asOf) {
 			continue
 		}
 		hits = append(hits, semantic.Hit{
@@ -116,11 +218,20 @@ func (d *Driver) Search(_ context.Context, opts semantic.SearchOptions) ([]seman
 	return hits, nil
 }
 
-func (d *Driver) Delete(_ context.Context, id string) (bool, error) {
+func (d *Driver) Delete(_ context.Context, id string, opts semantic.DeleteOptions) (bool, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	if _, ok := d.byID[id]; !ok {
+	r, ok := d.byID[id]
+	if !ok {
 		return false, nil
+	}
+	if !opts.Hard {
+		// Soft delete: tombstone a live row; already-retracted rows are a no-op.
+		if !r.DeletedAt.IsZero() {
+			return false, nil
+		}
+		r.DeletedAt = d.now().UTC()
+		return true, nil
 	}
 	delete(d.byID, id)
 	for i, o := range d.order {
@@ -141,6 +252,21 @@ func matchesFilter(meta, filter map[string]string) bool {
 	return true
 }
 
+// liveAt reports whether a record is valid and not tombstoned at instant asOf:
+// not soft-deleted, valid_from <= asOf, and valid_to unset or > asOf.
+func liveAt(r *semantic.Record, asOf time.Time) bool {
+	if !r.DeletedAt.IsZero() {
+		return false
+	}
+	if !r.ValidFrom.IsZero() && r.ValidFrom.After(asOf) {
+		return false
+	}
+	if !r.ValidTo.IsZero() && !r.ValidTo.After(asOf) {
+		return false
+	}
+	return true
+}
+
 func shallowCopyForResponse(r semantic.Record, opts semantic.SearchOptions) semantic.Record {
 	out := r
 	if !opts.IncludePayload {
@@ -154,6 +280,7 @@ func shallowCopyForResponse(r semantic.Record, opts semantic.SearchOptions) sema
 		out.Vector = v
 	}
 	out.Metadata = cloneMeta(r.Metadata)
+	out.Supersedes = cloneStrings(r.Supersedes)
 	return out
 }
 
@@ -201,6 +328,15 @@ func cloneMeta(m map[string]string) map[string]string {
 	for k, v := range m {
 		out[k] = v
 	}
+	return out
+}
+
+func cloneStrings(s []string) []string {
+	if s == nil {
+		return nil
+	}
+	out := make([]string, len(s))
+	copy(out, s)
 	return out
 }
 

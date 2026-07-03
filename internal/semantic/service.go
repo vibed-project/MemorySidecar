@@ -2,6 +2,8 @@ package semantic
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -97,11 +99,17 @@ func (s *Service) Upsert(ctx context.Context, req *semanticv1.UpsertRequest) (*s
 	recs := make([]Record, len(pbRecs))
 	for i, r := range pbRecs {
 		recs[i] = Record{
-			ID:       r.GetId(),
-			Content:  r.GetContent(),
-			Payload:  r.GetPayload(),
-			Vector:   r.GetVector(),
-			Metadata: r.GetMetadata(),
+			ID:         r.GetId(),
+			Content:    r.GetContent(),
+			Payload:    r.GetPayload(),
+			Vector:     r.GetVector(),
+			Metadata:   r.GetMetadata(),
+			ValidFrom:  tsToTime(r.GetValidFrom()),
+			ValidTo:    tsToTime(r.GetValidTo()),
+			DeletedAt:  tsToTime(r.GetDeletedAt()),
+			Supersedes: r.GetSupersedes(),
+			Source:     r.GetSource(),
+			IfVersion:  r.IfVersion,
 		}
 	}
 	for j, idx := range toEmbedIdx {
@@ -109,14 +117,19 @@ func (s *Service) Upsert(ctx context.Context, req *semanticv1.UpsertRequest) (*s
 	}
 
 	if err := b.Driver.Upsert(ctx, recs); err != nil {
+		if errors.Is(err, ErrVersionMismatch) {
+			return nil, status.Error(codes.FailedPrecondition, "version mismatch")
+		}
 		return nil, status.Errorf(codes.Internal, "upsert: %v", err)
 	}
 
 	ids := make([]string, len(recs))
+	versions := make([]uint64, len(recs))
 	for i, r := range recs {
 		ids[i] = r.ID
+		versions[i] = r.Version
 	}
-	return &semanticv1.UpsertResponse{Ids: ids}, nil
+	return &semanticv1.UpsertResponse{Ids: ids, Versions: versions}, nil
 }
 
 func (s *Service) Search(ctx context.Context, req *semanticv1.SearchRequest) (*semanticv1.SearchResponse, error) {
@@ -149,11 +162,13 @@ func (s *Service) Search(ctx context.Context, req *semanticv1.SearchRequest) (*s
 	}
 
 	hits, err := b.Driver.Search(ctx, SearchOptions{
-		QueryVector:    queryVec,
-		TopK:           topK,
-		Filter:         req.GetFilter(),
-		IncludePayload: req.GetIncludePayload(),
-		IncludeVector:  req.GetIncludeVector(),
+		QueryVector:        queryVec,
+		TopK:               topK,
+		Filter:             req.GetFilter(),
+		IncludePayload:     req.GetIncludePayload(),
+		IncludeVector:      req.GetIncludeVector(),
+		AsOf:               tsToTime(req.GetAsOf()),
+		IncludeInvalidated: req.GetIncludeInvalidated(),
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "search: %v", err)
@@ -177,11 +192,49 @@ func (s *Service) Delete(ctx context.Context, req *semanticv1.DeleteRequest) (*s
 	if err != nil {
 		return nil, err
 	}
-	existed, err := b.Driver.Delete(ctx, req.GetId())
+	existed, err := b.Driver.Delete(ctx, req.GetId(), DeleteOptions{Hard: req.GetHard()})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "delete: %v", err)
 	}
 	return &semanticv1.DeleteResponse{Existed: existed}, nil
+}
+
+func (s *Service) Expire(ctx context.Context, req *semanticv1.ExpireRequest) (*semanticv1.ExpireResponse, error) {
+	action, ok := expireActionFromProto(req.GetAction())
+	if !ok {
+		return nil, status.Error(codes.InvalidArgument, "action must be one of invalidate, soft_delete, hard_delete")
+	}
+	if req.GetMaxRows() == 0 {
+		return nil, status.Error(codes.InvalidArgument, "max_rows must be > 0")
+	}
+	b, err := s.resolve(ctx, req.GetNamespace(), auth.OpSemanticExpire)
+	if err != nil {
+		return nil, err
+	}
+	affected, err := b.Driver.Expire(ctx, ExpireOptions{
+		Filter:  req.GetFilter(),
+		Action:  action,
+		MaxRows: req.GetMaxRows(),
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "expire: %v", err)
+	}
+	return &semanticv1.ExpireResponse{Affected: affected}, nil
+}
+
+// expireActionFromProto maps the wire enum to the driver action, reporting
+// false for the unspecified/unknown value.
+func expireActionFromProto(a semanticv1.ExpireAction) (ExpireAction, bool) {
+	switch a {
+	case semanticv1.ExpireAction_EXPIRE_ACTION_INVALIDATE:
+		return ExpireInvalidate, true
+	case semanticv1.ExpireAction_EXPIRE_ACTION_SOFT_DELETE:
+		return ExpireSoftDelete, true
+	case semanticv1.ExpireAction_EXPIRE_ACTION_HARD_DELETE:
+		return ExpireHardDelete, true
+	default:
+		return ExpireActionUnspecified, false
+	}
 }
 
 func recordToProto(r Record) *semanticv1.Record {
@@ -195,6 +248,26 @@ func recordToProto(r Record) *semanticv1.Record {
 	if !r.CreatedAt.IsZero() {
 		out.CreatedAt = timestamppb.New(r.CreatedAt)
 	}
+	if !r.ValidFrom.IsZero() {
+		out.ValidFrom = timestamppb.New(r.ValidFrom)
+	}
+	if !r.ValidTo.IsZero() {
+		out.ValidTo = timestamppb.New(r.ValidTo)
+	}
+	if !r.DeletedAt.IsZero() {
+		out.DeletedAt = timestamppb.New(r.DeletedAt)
+	}
+	out.Supersedes = r.Supersedes
+	out.Source = r.Source
+	out.Version = r.Version
 	return out
 }
 
+// tsToTime converts an optional protobuf timestamp to a Go time, returning the
+// zero time when the timestamp is nil.
+func tsToTime(ts *timestamppb.Timestamp) time.Time {
+	if ts == nil {
+		return time.Time{}
+	}
+	return ts.AsTime()
+}

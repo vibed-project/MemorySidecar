@@ -18,16 +18,17 @@ var methodToOp = map[string]struct {
 	block string
 	write bool
 }{
-	"/memsidecar.kv.v1.KV/Get":              {auth.OpKVGet, "kv", false},
-	"/memsidecar.kv.v1.KV/Put":              {auth.OpKVPut, "kv", true},
-	"/memsidecar.kv.v1.KV/Delete":           {auth.OpKVDelete, "kv", true},
-	"/memsidecar.kv.v1.KV/Scan":             {auth.OpKVScan, "kv", false},
+	"/memsidecar.kv.v1.KV/Get":                {auth.OpKVGet, "kv", false},
+	"/memsidecar.kv.v1.KV/Put":                {auth.OpKVPut, "kv", true},
+	"/memsidecar.kv.v1.KV/Delete":             {auth.OpKVDelete, "kv", true},
+	"/memsidecar.kv.v1.KV/Scan":               {auth.OpKVScan, "kv", false},
 	"/memsidecar.episodic.v1.Episodic/Append": {auth.OpEpisodicAppend, "episodic", true},
 	"/memsidecar.episodic.v1.Episodic/Range":  {auth.OpEpisodicRange, "episodic", false},
 	"/memsidecar.episodic.v1.Episodic/Tail":   {auth.OpEpisodicTail, "episodic", false},
 	"/memsidecar.semantic.v1.Semantic/Upsert": {auth.OpSemanticUpsert, "semantic", true},
 	"/memsidecar.semantic.v1.Semantic/Search": {auth.OpSemanticSearch, "semantic", false},
 	"/memsidecar.semantic.v1.Semantic/Delete": {auth.OpSemanticDelete, "semantic", true},
+	"/memsidecar.semantic.v1.Semantic/Expire": {auth.OpSemanticExpire, "semantic", true},
 	"/memsidecar.artifact.v1.Artifact/Put":    {auth.OpArtifactPut, "artifact", true},
 	"/memsidecar.artifact.v1.Artifact/Get":    {auth.OpArtifactGet, "artifact", false},
 	"/memsidecar.artifact.v1.Artifact/Stat":   {auth.OpArtifactStat, "artifact", false},

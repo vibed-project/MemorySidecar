@@ -25,6 +25,7 @@ const (
 	OpSemanticUpsert Op = "semantic.upsert"
 	OpSemanticSearch Op = "semantic.search"
 	OpSemanticDelete Op = "semantic.delete"
+	OpSemanticExpire Op = "semantic.expire"
 
 	OpArtifactPut    Op = "artifact.put"
 	OpArtifactGet    Op = "artifact.get"

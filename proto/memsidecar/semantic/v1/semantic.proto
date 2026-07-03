@@ -14,6 +14,10 @@ service Semantic {
   rpc Upsert(UpsertRequest) returns (UpsertResponse);
   rpc Search(SearchRequest) returns (SearchResponse);
   rpc Delete(DeleteRequest) returns (DeleteResponse);
+  // Expire applies a lifecycle action to every record matching a metadata
+  // filter, in one bounded server-side operation (ADR-0003, U3). max_rows caps
+  // the affected set so maintenance stays localized.
+  rpc Expire(ExpireRequest) returns (ExpireResponse);
 }
 
 message Record {
@@ -28,6 +32,32 @@ message Record {
   repeated float vector = 4;
   map<string, string> metadata = 5;
   google.protobuf.Timestamp created_at = 6;
+  // Lifecycle (ADR-0003). All optional; unset means "live and open-ended".
+  // valid_from: when the fact becomes true (application/valid time). Defaults
+  // to now() on write if unset.
+  google.protobuf.Timestamp valid_from = 7;
+  // valid_to: exclusive upper bound; the fact stops being true at this instant.
+  // Unset = open-ended (still valid).
+  google.protobuf.Timestamp valid_to = 8;
+  // deleted_at: soft-delete tombstone. Unset = live. A retracted record is
+  // retained and only visible when a Search sets include_invalidated.
+  google.protobuf.Timestamp deleted_at = 9;
+  // Provenance & revisability (ADR-0003, U2). All optional.
+  // supersedes: ids of records this one revises. On Upsert the server sets
+  // valid_to = this record's valid_from on each named live record in the same
+  // transaction (localized invalidation; self-references are ignored). The
+  // server performs no inference — the caller decides what is superseded.
+  repeated string supersedes = 10;
+  // source: opaque provenance handle for where this fact came from (e.g. an
+  // episodic cursor or artifact id). Stored and returned; never interpreted.
+  string source = 11;
+  // version: monotonic per-id revision counter, set by the server and returned
+  // on reads (ADR-0003, U4). Ignored on write input.
+  uint64 version = 12;
+  // if_version: optimistic-concurrency precondition on Upsert (input-only).
+  // When set, the write succeeds only if the current stored version equals it
+  // (0 = "must not exist yet"); otherwise the RPC fails FailedPrecondition.
+  optional uint64 if_version = 13;
 }
 
 message UpsertRequest {
@@ -39,6 +69,8 @@ message UpsertResponse {
   // Echoes ids (server-assigned where the client left id empty), in the same
   // order as the request.
   repeated string ids = 1;
+  // New per-id version after the write, aligned with ids (ADR-0003, U4).
+  repeated uint64 versions = 2;
 }
 
 message SearchRequest {
@@ -53,6 +85,15 @@ message SearchRequest {
   map<string, string> filter = 5;
   bool include_payload = 6;
   bool include_vector = 7;
+  // Lifecycle-aware read (ADR-0003). By default Search returns only records
+  // that are live and valid as of now.
+  // as_of: evaluate validity at this instant instead of now() — point-in-time
+  // recall. Ignored when include_invalidated is true.
+  google.protobuf.Timestamp as_of = 8;
+  // include_invalidated: bypass the lifecycle filter and also return
+  // tombstoned, expired, and not-yet-valid records. Metadata filtering still
+  // applies. For audit and supersession-chain inspection.
+  bool include_invalidated = 9;
 }
 
 message SearchResponse {
@@ -68,8 +109,38 @@ message Hit {
 message DeleteRequest {
   string namespace = 1;
   string id = 2;
+  // hard: physically remove the row. Default (false) is a soft delete that
+  // sets deleted_at=now() and retains the row (ADR-0003).
+  bool hard = 3;
 }
 
 message DeleteResponse {
   bool existed = 1;
+}
+
+// ExpireAction selects what Expire does to each matched record.
+enum ExpireAction {
+  EXPIRE_ACTION_UNSPECIFIED = 0;
+  // Logically invalidate: set valid_to = now() on live records.
+  EXPIRE_ACTION_INVALIDATE = 1;
+  // Soft delete: set deleted_at = now(), retaining the row.
+  EXPIRE_ACTION_SOFT_DELETE = 2;
+  // Hard delete: physically remove the row.
+  EXPIRE_ACTION_HARD_DELETE = 3;
+}
+
+message ExpireRequest {
+  string namespace = 1;
+  // Exact-match metadata filter, same shape as SearchRequest.filter. An empty
+  // filter matches every record in the namespace (still bounded by max_rows).
+  map<string, string> filter = 2;
+  ExpireAction action = 3;
+  // Upper bound on affected records. Required (> 0) to keep the operation
+  // localized; exceeding it simply stops — re-issue to continue.
+  uint32 max_rows = 4;
+}
+
+message ExpireResponse {
+  // Number of records actually affected by the action.
+  uint64 affected = 1;
 }
