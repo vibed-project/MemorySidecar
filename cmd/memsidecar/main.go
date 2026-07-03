@@ -13,14 +13,16 @@ import (
 	"time"
 
 	"memsidecar/internal/artifact"
-	artmemdrv "memsidecar/internal/artifact/drivers/memory"
 	artfsdrv "memsidecar/internal/artifact/drivers/fs"
+	artmemdrv "memsidecar/internal/artifact/drivers/memory"
 	arts3drv "memsidecar/internal/artifact/drivers/s3"
 	"memsidecar/internal/auth"
 	"memsidecar/internal/config"
 	"memsidecar/internal/episodic"
 	epmemdrv "memsidecar/internal/episodic/drivers/memory"
 	eppgdrv "memsidecar/internal/episodic/drivers/postgres"
+	"memsidecar/internal/graph"
+	graphmemdrv "memsidecar/internal/graph/drivers/memory"
 	"memsidecar/internal/kv"
 	memdrv "memsidecar/internal/kv/drivers/memory"
 	pgdrv "memsidecar/internal/kv/drivers/postgres"
@@ -104,7 +106,8 @@ func run() error {
 			Handler:           mux,
 			ReadHeaderTimeout: 5 * time.Second,
 		}
-		log.Info("listening",
+		log.Info(
+			"listening",
 			slog.String("transport", "http"),
 			slog.String("purpose", "metrics"),
 			slog.String("addr", metrics.Addr),
@@ -163,6 +166,17 @@ func run() error {
 	}
 	defer func() { _ = leaseReg.Close() }()
 
+	graphReg, err := buildGraphRegistry(cfg)
+	if err != nil {
+		_ = kvReg.Close()
+		_ = epReg.Close()
+		_ = semReg.Close()
+		_ = artReg.Close()
+		_ = leaseReg.Close()
+		return fmt.Errorf("graph registry: %w", err)
+	}
+	defer func() { _ = graphReg.Close() }()
+
 	polEngine, err := buildPolicyEngine(cfg.Policy)
 	if err != nil {
 		_ = kvReg.Close()
@@ -182,6 +196,7 @@ func run() error {
 		Semantic:      semReg,
 		Artifact:      artReg,
 		Lease:         leaseReg,
+		Graph:         graphReg,
 	})
 	if err != nil {
 		return err
@@ -213,7 +228,8 @@ func run() error {
 			Handler:           mux,
 			ReadHeaderTimeout: 5 * time.Second,
 		}
-		log.Info("listening",
+		log.Info(
+			"listening",
 			slog.String("transport", "http"),
 			slog.String("purpose", "gateway"),
 			slog.String("addr", cfg.Server.HTTP.Addr),
@@ -489,7 +505,8 @@ func reloadConfig(
 	ph.Swap(newEngine)
 	level.Set(newLevel)
 
-	log.Info("reloaded",
+	log.Info(
+		"reloaded",
 		slog.String("policy_default", string(cfg.Policy.Default)),
 		slog.Int("policy_rules", len(cfg.Policy.Rules)),
 		slog.String("verifier", cfg.Auth.Verifier),
@@ -530,6 +547,41 @@ func buildLeaseRegistry(ctx context.Context, cfg *config.Config) (*lease.Registr
 	used := make(map[string]bool)
 	for _, ns := range cfg.Namespaces {
 		if ns.Block != "lease" {
+			continue
+		}
+		d := drivers[ns.Backend]
+		if used[ns.Backend] {
+			if err := reg.BindShared(ns.Name, d); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := reg.Bind(ns.Name, d); err != nil {
+				return nil, err
+			}
+			used[ns.Backend] = true
+		}
+	}
+	return reg, nil
+}
+
+func buildGraphRegistry(cfg *config.Config) (*graph.Registry, error) {
+	reg := graph.NewRegistry()
+	drivers := make(map[string]graph.Driver)
+	for name := range neededBackends(cfg, "graph") {
+		b, ok := findBackend(cfg, name)
+		if !ok {
+			return nil, fmt.Errorf("namespace references unknown backend %q", name)
+		}
+		switch b.Driver {
+		case "memory":
+			drivers[b.Name] = graphmemdrv.New(graphmemdrv.Options{})
+		default:
+			return nil, fmt.Errorf("backend %q: driver %q not supported for graph block (only memory today)", b.Name, b.Driver)
+		}
+	}
+	used := make(map[string]bool)
+	for _, ns := range cfg.Namespaces {
+		if ns.Block != "graph" {
 			continue
 		}
 		d := drivers[ns.Backend]

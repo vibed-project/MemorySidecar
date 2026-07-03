@@ -21,6 +21,7 @@ import (
 
 	artifactv1 "memsidecar/gen/memsidecar/artifact/v1"
 	episodicv1 "memsidecar/gen/memsidecar/episodic/v1"
+	graphv1 "memsidecar/gen/memsidecar/graph/v1"
 	kvv1 "memsidecar/gen/memsidecar/kv/v1"
 	leasev1 "memsidecar/gen/memsidecar/lease/v1"
 	semanticv1 "memsidecar/gen/memsidecar/semantic/v1"
@@ -28,6 +29,7 @@ import (
 	"memsidecar/internal/auth"
 	"memsidecar/internal/config"
 	"memsidecar/internal/episodic"
+	"memsidecar/internal/graph"
 	"memsidecar/internal/interceptor"
 	"memsidecar/internal/kv"
 	"memsidecar/internal/lease"
@@ -46,6 +48,7 @@ type Deps struct {
 	Semantic      *semantic.Registry
 	Artifact      *artifact.Registry
 	Lease         *lease.Registry
+	Graph         *graph.Registry
 }
 
 // Server owns the gRPC server and its listeners.
@@ -109,6 +112,9 @@ func New(cfg config.ServerConfig, deps Deps) (*Server, error) {
 	if deps.Lease != nil {
 		leasev1.RegisterLeaseServer(grpcSrv, lease.NewService(deps.Lease))
 	}
+	if deps.Graph != nil {
+		graphv1.RegisterGraphServer(grpcSrv, graph.NewService(deps.Graph))
+	}
 
 	hs := health.NewServer()
 	hs.SetServingStatus("memsidecar.kv.v1.KV", healthpb.HealthCheckResponse_SERVING)
@@ -123,6 +129,9 @@ func New(cfg config.ServerConfig, deps Deps) (*Server, error) {
 	}
 	if deps.Lease != nil {
 		hs.SetServingStatus("memsidecar.lease.v1.Lease", healthpb.HealthCheckResponse_SERVING)
+	}
+	if deps.Graph != nil {
+		hs.SetServingStatus("memsidecar.graph.v1.Graph", healthpb.HealthCheckResponse_SERVING)
 	}
 	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(grpcSrv, hs)
@@ -157,7 +166,8 @@ func (s *Server) Start() (<-chan error, error) {
 			}
 		}
 		s.listeners = append(s.listeners, lis)
-		s.log.Info("listening",
+		s.log.Info(
+			"listening",
 			slog.String("transport", "tcp"),
 			slog.String("addr", s.cfg.GRPC.TCP),
 			slog.String("security", tlsMode),

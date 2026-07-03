@@ -28,11 +28,11 @@ type PolicyConfig struct {
 }
 
 type PolicyRuleConfig struct {
-	Name   string                 `koanf:"name"`
-	Effect string                 `koanf:"effect"`
-	Reason string                 `koanf:"reason"`
-	Match  PolicyMatchConfig      `koanf:"match"`
-	Bucket PolicyBucketConfig     `koanf:"bucket"`
+	Name   string             `koanf:"name"`
+	Effect string             `koanf:"effect"`
+	Reason string             `koanf:"reason"`
+	Match  PolicyMatchConfig  `koanf:"match"`
+	Bucket PolicyBucketConfig `koanf:"bucket"`
 }
 
 type PolicyMatchConfig struct {
@@ -102,11 +102,11 @@ type TracingConfig struct {
 // OTLPConfig configures the OTLP/gRPC trace exporter. Headers may carry an
 // API key for managed backends (Honeycomb, Lightstep, etc.).
 type OTLPConfig struct {
-	Endpoint    string            `koanf:"endpoint"`     // host:port (e.g. localhost:4317)
-	Insecure    bool              `koanf:"insecure"`     // plaintext gRPC; default secure
-	HeadersEnv  map[string]string `koanf:"headers_env"`  // header → env var holding value
-	Headers     map[string]string `koanf:"headers"`      // header → literal value
-	Compression string            `koanf:"compression"`  // "gzip" | ""
+	Endpoint    string            `koanf:"endpoint"`    // host:port (e.g. localhost:4317)
+	Insecure    bool              `koanf:"insecure"`    // plaintext gRPC; default secure
+	HeadersEnv  map[string]string `koanf:"headers_env"` // header → env var holding value
+	Headers     map[string]string `koanf:"headers"`     // header → literal value
+	Compression string            `koanf:"compression"` // "gzip" | ""
 }
 
 type MetricsConfig struct {
@@ -125,9 +125,9 @@ type LoggingConfig struct {
 }
 
 type AuthConfig struct {
-	Verifier string        `koanf:"verifier"` // "paseto" | "jwt"
-	PASETO   PASETOConfig  `koanf:"paseto"`
-	JWT      JWTConfig     `koanf:"jwt"`
+	Verifier string       `koanf:"verifier"` // "paseto" | "jwt"
+	PASETO   PASETOConfig `koanf:"paseto"`
+	JWT      JWTConfig    `koanf:"jwt"`
 }
 
 type PASETOConfig struct {
@@ -289,13 +289,13 @@ func (c *Config) Validate() error {
 	seen := make(map[string]bool, len(c.Namespaces))
 	for _, ns := range c.Namespaces {
 		switch ns.Block {
-		case "kv", "episodic", "artifact", "lease":
+		case "kv", "episodic", "artifact", "lease", "graph":
 		case "semantic":
 			if err := validateSemanticEmbedder(ns); err != nil {
 				return err
 			}
 		default:
-			return fmt.Errorf("namespace %q: unsupported block %q (expected kv|episodic|semantic|artifact|lease)", ns.Name, ns.Block)
+			return fmt.Errorf("namespace %q: unsupported block %q (expected kv|episodic|semantic|artifact|lease|graph)", ns.Name, ns.Block)
 		}
 		if ns.Name == "" {
 			return fmt.Errorf("namespace with empty name")
