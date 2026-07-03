@@ -137,6 +137,9 @@ namespaces:
   - block: lease
     name: locks
     backend: mem-default
+  - block: graph
+    name: knowledge
+    backend: mem-default
   # Ollama example — requires a running Ollama and `ollama pull nomic-embed-text`:
   # - block: semantic
   #   name: notes-real

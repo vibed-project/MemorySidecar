@@ -37,6 +37,13 @@ var methodToOp = map[string]struct {
 	"/memsidecar.lease.v1.Lease/Renew":        {auth.OpLeaseRenew, "lease", true},
 	"/memsidecar.lease.v1.Lease/Release":      {auth.OpLeaseRelease, "lease", true},
 	"/memsidecar.lease.v1.Lease/Inspect":      {auth.OpLeaseInspect, "lease", false},
+	"/memsidecar.graph.v1.Graph/UpsertNodes":  {auth.OpGraphUpsert, "graph", true},
+	"/memsidecar.graph.v1.Graph/UpsertEdges":  {auth.OpGraphUpsert, "graph", true},
+	"/memsidecar.graph.v1.Graph/GetNode":      {auth.OpGraphGet, "graph", false},
+	"/memsidecar.graph.v1.Graph/Neighbors":    {auth.OpGraphQuery, "graph", false},
+	"/memsidecar.graph.v1.Graph/Traverse":     {auth.OpGraphQuery, "graph", false},
+	"/memsidecar.graph.v1.Graph/DeleteNode":   {auth.OpGraphDelete, "graph", true},
+	"/memsidecar.graph.v1.Graph/DeleteEdge":   {auth.OpGraphDelete, "graph", true},
 }
 
 // PolicyUnary invokes the configured policy engine for every recognized method.
