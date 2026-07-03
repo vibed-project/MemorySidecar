@@ -106,7 +106,7 @@ func (o *OpenAI) Embed(ctx context.Context, texts []string) ([][]float32, error)
 	if err != nil {
 		return nil, fmt.Errorf("embedder/openai: http: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode/100 != 2 {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
 		return nil, fmt.Errorf("embedder/openai: status %d: %s", resp.StatusCode, bytes.TrimSpace(b))

@@ -83,7 +83,7 @@ func New(ctx context.Context, opts Options) (*Driver, error) {
 	d := &Driver{pool: pool, stopSweep: make(chan struct{})}
 	if sweep > 0 {
 		d.wg.Add(1)
-		go d.sweepLoop(sweep)
+		go d.sweepLoop(sweep) //nolint:gosec // long-lived background sweeper; deliberately not request-scoped
 	}
 	return d, nil
 }

@@ -180,7 +180,7 @@ func (s *Server) Start() (<-chan error, error) {
 		if err != nil {
 			return nil, fmt.Errorf("listen unix %s: %w", path, err)
 		}
-		if err := os.Chmod(path, 0o660); err != nil {
+		if err := os.Chmod(path, 0o660); err != nil { //nolint:gosec // UDS needs group access; 0660 is intentional
 			s.log.Warn("chmod uds", slog.String("path", path), slog.String("err", err.Error()))
 		}
 		s.listeners = append(s.listeners, lis)
@@ -278,7 +278,7 @@ func buildServerTLS(cfg *config.TLSConfig) (*tls.Config, error) {
 }
 
 func prepareUDS(path string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { //nolint:gosec // parent dir for the UDS socket; 0755 is intentional
 		return err
 	}
 	if _, err := os.Stat(path); err == nil {

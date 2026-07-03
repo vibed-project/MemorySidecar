@@ -26,14 +26,21 @@ jobs:
   lint:
     name: golangci-lint
     runs-on: ubuntu-latest
+    env:
+      # No released golangci-lint is built with go 1.26 yet, and a linter built
+      # with an older Go refuses to type-check a go 1.26 module. Build it from
+      # source with the toolchain set up below (GOTOOLCHAIN=local stops go from
+      # auto-downgrading to golangci-lint's required 1.25 toolchain).
+      GOTOOLCHAIN: local
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
-      - uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
+      - name: install golangci-lint (built with go 1.26)
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+      - name: golangci-lint
+        run: golangci-lint run --timeout=5m
 
   proto:
     name: buf lint

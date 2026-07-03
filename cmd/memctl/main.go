@@ -42,7 +42,7 @@ func main() {
 }
 
 func usage(w *os.File) {
-	fmt.Fprintf(w, `memctl — memsidecar admin CLI
+	_, _ = fmt.Fprintf(w, `memctl — memsidecar admin CLI
 
 Usage:
   memctl token gen-keypair                Mint a PASETO v4.public keypair (hex)
