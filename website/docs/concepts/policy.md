@@ -7,7 +7,7 @@ sidebar_position: 4
 
 The policy engine sits in the interceptor chain right after auth. Its job
 is to decide whether a call that's correctly scoped should still be
-allowed — and, optionally, rate-limited.
+allowed — and, optionally, rate-limited or cost-capped.
 
 memsidecar ships two engines:
 
@@ -34,19 +34,32 @@ policy:
         per_tenant: true
         rate_per_second: 5
         burst: 10
+
+    - name: cap-search-topk
+      effect: cap
+      reason: "top_k over 200 is not allowed"
+      match:
+        op: ["semantic.search"]
+      max:
+        top_k: 200
 ```
 
 Each rule has:
 
 - `name` — required, unique.
-- `effect` — `allow`, `deny`, or `rate_limit`.
-- `reason` — optional string surfaced in `PermissionDenied` messages and
+- `effect` — `allow`, `deny`, `rate_limit`, or `cap`.
+- `reason` — optional string surfaced in the rejection status message and
   audit logs.
 - `match` — filter on `tenant`, `agent`, `block`, `namespace` (glob),
   `op`. Empty fields match anything.
 - `bucket` (rate_limit only) — `rate_per_second`, `burst`, plus boolean
   axes (`per_tenant`, `per_agent`, `per_namespace`, `per_op`) that scope
   the limiter.
+- `max` (cap only) — per-request magnitude bounds: `top_k` (semantic
+  Search), `limit` (scan/range page size), `depth` / `fan_out` (graph
+  traversal, once the graph block lands). At least one bound is required;
+  a zero bound imposes no limit on that dimension. This is how bounded
+  traversal is enforced server-side (ADR-0002 §8).
 
 ## Evaluation order
 
@@ -54,15 +67,22 @@ Rules are scanned **in declaration order**. The first matching rule's
 effect decides:
 
 - `allow` → request proceeds; no further rules consulted.
-- `deny` → reject with `PermissionDenied: policy denied: <reason>`.
+- `deny` → reject with `PermissionDenied: policy: <reason>`.
 - `rate_limit` → consume a token from the rule's bucket. If a token is
   available, **fall through** to subsequent rules. If exhausted, reject.
+- `cap` → check the request magnitude against `max`. If within bounds,
+  **fall through**; if any bound is breached, reject.
 
 If nothing matches, the engine returns `policy.default` (default `allow`).
 
-The fall-through on rate-limit success is the useful bit: you can chain
-"rate-limit AND then allow" or "rate-limit on these ops AND deny the rest"
-with a single small ruleset.
+Rejection status codes distinguish the two failure classes: a `deny`
+(or `default: deny`) surfaces as **`PermissionDenied`**, while a
+`rate_limit` or `cap` rejection surfaces as **`ResourceExhausted`** — so
+clients can back off on the latter without treating it as an auth failure.
+
+The fall-through on rate-limit/cap success is the useful bit: you can chain
+"rate-limit AND then allow" or "cap top_k AND allow" with a single small
+ruleset.
 
 ## Hot reload
 

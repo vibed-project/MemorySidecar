@@ -13,12 +13,23 @@ type HookCtx struct {
 	Namespace  string
 	Op         auth.Op
 	Key        string // for kv ops; empty for scans
+
+	// Request magnitude, used by cap rules (O4 / ADR-0002 §8). Zero means the
+	// dimension is not applicable to this request.
+	TopK   uint32 // semantic Search result count
+	Limit  uint32 // scan/range page size
+	Depth  uint32 // graph traversal depth
+	FanOut uint32 // graph traversal fan-out
 }
 
 // Decision is the result of a policy evaluation.
 type Decision struct {
 	Allow  bool
 	Reason string
+	// Exhausted marks a rejection as a resource/cost limit (a rate limit or a
+	// cost cap) rather than a permission failure, so the transport can map it
+	// to ResourceExhausted instead of PermissionDenied.
+	Exhausted bool
 }
 
 // Engine evaluates policy hooks. v0 ships only the NoopEngine that allows
