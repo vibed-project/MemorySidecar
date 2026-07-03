@@ -74,13 +74,13 @@ func New(cfg config.ServerConfig, deps Deps) (*Server, error) {
 	// Interceptor chain order: recovery → observability → auth → policy → service.
 	unaryChain := []grpc.UnaryServerInterceptor{
 		interceptor.RecoveryUnary(deps.Logger),
-		interceptor.ObservabilityUnary(deps.Logger),
+		interceptor.ObservabilityUnary(deps.Logger, deps.MeterProvider),
 		interceptor.AuthUnary(deps.Verifier),
 		interceptor.PolicyUnary(deps.Policy),
 	}
 	streamChain := []grpc.StreamServerInterceptor{
 		interceptor.RecoveryStream(deps.Logger),
-		interceptor.ObservabilityStream(deps.Logger),
+		interceptor.ObservabilityStream(deps.Logger, deps.MeterProvider),
 		interceptor.AuthStream(deps.Verifier),
 		interceptor.PolicyStream(deps.Policy),
 	}
@@ -157,7 +157,8 @@ func (s *Server) Start() (<-chan error, error) {
 			}
 		}
 		s.listeners = append(s.listeners, lis)
-		s.log.Info("listening",
+		s.log.Info(
+			"listening",
 			slog.String("transport", "tcp"),
 			slog.String("addr", s.cfg.GRPC.TCP),
 			slog.String("security", tlsMode),

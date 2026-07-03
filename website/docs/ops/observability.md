@@ -79,6 +79,30 @@ process_resident_memory_bytes ...
 Per-method latency and error-rate dashboards work without any extra
 instrumentation.
 
+On top of the raw gRPC histogram, memsidecar emits its own memory-aware
+duration metric that splits **write/index time from query time** — the
+distinction the memory literature cares about most (index-construction vs.
+query cost):
+
+```
+memsidecar_op_duration_seconds_bucket{block="semantic",op="semantic.upsert",op_class="write",namespace="notes",code="OK",le="0.05"} ...
+memsidecar_op_duration_seconds_count{block="semantic",op="semantic.search",op_class="query",namespace="notes",code="OK"} 12
+```
+
+Labels: `block`, `op`, `op_class` (`write`|`query`), `namespace`, and `code`.
+Only recognized building-block methods are recorded (health/reflection calls
+are skipped), so cardinality is bounded by `blocks × ops × namespaces × codes`.
+Streaming methods (`episodic.range`/`tail`, `artifact.get`) carry an empty
+`namespace` — it is not available at the interceptor boundary.
+
+This makes the write-vs-query cost split queryable directly, e.g. p99 query
+latency for one namespace:
+
+```
+histogram_quantile(0.99,
+  sum by (le) (rate(memsidecar_op_duration_seconds_bucket{op_class="query",namespace="notes"}[5m])))
+```
+
 ## Logs
 
 slog JSON to stderr. Two lines per RPC:
