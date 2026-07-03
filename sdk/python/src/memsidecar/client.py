@@ -20,6 +20,7 @@ from typing import Iterable, Iterator, List, Mapping, Optional
 
 import grpc
 from google.protobuf import duration_pb2 as _duration_pb2
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
 
 from ._auth import CapabilityInterceptor
 from .kv.v1 import kv_pb2, kv_pb2_grpc
@@ -47,6 +48,18 @@ def _to_duration(d) -> Optional[_duration_pb2.Duration]:
         out.FromSeconds(int(d))
         return out
     raise TypeError(f"unsupported duration type {type(d).__name__}")
+
+
+def _to_timestamp(t) -> Optional[_timestamp_pb2.Timestamp]:
+    if t is None:
+        return None
+    if isinstance(t, _timestamp_pb2.Timestamp):
+        return t
+    if isinstance(t, _dt.datetime):
+        out = _timestamp_pb2.Timestamp()
+        out.FromDatetime(t)
+        return out
+    raise TypeError(f"unsupported timestamp type {type(t).__name__}")
 
 
 # ---------------------------------------------------------------------------
@@ -141,29 +154,65 @@ class _Semantic:
     def __init__(self, channel: grpc.Channel):
         self._stub = semantic_pb2_grpc.SemanticStub(channel)
 
-    def upsert(self, namespace: str, records: Iterable[semantic_pb2.Record]) -> List[str]:
-        resp = self._stub.Upsert(semantic_pb2.UpsertRequest(
+    def upsert(
+        self, namespace: str, records: Iterable[semantic_pb2.Record],
+    ) -> semantic_pb2.UpsertResponse:
+        """Upsert records. The response carries the assigned ``ids`` and the new
+        per-id ``versions`` (aligned with ids). Lifecycle fields
+        (``valid_from``/``valid_to``/``deleted_at``/``supersedes``/``source``/
+        ``if_version``) are set directly on each ``semantic_pb2.Record``.
+        """
+        return self._stub.Upsert(semantic_pb2.UpsertRequest(
             namespace=namespace, records=list(records),
         ))
-        return list(resp.ids)
 
     def search(
         self, namespace: str, *,
         query_text: str = "", query_vector: Optional[Iterable[float]] = None,
         top_k: int = 10, filter: Optional[Mapping[str, str]] = None,
         include_payload: bool = False, include_vector: bool = False,
+        as_of: Optional[_dt.datetime] = None, include_invalidated: bool = False,
     ) -> List[semantic_pb2.Hit]:
+        """Search a namespace. By default only records live and valid *now* are
+        returned; pass ``as_of`` for point-in-time recall or
+        ``include_invalidated=True`` to also see tombstoned/expired records.
+        """
         req = semantic_pb2.SearchRequest(
             namespace=namespace, query_text=query_text, top_k=top_k,
             filter=dict(filter or {}),
             include_payload=include_payload, include_vector=include_vector,
+            include_invalidated=include_invalidated,
         )
         if query_vector is not None:
             req.query_vector.extend(query_vector)
+        ts = _to_timestamp(as_of)
+        if ts is not None:
+            req.as_of.CopyFrom(ts)
         return list(self._stub.Search(req).hits)
 
-    def delete(self, namespace: str, id: str) -> bool:
-        return self._stub.Delete(semantic_pb2.DeleteRequest(namespace=namespace, id=id)).existed
+    def delete(self, namespace: str, id: str, *, hard: bool = False) -> bool:
+        """Delete a record. Default is a soft delete (tombstone, still visible
+        via ``include_invalidated``); pass ``hard=True`` to remove it entirely.
+        """
+        return self._stub.Delete(semantic_pb2.DeleteRequest(
+            namespace=namespace, id=id, hard=hard,
+        )).existed
+
+    def expire(
+        self, namespace: str, *,
+        action: "semantic_pb2.ExpireAction.ValueType", max_rows: int,
+        filter: Optional[Mapping[str, str]] = None,
+    ) -> int:
+        """Apply a bounded lifecycle action to every record matching ``filter``
+        (empty matches all), in one server-side operation. ``action`` is a
+        ``semantic_pb2.ExpireAction`` value (``EXPIRE_ACTION_INVALIDATE`` /
+        ``_SOFT_DELETE`` / ``_HARD_DELETE``); ``max_rows`` caps the affected set
+        and is required. Returns the number of records affected.
+        """
+        return self._stub.Expire(semantic_pb2.ExpireRequest(
+            namespace=namespace, filter=dict(filter or {}),
+            action=action, max_rows=max_rows,
+        )).affected
 
 
 class _Artifact:

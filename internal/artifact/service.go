@@ -71,7 +71,7 @@ func (s *Service) Put(stream artifactv1.Artifact_PutServer) error {
 	pr, pw := io.Pipe()
 	streamErrCh := make(chan error, 1)
 	go func() {
-		defer pw.Close()
+		defer func() { _ = pw.Close() }()
 		for {
 			msg, err := stream.Recv()
 			if err == io.EOF {
@@ -164,7 +164,7 @@ func (s *Service) Get(req *artifactv1.GetRequest, stream artifactv1.Artifact_Get
 	if err != nil {
 		return status.Errorf(codes.Internal, "open: %v", err)
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 
 	if err := stream.Send(&artifactv1.GetResponse{
 		Body: &artifactv1.GetResponse_Header{Header: &artifactv1.GetHeader{Meta: metaToProto(meta)}},

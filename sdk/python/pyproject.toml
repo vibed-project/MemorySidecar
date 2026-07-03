@@ -14,7 +14,7 @@ dependencies = [
     "grpcio>=1.60",
     # gencode comes from `buf generate --template buf.gen.python.yaml` which
     # uses a recent protocolbuffers/python plugin; runtime must match or newer.
-    "protobuf>=7.34",
+    "protobuf>=7.35",
 ]
 
 [project.optional-dependencies]

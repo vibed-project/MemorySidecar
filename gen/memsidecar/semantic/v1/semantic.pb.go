@@ -22,6 +22,62 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// ExpireAction selects what Expire does to each matched record.
+type ExpireAction int32
+
+const (
+	ExpireAction_EXPIRE_ACTION_UNSPECIFIED ExpireAction = 0
+	// Logically invalidate: set valid_to = now() on live records.
+	ExpireAction_EXPIRE_ACTION_INVALIDATE ExpireAction = 1
+	// Soft delete: set deleted_at = now(), retaining the row.
+	ExpireAction_EXPIRE_ACTION_SOFT_DELETE ExpireAction = 2
+	// Hard delete: physically remove the row.
+	ExpireAction_EXPIRE_ACTION_HARD_DELETE ExpireAction = 3
+)
+
+// Enum value maps for ExpireAction.
+var (
+	ExpireAction_name = map[int32]string{
+		0: "EXPIRE_ACTION_UNSPECIFIED",
+		1: "EXPIRE_ACTION_INVALIDATE",
+		2: "EXPIRE_ACTION_SOFT_DELETE",
+		3: "EXPIRE_ACTION_HARD_DELETE",
+	}
+	ExpireAction_value = map[string]int32{
+		"EXPIRE_ACTION_UNSPECIFIED": 0,
+		"EXPIRE_ACTION_INVALIDATE":  1,
+		"EXPIRE_ACTION_SOFT_DELETE": 2,
+		"EXPIRE_ACTION_HARD_DELETE": 3,
+	}
+)
+
+func (x ExpireAction) Enum() *ExpireAction {
+	p := new(ExpireAction)
+	*p = x
+	return p
+}
+
+func (x ExpireAction) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ExpireAction) Descriptor() protoreflect.EnumDescriptor {
+	return file_memsidecar_semantic_v1_semantic_proto_enumTypes[0].Descriptor()
+}
+
+func (ExpireAction) Type() protoreflect.EnumType {
+	return &file_memsidecar_semantic_v1_semantic_proto_enumTypes[0]
+}
+
+func (x ExpireAction) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ExpireAction.Descriptor instead.
+func (ExpireAction) EnumDescriptor() ([]byte, []int) {
+	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{0}
+}
+
 type Record struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Client-provided id. If empty, the server assigns a UUID.
@@ -32,9 +88,35 @@ type Record struct {
 	Payload []byte `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
 	// Optional precomputed vector. If non-empty, content is NOT re-embedded.
 	// Length must equal the namespace's embedder dimensions.
-	Vector        []float32              `protobuf:"fixed32,4,rep,packed,name=vector,proto3" json:"vector,omitempty"`
-	Metadata      map[string]string      `protobuf:"bytes,5,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Vector    []float32              `protobuf:"fixed32,4,rep,packed,name=vector,proto3" json:"vector,omitempty"`
+	Metadata  map[string]string      `protobuf:"bytes,5,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// Lifecycle (ADR-0003). All optional; unset means "live and open-ended".
+	// valid_from: when the fact becomes true (application/valid time). Defaults
+	// to now() on write if unset.
+	ValidFrom *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=valid_from,json=validFrom,proto3" json:"valid_from,omitempty"`
+	// valid_to: exclusive upper bound; the fact stops being true at this instant.
+	// Unset = open-ended (still valid).
+	ValidTo *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=valid_to,json=validTo,proto3" json:"valid_to,omitempty"`
+	// deleted_at: soft-delete tombstone. Unset = live. A retracted record is
+	// retained and only visible when a Search sets include_invalidated.
+	DeletedAt *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`
+	// Provenance & revisability (ADR-0003, U2). All optional.
+	// supersedes: ids of records this one revises. On Upsert the server sets
+	// valid_to = this record's valid_from on each named live record in the same
+	// transaction (localized invalidation; self-references are ignored). The
+	// server performs no inference — the caller decides what is superseded.
+	Supersedes []string `protobuf:"bytes,10,rep,name=supersedes,proto3" json:"supersedes,omitempty"`
+	// source: opaque provenance handle for where this fact came from (e.g. an
+	// episodic cursor or artifact id). Stored and returned; never interpreted.
+	Source string `protobuf:"bytes,11,opt,name=source,proto3" json:"source,omitempty"`
+	// version: monotonic per-id revision counter, set by the server and returned
+	// on reads (ADR-0003, U4). Ignored on write input.
+	Version uint64 `protobuf:"varint,12,opt,name=version,proto3" json:"version,omitempty"`
+	// if_version: optimistic-concurrency precondition on Upsert (input-only).
+	// When set, the write succeeds only if the current stored version equals it
+	// (0 = "must not exist yet"); otherwise the RPC fails FailedPrecondition.
+	IfVersion     *uint64 `protobuf:"varint,13,opt,name=if_version,json=ifVersion,proto3,oneof" json:"if_version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -111,6 +193,55 @@ func (x *Record) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Record) GetValidFrom() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ValidFrom
+	}
+	return nil
+}
+
+func (x *Record) GetValidTo() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ValidTo
+	}
+	return nil
+}
+
+func (x *Record) GetDeletedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DeletedAt
+	}
+	return nil
+}
+
+func (x *Record) GetSupersedes() []string {
+	if x != nil {
+		return x.Supersedes
+	}
+	return nil
+}
+
+func (x *Record) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *Record) GetVersion() uint64 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *Record) GetIfVersion() uint64 {
+	if x != nil && x.IfVersion != nil {
+		return *x.IfVersion
+	}
+	return 0
+}
+
 type UpsertRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Namespace     string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
@@ -167,7 +298,9 @@ type UpsertResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Echoes ids (server-assigned where the client left id empty), in the same
 	// order as the request.
-	Ids           []string `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	Ids []string `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	// New per-id version after the write, aligned with ids (ADR-0003, U4).
+	Versions      []uint64 `protobuf:"varint,2,rep,packed,name=versions,proto3" json:"versions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -209,6 +342,13 @@ func (x *UpsertResponse) GetIds() []string {
 	return nil
 }
 
+func (x *UpsertResponse) GetVersions() []uint64 {
+	if x != nil {
+		return x.Versions
+	}
+	return nil
+}
+
 type SearchRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Namespace string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
@@ -222,8 +362,17 @@ type SearchRequest struct {
 	Filter         map[string]string `protobuf:"bytes,5,rep,name=filter,proto3" json:"filter,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	IncludePayload bool              `protobuf:"varint,6,opt,name=include_payload,json=includePayload,proto3" json:"include_payload,omitempty"`
 	IncludeVector  bool              `protobuf:"varint,7,opt,name=include_vector,json=includeVector,proto3" json:"include_vector,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Lifecycle-aware read (ADR-0003). By default Search returns only records
+	// that are live and valid as of now.
+	// as_of: evaluate validity at this instant instead of now() — point-in-time
+	// recall. Ignored when include_invalidated is true.
+	AsOf *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=as_of,json=asOf,proto3" json:"as_of,omitempty"`
+	// include_invalidated: bypass the lifecycle filter and also return
+	// tombstoned, expired, and not-yet-valid records. Metadata filtering still
+	// applies. For audit and supersession-chain inspection.
+	IncludeInvalidated bool `protobuf:"varint,9,opt,name=include_invalidated,json=includeInvalidated,proto3" json:"include_invalidated,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *SearchRequest) Reset() {
@@ -301,6 +450,20 @@ func (x *SearchRequest) GetIncludePayload() bool {
 func (x *SearchRequest) GetIncludeVector() bool {
 	if x != nil {
 		return x.IncludeVector
+	}
+	return false
+}
+
+func (x *SearchRequest) GetAsOf() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AsOf
+	}
+	return nil
+}
+
+func (x *SearchRequest) GetIncludeInvalidated() bool {
+	if x != nil {
+		return x.IncludeInvalidated
 	}
 	return false
 }
@@ -403,9 +566,12 @@ func (x *Hit) GetScore() float32 {
 }
 
 type DeleteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Namespace     string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Namespace string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Id        string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	// hard: physically remove the row. Default (false) is a soft delete that
+	// sets deleted_at=now() and retains the row (ADR-0003).
+	Hard          bool `protobuf:"varint,3,opt,name=hard,proto3" json:"hard,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -454,6 +620,13 @@ func (x *DeleteRequest) GetId() string {
 	return ""
 }
 
+func (x *DeleteRequest) GetHard() bool {
+	if x != nil {
+		return x.Hard
+	}
+	return false
+}
+
 type DeleteResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Existed       bool                   `protobuf:"varint,1,opt,name=existed,proto3" json:"existed,omitempty"`
@@ -498,11 +671,128 @@ func (x *DeleteResponse) GetExisted() bool {
 	return false
 }
 
+type ExpireRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Namespace string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// Exact-match metadata filter, same shape as SearchRequest.filter. An empty
+	// filter matches every record in the namespace (still bounded by max_rows).
+	Filter map[string]string `protobuf:"bytes,2,rep,name=filter,proto3" json:"filter,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Action ExpireAction      `protobuf:"varint,3,opt,name=action,proto3,enum=memsidecar.semantic.v1.ExpireAction" json:"action,omitempty"`
+	// Upper bound on affected records. Required (> 0) to keep the operation
+	// localized; exceeding it simply stops — re-issue to continue.
+	MaxRows       uint32 `protobuf:"varint,4,opt,name=max_rows,json=maxRows,proto3" json:"max_rows,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExpireRequest) Reset() {
+	*x = ExpireRequest{}
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpireRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpireRequest) ProtoMessage() {}
+
+func (x *ExpireRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpireRequest.ProtoReflect.Descriptor instead.
+func (*ExpireRequest) Descriptor() ([]byte, []int) {
+	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ExpireRequest) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *ExpireRequest) GetFilter() map[string]string {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+func (x *ExpireRequest) GetAction() ExpireAction {
+	if x != nil {
+		return x.Action
+	}
+	return ExpireAction_EXPIRE_ACTION_UNSPECIFIED
+}
+
+func (x *ExpireRequest) GetMaxRows() uint32 {
+	if x != nil {
+		return x.MaxRows
+	}
+	return 0
+}
+
+type ExpireResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Number of records actually affected by the action.
+	Affected      uint64 `protobuf:"varint,1,opt,name=affected,proto3" json:"affected,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExpireResponse) Reset() {
+	*x = ExpireResponse{}
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpireResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpireResponse) ProtoMessage() {}
+
+func (x *ExpireResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpireResponse.ProtoReflect.Descriptor instead.
+func (*ExpireResponse) Descriptor() ([]byte, []int) {
+	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ExpireResponse) GetAffected() uint64 {
+	if x != nil {
+		return x.Affected
+	}
+	return 0
+}
+
 var File_memsidecar_semantic_v1_semantic_proto protoreflect.FileDescriptor
 
 const file_memsidecar_semantic_v1_semantic_proto_rawDesc = "" +
 	"\n" +
-	"%memsidecar/semantic/v1/semantic.proto\x12\x16memsidecar.semantic.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa6\x02\n" +
+	"%memsidecar/semantic/v1/semantic.proto\x12\x16memsidecar.semantic.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd8\x04\n" +
 	"\x06Record\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12\x18\n" +
@@ -510,15 +800,30 @@ const file_memsidecar_semantic_v1_semantic_proto_rawDesc = "" +
 	"\x06vector\x18\x04 \x03(\x02R\x06vector\x12H\n" +
 	"\bmetadata\x18\x05 \x03(\v2,.memsidecar.semantic.v1.Record.MetadataEntryR\bmetadata\x129\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x1a;\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"valid_from\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tvalidFrom\x125\n" +
+	"\bvalid_to\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\avalidTo\x129\n" +
+	"\n" +
+	"deleted_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\x12\x1e\n" +
+	"\n" +
+	"supersedes\x18\n" +
+	" \x03(\tR\n" +
+	"supersedes\x12\x16\n" +
+	"\x06source\x18\v \x01(\tR\x06source\x12\x18\n" +
+	"\aversion\x18\f \x01(\x04R\aversion\x12\"\n" +
+	"\n" +
+	"if_version\x18\r \x01(\x04H\x00R\tifVersion\x88\x01\x01\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"g\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\r\n" +
+	"\v_if_version\"g\n" +
 	"\rUpsertRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x128\n" +
-	"\arecords\x18\x02 \x03(\v2\x1e.memsidecar.semantic.v1.RecordR\arecords\"\"\n" +
+	"\arecords\x18\x02 \x03(\v2\x1e.memsidecar.semantic.v1.RecordR\arecords\">\n" +
 	"\x0eUpsertResponse\x12\x10\n" +
-	"\x03ids\x18\x01 \x03(\tR\x03ids\"\xda\x02\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\x12\x1a\n" +
+	"\bversions\x18\x02 \x03(\x04R\bversions\"\xbc\x03\n" +
 	"\rSearchRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x1d\n" +
 	"\n" +
@@ -527,7 +832,9 @@ const file_memsidecar_semantic_v1_semantic_proto_rawDesc = "" +
 	"\x05top_k\x18\x04 \x01(\rR\x04topK\x12I\n" +
 	"\x06filter\x18\x05 \x03(\v21.memsidecar.semantic.v1.SearchRequest.FilterEntryR\x06filter\x12'\n" +
 	"\x0finclude_payload\x18\x06 \x01(\bR\x0eincludePayload\x12%\n" +
-	"\x0einclude_vector\x18\a \x01(\bR\rincludeVector\x1a9\n" +
+	"\x0einclude_vector\x18\a \x01(\bR\rincludeVector\x12/\n" +
+	"\x05as_of\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x04asOf\x12/\n" +
+	"\x13include_invalidated\x18\t \x01(\bR\x12includeInvalidated\x1a9\n" +
 	"\vFilterEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"A\n" +
@@ -535,16 +842,33 @@ const file_memsidecar_semantic_v1_semantic_proto_rawDesc = "" +
 	"\x04hits\x18\x01 \x03(\v2\x1b.memsidecar.semantic.v1.HitR\x04hits\"S\n" +
 	"\x03Hit\x126\n" +
 	"\x06record\x18\x01 \x01(\v2\x1e.memsidecar.semantic.v1.RecordR\x06record\x12\x14\n" +
-	"\x05score\x18\x02 \x01(\x02R\x05score\"=\n" +
+	"\x05score\x18\x02 \x01(\x02R\x05score\"Q\n" +
 	"\rDeleteRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\"*\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\x12\x12\n" +
+	"\x04hard\x18\x03 \x01(\bR\x04hard\"*\n" +
 	"\x0eDeleteResponse\x12\x18\n" +
-	"\aexisted\x18\x01 \x01(\bR\aexisted2\x95\x02\n" +
+	"\aexisted\x18\x01 \x01(\bR\aexisted\"\x8c\x02\n" +
+	"\rExpireRequest\x12\x1c\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12I\n" +
+	"\x06filter\x18\x02 \x03(\v21.memsidecar.semantic.v1.ExpireRequest.FilterEntryR\x06filter\x12<\n" +
+	"\x06action\x18\x03 \x01(\x0e2$.memsidecar.semantic.v1.ExpireActionR\x06action\x12\x19\n" +
+	"\bmax_rows\x18\x04 \x01(\rR\amaxRows\x1a9\n" +
+	"\vFilterEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\",\n" +
+	"\x0eExpireResponse\x12\x1a\n" +
+	"\baffected\x18\x01 \x01(\x04R\baffected*\x89\x01\n" +
+	"\fExpireAction\x12\x1d\n" +
+	"\x19EXPIRE_ACTION_UNSPECIFIED\x10\x00\x12\x1c\n" +
+	"\x18EXPIRE_ACTION_INVALIDATE\x10\x01\x12\x1d\n" +
+	"\x19EXPIRE_ACTION_SOFT_DELETE\x10\x02\x12\x1d\n" +
+	"\x19EXPIRE_ACTION_HARD_DELETE\x10\x032\xee\x02\n" +
 	"\bSemantic\x12W\n" +
 	"\x06Upsert\x12%.memsidecar.semantic.v1.UpsertRequest\x1a&.memsidecar.semantic.v1.UpsertResponse\x12W\n" +
 	"\x06Search\x12%.memsidecar.semantic.v1.SearchRequest\x1a&.memsidecar.semantic.v1.SearchResponse\x12W\n" +
-	"\x06Delete\x12%.memsidecar.semantic.v1.DeleteRequest\x1a&.memsidecar.semantic.v1.DeleteResponseB\xd7\x01\n" +
+	"\x06Delete\x12%.memsidecar.semantic.v1.DeleteRequest\x1a&.memsidecar.semantic.v1.DeleteResponse\x12W\n" +
+	"\x06Expire\x12%.memsidecar.semantic.v1.ExpireRequest\x1a&.memsidecar.semantic.v1.ExpireResponseB\xd7\x01\n" +
 	"\x1acom.memsidecar.semantic.v1B\rSemanticProtoP\x01Z0memsidecar/gen/memsidecar/semantic/v1;semanticv1\xa2\x02\x03MSX\xaa\x02\x16Memsidecar.Semantic.V1\xca\x02\x16Memsidecar\\Semantic\\V1\xe2\x02\"Memsidecar\\Semantic\\V1\\GPBMetadata\xea\x02\x18Memsidecar::Semantic::V1b\x06proto3"
 
 var (
@@ -559,38 +883,51 @@ func file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP() []byte {
 	return file_memsidecar_semantic_v1_semantic_proto_rawDescData
 }
 
-var file_memsidecar_semantic_v1_semantic_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_memsidecar_semantic_v1_semantic_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_memsidecar_semantic_v1_semantic_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_memsidecar_semantic_v1_semantic_proto_goTypes = []any{
-	(*Record)(nil),                // 0: memsidecar.semantic.v1.Record
-	(*UpsertRequest)(nil),         // 1: memsidecar.semantic.v1.UpsertRequest
-	(*UpsertResponse)(nil),        // 2: memsidecar.semantic.v1.UpsertResponse
-	(*SearchRequest)(nil),         // 3: memsidecar.semantic.v1.SearchRequest
-	(*SearchResponse)(nil),        // 4: memsidecar.semantic.v1.SearchResponse
-	(*Hit)(nil),                   // 5: memsidecar.semantic.v1.Hit
-	(*DeleteRequest)(nil),         // 6: memsidecar.semantic.v1.DeleteRequest
-	(*DeleteResponse)(nil),        // 7: memsidecar.semantic.v1.DeleteResponse
-	nil,                           // 8: memsidecar.semantic.v1.Record.MetadataEntry
-	nil,                           // 9: memsidecar.semantic.v1.SearchRequest.FilterEntry
-	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
+	(ExpireAction)(0),             // 0: memsidecar.semantic.v1.ExpireAction
+	(*Record)(nil),                // 1: memsidecar.semantic.v1.Record
+	(*UpsertRequest)(nil),         // 2: memsidecar.semantic.v1.UpsertRequest
+	(*UpsertResponse)(nil),        // 3: memsidecar.semantic.v1.UpsertResponse
+	(*SearchRequest)(nil),         // 4: memsidecar.semantic.v1.SearchRequest
+	(*SearchResponse)(nil),        // 5: memsidecar.semantic.v1.SearchResponse
+	(*Hit)(nil),                   // 6: memsidecar.semantic.v1.Hit
+	(*DeleteRequest)(nil),         // 7: memsidecar.semantic.v1.DeleteRequest
+	(*DeleteResponse)(nil),        // 8: memsidecar.semantic.v1.DeleteResponse
+	(*ExpireRequest)(nil),         // 9: memsidecar.semantic.v1.ExpireRequest
+	(*ExpireResponse)(nil),        // 10: memsidecar.semantic.v1.ExpireResponse
+	nil,                           // 11: memsidecar.semantic.v1.Record.MetadataEntry
+	nil,                           // 12: memsidecar.semantic.v1.SearchRequest.FilterEntry
+	nil,                           // 13: memsidecar.semantic.v1.ExpireRequest.FilterEntry
+	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
 }
 var file_memsidecar_semantic_v1_semantic_proto_depIdxs = []int32{
-	8,  // 0: memsidecar.semantic.v1.Record.metadata:type_name -> memsidecar.semantic.v1.Record.MetadataEntry
-	10, // 1: memsidecar.semantic.v1.Record.created_at:type_name -> google.protobuf.Timestamp
-	0,  // 2: memsidecar.semantic.v1.UpsertRequest.records:type_name -> memsidecar.semantic.v1.Record
-	9,  // 3: memsidecar.semantic.v1.SearchRequest.filter:type_name -> memsidecar.semantic.v1.SearchRequest.FilterEntry
-	5,  // 4: memsidecar.semantic.v1.SearchResponse.hits:type_name -> memsidecar.semantic.v1.Hit
-	0,  // 5: memsidecar.semantic.v1.Hit.record:type_name -> memsidecar.semantic.v1.Record
-	1,  // 6: memsidecar.semantic.v1.Semantic.Upsert:input_type -> memsidecar.semantic.v1.UpsertRequest
-	3,  // 7: memsidecar.semantic.v1.Semantic.Search:input_type -> memsidecar.semantic.v1.SearchRequest
-	6,  // 8: memsidecar.semantic.v1.Semantic.Delete:input_type -> memsidecar.semantic.v1.DeleteRequest
-	2,  // 9: memsidecar.semantic.v1.Semantic.Upsert:output_type -> memsidecar.semantic.v1.UpsertResponse
-	4,  // 10: memsidecar.semantic.v1.Semantic.Search:output_type -> memsidecar.semantic.v1.SearchResponse
-	7,  // 11: memsidecar.semantic.v1.Semantic.Delete:output_type -> memsidecar.semantic.v1.DeleteResponse
-	9,  // [9:12] is the sub-list for method output_type
-	6,  // [6:9] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	11, // 0: memsidecar.semantic.v1.Record.metadata:type_name -> memsidecar.semantic.v1.Record.MetadataEntry
+	14, // 1: memsidecar.semantic.v1.Record.created_at:type_name -> google.protobuf.Timestamp
+	14, // 2: memsidecar.semantic.v1.Record.valid_from:type_name -> google.protobuf.Timestamp
+	14, // 3: memsidecar.semantic.v1.Record.valid_to:type_name -> google.protobuf.Timestamp
+	14, // 4: memsidecar.semantic.v1.Record.deleted_at:type_name -> google.protobuf.Timestamp
+	1,  // 5: memsidecar.semantic.v1.UpsertRequest.records:type_name -> memsidecar.semantic.v1.Record
+	12, // 6: memsidecar.semantic.v1.SearchRequest.filter:type_name -> memsidecar.semantic.v1.SearchRequest.FilterEntry
+	14, // 7: memsidecar.semantic.v1.SearchRequest.as_of:type_name -> google.protobuf.Timestamp
+	6,  // 8: memsidecar.semantic.v1.SearchResponse.hits:type_name -> memsidecar.semantic.v1.Hit
+	1,  // 9: memsidecar.semantic.v1.Hit.record:type_name -> memsidecar.semantic.v1.Record
+	13, // 10: memsidecar.semantic.v1.ExpireRequest.filter:type_name -> memsidecar.semantic.v1.ExpireRequest.FilterEntry
+	0,  // 11: memsidecar.semantic.v1.ExpireRequest.action:type_name -> memsidecar.semantic.v1.ExpireAction
+	2,  // 12: memsidecar.semantic.v1.Semantic.Upsert:input_type -> memsidecar.semantic.v1.UpsertRequest
+	4,  // 13: memsidecar.semantic.v1.Semantic.Search:input_type -> memsidecar.semantic.v1.SearchRequest
+	7,  // 14: memsidecar.semantic.v1.Semantic.Delete:input_type -> memsidecar.semantic.v1.DeleteRequest
+	9,  // 15: memsidecar.semantic.v1.Semantic.Expire:input_type -> memsidecar.semantic.v1.ExpireRequest
+	3,  // 16: memsidecar.semantic.v1.Semantic.Upsert:output_type -> memsidecar.semantic.v1.UpsertResponse
+	5,  // 17: memsidecar.semantic.v1.Semantic.Search:output_type -> memsidecar.semantic.v1.SearchResponse
+	8,  // 18: memsidecar.semantic.v1.Semantic.Delete:output_type -> memsidecar.semantic.v1.DeleteResponse
+	10, // 19: memsidecar.semantic.v1.Semantic.Expire:output_type -> memsidecar.semantic.v1.ExpireResponse
+	16, // [16:20] is the sub-list for method output_type
+	12, // [12:16] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_memsidecar_semantic_v1_semantic_proto_init() }
@@ -598,18 +935,20 @@ func file_memsidecar_semantic_v1_semantic_proto_init() {
 	if File_memsidecar_semantic_v1_semantic_proto != nil {
 		return
 	}
+	file_memsidecar_semantic_v1_semantic_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_memsidecar_semantic_v1_semantic_proto_rawDesc), len(file_memsidecar_semantic_v1_semantic_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   10,
+			NumEnums:      1,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_memsidecar_semantic_v1_semantic_proto_goTypes,
 		DependencyIndexes: file_memsidecar_semantic_v1_semantic_proto_depIdxs,
+		EnumInfos:         file_memsidecar_semantic_v1_semantic_proto_enumTypes,
 		MessageInfos:      file_memsidecar_semantic_v1_semantic_proto_msgTypes,
 	}.Build()
 	File_memsidecar_semantic_v1_semantic_proto = out.File

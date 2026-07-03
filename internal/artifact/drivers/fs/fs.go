@@ -109,8 +109,8 @@ func (d *Driver) Put(_ context.Context, namespace string, header artifact.PutHea
 	return meta, nil
 }
 
-func (d *Driver) Open(_ context.Context, namespace, id string, opts artifact.GetOptions) (artifact.Meta, io.ReadCloser, error) {
-	meta, err := d.Stat(nil, namespace, id)
+func (d *Driver) Open(ctx context.Context, namespace, id string, opts artifact.GetOptions) (artifact.Meta, io.ReadCloser, error) {
+	meta, err := d.Stat(ctx, namespace, id)
 	if err != nil {
 		return artifact.Meta{}, nil, err
 	}
@@ -154,8 +154,8 @@ func (d *Driver) Stat(_ context.Context, namespace, id string) (artifact.Meta, e
 // PatchMeta rewrites the metadata JSON to include the size and sha256 the
 // service computed after the upload stream completed. Implements the
 // optional metaPatcher interface in internal/artifact/service.go.
-func (d *Driver) PatchMeta(_ context.Context, namespace, id, sha256Hex string, size uint64) error {
-	meta, err := d.Stat(nil, namespace, id)
+func (d *Driver) PatchMeta(ctx context.Context, namespace, id, sha256Hex string, size uint64) error {
+	meta, err := d.Stat(ctx, namespace, id)
 	if err != nil {
 		return err
 	}
@@ -201,7 +201,7 @@ func writeMeta(path string, m artifact.Meta) error {
 		return err
 	}
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, body, 0o640); err != nil {
+	if err := os.WriteFile(tmp, body, 0o640); err != nil { //nolint:gosec // metadata sidecar file; 0640 (group-readable) is intentional
 		return err
 	}
 	return os.Rename(tmp, path)

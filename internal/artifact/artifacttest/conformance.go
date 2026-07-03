@@ -52,7 +52,7 @@ func testPutGetRound(t *testing.T, h Harness) {
 
 	got, rc, err := d.Open(ctx, "ns", "obj1", artifact.GetOptions{})
 	require.NoError(t, err)
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	all, err := io.ReadAll(rc)
 	require.NoError(t, err)
 	assert.Equal(t, "hello world", string(all))
@@ -73,7 +73,7 @@ func testOpenOffsetLength(t *testing.T, h Harness) {
 
 	_, rc, err := d.Open(context.Background(), "ns", "a", artifact.GetOptions{Offset: 3, Length: 4})
 	require.NoError(t, err)
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	b, err := io.ReadAll(rc)
 	require.NoError(t, err)
 	assert.Equal(t, "defg", string(b))

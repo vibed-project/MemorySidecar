@@ -5,7 +5,7 @@ import grpc
 from memsidecar.semantic.v1 import semantic_pb2 as memsidecar_dot_semantic_dot_v1_dot_semantic__pb2
 
 
-class SemanticStub(object):
+class SemanticStub:
     """Semantic provides embed-and-search over arbitrary records, scoped by
     namespace. Every namespace is bound to a single embedding model at config
     time. Every RPC requires a capability token in the gRPC metadata key
@@ -33,9 +33,14 @@ class SemanticStub(object):
                 request_serializer=memsidecar_dot_semantic_dot_v1_dot_semantic__pb2.DeleteRequest.SerializeToString,
                 response_deserializer=memsidecar_dot_semantic_dot_v1_dot_semantic__pb2.DeleteResponse.FromString,
                 _registered_method=True)
+        self.Expire = channel.unary_unary(
+                '/memsidecar.semantic.v1.Semantic/Expire',
+                request_serializer=memsidecar_dot_semantic_dot_v1_dot_semantic__pb2.ExpireRequest.SerializeToString,
+                response_deserializer=memsidecar_dot_semantic_dot_v1_dot_semantic__pb2.ExpireResponse.FromString,
+                _registered_method=True)
 
 
-class SemanticServicer(object):
+class SemanticServicer:
     """Semantic provides embed-and-search over arbitrary records, scoped by
     namespace. Every namespace is bound to a single embedding model at config
     time. Every RPC requires a capability token in the gRPC metadata key
@@ -60,6 +65,15 @@ class SemanticServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Expire(self, request, context):
+        """Expire applies a lifecycle action to every record matching a metadata
+        filter, in one bounded server-side operation (ADR-0003, U3). max_rows caps
+        the affected set so maintenance stays localized.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_SemanticServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -78,6 +92,11 @@ def add_SemanticServicer_to_server(servicer, server):
                     request_deserializer=memsidecar_dot_semantic_dot_v1_dot_semantic__pb2.DeleteRequest.FromString,
                     response_serializer=memsidecar_dot_semantic_dot_v1_dot_semantic__pb2.DeleteResponse.SerializeToString,
             ),
+            'Expire': grpc.unary_unary_rpc_method_handler(
+                    servicer.Expire,
+                    request_deserializer=memsidecar_dot_semantic_dot_v1_dot_semantic__pb2.ExpireRequest.FromString,
+                    response_serializer=memsidecar_dot_semantic_dot_v1_dot_semantic__pb2.ExpireResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'memsidecar.semantic.v1.Semantic', rpc_method_handlers)
@@ -86,7 +105,7 @@ def add_SemanticServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class Semantic(object):
+class Semantic:
     """Semantic provides embed-and-search over arbitrary records, scoped by
     namespace. Every namespace is bound to a single embedding model at config
     time. Every RPC requires a capability token in the gRPC metadata key
@@ -164,6 +183,33 @@ class Semantic(object):
             '/memsidecar.semantic.v1.Semantic/Delete',
             memsidecar_dot_semantic_dot_v1_dot_semantic__pb2.DeleteRequest.SerializeToString,
             memsidecar_dot_semantic_dot_v1_dot_semantic__pb2.DeleteResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Expire(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/memsidecar.semantic.v1.Semantic/Expire',
+            memsidecar_dot_semantic_dot_v1_dot_semantic__pb2.ExpireRequest.SerializeToString,
+            memsidecar_dot_semantic_dot_v1_dot_semantic__pb2.ExpireResponse.FromString,
             options,
             channel_credentials,
             insecure,

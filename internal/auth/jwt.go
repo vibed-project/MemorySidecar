@@ -67,7 +67,7 @@ func loadPEM(spec string) ([]byte, error) {
 	if strings.HasPrefix(spec, "-----BEGIN") {
 		return []byte(spec), nil
 	}
-	return os.ReadFile(spec)
+	return os.ReadFile(spec) //nolint:gosec // spec is an operator-configured key-file path
 }
 
 type jwtClaims struct {
