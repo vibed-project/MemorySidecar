@@ -1,9 +1,12 @@
 // Package postgres implements the episodic driver backed by PostgreSQL.
 //
-// Cursors are assigned per-namespace by SELECTing the current MAX inside a
-// transaction with table-level lock; for the walking-skeleton this is simpler
-// than a per-namespace sequence and still serializes correctly. Tail is
-// implemented as polling — LISTEN/NOTIFY is the natural upgrade path.
+// Cursors are assigned per-namespace from a counter row in episodic_cursors,
+// bumped atomically with INSERT ... ON CONFLICT DO UPDATE ... RETURNING. That
+// takes a row-level lock on just the namespace's counter, so concurrent
+// appenders to the same namespace serialize while different namespaces stay
+// independent — all without the illegal `SELECT max(cursor) ... FOR UPDATE`
+// (Postgres forbids FOR UPDATE with aggregate functions). Tail is implemented
+// as polling — LISTEN/NOTIFY is the natural upgrade path.
 package postgres
 
 import (
@@ -104,25 +107,38 @@ func (d *Driver) Append(ctx context.Context, namespace string, opts episodic.App
 		return episodic.Event{}, fmt.Errorf("episodic/postgres: marshal metadata: %w", err)
 	}
 
-	tx, err := d.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	// Read Committed is sufficient: the cursor bump below takes a row lock on the
+	// namespace's counter, which fully serializes same-namespace appends without
+	// risking serialization-failure retries under concurrency.
+	tx, err := d.pool.Begin(ctx)
 	if err != nil {
 		return episodic.Event{}, fmt.Errorf("episodic/postgres: begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// Lock the namespace's existing rows so two concurrent appenders agree on
-	// the next cursor. Postgres advisory locks would also work; this approach
-	// keeps everything inside one tx.
-	var maxCursor *int64
-	err = tx.QueryRow(ctx,
-		`SELECT MAX(cursor) FROM episodic_events WHERE namespace = $1 FOR UPDATE`,
-		namespace).Scan(&maxCursor)
+	// Atomically allocate the next cursor for this namespace. INSERT ... ON
+	// CONFLICT DO UPDATE locks the counter row, so concurrent appenders to the
+	// same namespace block here rather than racing on a shared MAX. Running
+	// inside the tx means an aborted append rolls the increment back, leaving no
+	// cursor gap.
+	var next int64
+	err = tx.QueryRow(ctx, `
+		INSERT INTO episodic_cursors (namespace, last_cursor)
+		     VALUES ($1, 1)
+		ON CONFLICT (namespace)
+		  DO UPDATE SET last_cursor = episodic_cursors.last_cursor + 1
+		  RETURNING last_cursor`,
+		namespace).Scan(&next)
 	if err != nil {
-		return episodic.Event{}, fmt.Errorf("episodic/postgres: select max: %w", err)
+		return episodic.Event{}, fmt.Errorf("episodic/postgres: allocate cursor: %w", err)
 	}
-	var next int64 = 1
-	if maxCursor != nil {
-		next = *maxCursor + 1
+
+	// The payload column is NOT NULL; a nil []byte would be encoded as SQL NULL
+	// (the column DEFAULT only applies when the column is omitted, not when NULL
+	// is passed), so coalesce an absent payload to empty bytes.
+	payload := opts.Payload
+	if payload == nil {
+		payload = []byte{}
 	}
 
 	var (
@@ -137,7 +153,7 @@ func (d *Driver) Append(ctx context.Context, namespace string, opts episodic.App
 		INSERT INTO episodic_events (namespace, cursor, type, payload, metadata)
 		     VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, cursor, timestamp, type, payload, metadata`,
-		namespace, next, opts.Type, opts.Payload, metaBytes,
+		namespace, next, opts.Type, payload, metaBytes,
 	).Scan(&outID, &outCursor, &outTimestamp, &outType, &outPayload, &outMeta)
 	if err != nil {
 		return episodic.Event{}, fmt.Errorf("episodic/postgres: insert: %w", err)
