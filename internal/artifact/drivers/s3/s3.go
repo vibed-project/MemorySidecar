@@ -149,15 +149,11 @@ func (d *Driver) Open(ctx context.Context, namespace, id string, opts artifact.G
 	if err != nil {
 		return artifact.Meta{}, nil, fmt.Errorf("artifact/s3: get: %w", err)
 	}
-	// Force-touch the object so miniogo materialises any error early. Stat
-	// already confirmed existence so this is cheap.
-	if _, err := obj.Stat(); err != nil {
-		_ = obj.Close()
-		if isNotFoundErr(err) {
-			return artifact.Meta{}, nil, artifact.ErrNotFound
-		}
-		return artifact.Meta{}, nil, err
-	}
+	// Do NOT probe the object with obj.Stat() here. minio-go's Object is lazy:
+	// the first Stat/Seek request strips the Range header off the pending GET
+	// (api-get-object.go), so a probe would discard our offset/length range and
+	// the following Read would return the whole object. Existence was already
+	// confirmed by d.Stat above; any late fetch error surfaces on the first Read.
 	return meta, obj, nil
 }
 
