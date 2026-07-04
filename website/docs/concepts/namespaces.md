@@ -11,7 +11,7 @@ memsidecar's data plane is configured around three concepts:
 |---|---|
 | **Backend** | A connection — Postgres pool, S3 client, filesystem path, in-memory store. Defined once at top level, named, then referenced. |
 | **Namespace** | A logical grouping within a building block. Maps to a Postgres table prefix, an S3 key prefix, a pgvector table, etc. |
-| **Block** | One of `kv` / `episodic` / `semantic` / `artifact` / `lease`. |
+| **Block** | One of `kv` / `episodic` / `semantic` / `artifact` / `lease` / `graph`. |
 
 ## Mapping in config
 
@@ -30,6 +30,7 @@ namespaces:
   - { block: episodic, name: events,      backend: pg-main }
   - { block: artifact, name: blobs,       backend: blob-local }
   - { block: lease,    name: locks,       backend: mem-default }
+  - { block: graph,    name: knowledge,   backend: mem-default }
 ```
 
 A backend can serve **multiple namespaces** across **multiple blocks** —

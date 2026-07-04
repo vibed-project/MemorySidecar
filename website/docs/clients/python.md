@@ -33,8 +33,8 @@ with MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN) as m:
 `MemSidecar` opens a gRPC channel wrapped with a `CapabilityInterceptor`
 that attaches `x-memsidecar-capability: Bearer <token>` to every outgoing
 call (unary, server-stream, client-stream, bidi). The token is shared
-across all five per-block sub-clients (`m.kv`, `m.episodic`, `m.semantic`,
-`m.artifact`, `m.lease`).
+across all six per-block sub-clients (`m.kv`, `m.episodic`, `m.semantic`,
+`m.artifact`, `m.lease`, `m.graph`).
 
 ## Per-block surface
 
@@ -63,17 +63,52 @@ for ev in m.episodic.tail(ns, include_historical=True, after_cursor=0):
 ```python
 from memsidecar.semantic.v1 import semantic_pb2
 
-m.semantic.upsert(ns, [
+resp = m.semantic.upsert(ns, [
     semantic_pb2.Record(id="a", content="apple"),
 ])
+resp.ids, resp.versions          # assigned ids + new per-id versions (aligned)
 for hit in m.semantic.search(ns, query_text="apple", top_k=3, filter={"topic":"food"}):
     print(hit.record.id, hit.score)
-m.semantic.delete(ns, "a")
+m.semantic.delete(ns, "a")       # soft delete (tombstone) by default
 ```
 
 You can also pass `query_vector=[...]` for a pre-embedded query, or
 provide records with their own pre-computed `vector` to skip the
 embedder entirely.
+
+**Lifecycle (bitemporal & revisable).** Records carry validity and
+provenance fields set directly on the `Record`, and `search`/`delete`/`expire`
+expose the read and retraction surface. See [Semantic](../blocks/semantic.md).
+
+```python
+from google.protobuf.timestamp_pb2 import Timestamp
+
+# Revise a fact: write the new one and bind it to what it supersedes.
+# `supersedes` sets valid_to on the named ids in one localized transaction.
+m.semantic.upsert(ns, [
+    semantic_pb2.Record(id="b", content="apples are red",
+                        supersedes=["a"], source="tool:web"),
+])
+
+# Point-in-time recall — what we believed as of a past instant.
+past = Timestamp(); past.FromJsonString("2026-01-01T00:00:00Z")
+m.semantic.search(ns, query_text="apple", as_of=past.ToDatetime())
+
+# Audit view — also return tombstoned / expired / not-yet-valid rows.
+m.semantic.search(ns, query_text="apple", include_invalidated=True)
+
+# Hard delete (physical) instead of a tombstone.
+m.semantic.delete(ns, "b", hard=True)
+
+# Bounded bulk lifecycle action — max_rows is required.
+n = m.semantic.expire(
+    ns, filter={"topic": "food"},
+    action=semantic_pb2.EXPIRE_ACTION_INVALIDATE, max_rows=500)
+```
+
+Optimistic concurrency mirrors `kv`: set `if_version` on a `Record` to
+make the upsert a compare-and-swap (stale version → `FailedPrecondition`);
+the response's `versions` carry the new value.
 
 ### Artifact
 
@@ -100,6 +135,42 @@ finally:
 
 `acquire(wait_for=...)` blocks for up to that duration on a held key.
 `renew(holder_id, ns, key, ttl=...)` extends; `inspect(ns, key)` peeks.
+
+### Graph
+
+```python
+from memsidecar.graph.v1 import graph_pb2
+
+m.graph.upsert_nodes(ns, [
+    graph_pb2.Node(id="alice", labels=["Person"], props={"team": "core"}),
+    graph_pb2.Node(id="doc-1", labels=["Document"]),
+])
+m.graph.upsert_edges(ns, [
+    graph_pb2.Edge(id="e1", type="AUTHORED", **{"from": "alice"}, to="doc-1"),
+])
+
+node = m.graph.get_node(ns, "alice")
+
+# 1-hop neighbors, filtered by edge type / direction / neighbor label.
+nb = m.graph.neighbors(ns, "alice", edge_types=["AUTHORED"],
+                       direction=graph_pb2.DIRECTION_OUT, limit=50)
+nb.nodes, nb.edges
+
+# Bounded multi-hop expansion — depth/max_nodes of 0 use server defaults;
+# both are hard-capped server-side and reject with ResourceExhausted.
+sub = m.graph.traverse(ns, "alice", depth=2, max_nodes=100,
+                       direction=graph_pb2.DIRECTION_BOTH)
+
+m.graph.delete_node(ns, "doc-1", cascade=True)   # cascade removes incident edges
+m.graph.delete_edge(ns, "e1")
+```
+
+`from` is a Python keyword, so the generated field keeps its proto name:
+construct with `Edge(**{"from": "alice"})` and read it with
+`getattr(edge, "from")` (there is no `from_` alias). Node and edge ids are
+caller-supplied, so they can be shared with `semantic` record ids to compose
+hybrid recall (semantic search → graph expand) in the agent. See
+[Graph](../blocks/graph.md).
 
 ## TLS
 

@@ -21,7 +21,7 @@ token:
 export MEMSIDECAR_PASETO_SECRET_HEX=...   # from configs/example.yaml comment
 export MEMSIDECAR_TOKEN=$(./bin/memctl token issue \
     --tenant acme --agent agent-1 \
-    --ns 'kv/*,episodic/events,semantic/notes,artifact/blobs,lease/locks' \
+    --ns 'kv/*,episodic/events,semantic/notes,artifact/blobs,lease/locks,graph/knowledge' \
     --ops '*' --ttl 1h)
 ```
 
@@ -31,6 +31,7 @@ Then:
 import datetime as dt
 from memsidecar import MemSidecar
 from memsidecar.semantic.v1 import semantic_pb2
+from memsidecar.graph.v1 import graph_pb2
 
 with MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN) as m:
     # KV
@@ -43,7 +44,9 @@ with MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN) as m:
     for ev in m.episodic.range("events", limit=10):
         print(ev.cursor, ev.type)
 
-    # Semantic
+    # Semantic — bitemporal & revisable. Default search returns only records
+    # live and valid *now*; pass as_of=... or include_invalidated=True for
+    # point-in-time / audit reads. `supersedes` retires the ids it revises.
     m.semantic.upsert("notes", [
         semantic_pb2.Record(id="a", content="apple"),
     ])
@@ -57,6 +60,18 @@ with MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN) as m:
     # Lease
     handle = m.lease.acquire("locks", "deploy", ttl=dt.timedelta(minutes=1))
     m.lease.release(handle.holder_id, "locks", "deploy")
+
+    # Graph — typed nodes/edges + bounded traversal (hard-capped server-side).
+    # `from` is a Python keyword, so pass it via **{"from": ...}.
+    m.graph.upsert_nodes("knowledge", [
+        graph_pb2.Node(id="alice", labels=["Person"]),
+        graph_pb2.Node(id="doc-1", labels=["Document"]),
+    ])
+    m.graph.upsert_edges("knowledge", [
+        graph_pb2.Edge(id="e1", type="AUTHORED", **{"from": "alice"}, to="doc-1"),
+    ])
+    sub = m.graph.traverse("knowledge", "alice", depth=2, max_nodes=100)
+    print([n.id for n in sub.nodes])
 ```
 
 ## Regenerating proto stubs

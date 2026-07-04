@@ -7,7 +7,7 @@ title: Quickstart
 # Quickstart
 
 Five minutes from clone to a live sidecar handling KV, Episodic, Semantic,
-Artifact, and Lease over gRPC and HTTP.
+Artifact, Lease, and Graph over gRPC and HTTP.
 
 ## Prerequisites
 
@@ -59,7 +59,7 @@ export MEMSIDECAR_PASETO_SECRET_HEX=38fb82e74985d41969ce39904d7cbe01dd31ea0b573d
 
 TOKEN=$(./bin/memctl token issue \
   --tenant acme --agent agent-1 \
-  --ns 'kv/*,episodic/events,semantic/notes,artifact/blobs,lease/locks' \
+  --ns 'kv/*,episodic/events,semantic/notes,artifact/blobs,lease/locks,graph/knowledge' \
   --ops '*' --ttl 1h)
 ```
 
