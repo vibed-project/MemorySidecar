@@ -36,6 +36,11 @@ const (
 	OpLeaseRenew   Op = "lease.renew"
 	OpLeaseRelease Op = "lease.release"
 	OpLeaseInspect Op = "lease.inspect"
+
+	OpGraphUpsert Op = "graph.upsert"
+	OpGraphGet    Op = "graph.get"
+	OpGraphQuery  Op = "graph.query" // neighbors + traverse
+	OpGraphDelete Op = "graph.delete"
 )
 
 // Scope describes what a capability is permitted to do.

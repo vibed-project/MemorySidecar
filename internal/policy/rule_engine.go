@@ -15,10 +15,10 @@ import (
 //   - deny       → request rejected with rule.Reason
 //   - allow      → request permitted, no further rules consulted
 //   - rate_limit → request consumes a token from the rule's bucket; if no
-//                  token is available, rejected. If a token is taken, the
-//                  decision falls through to the next rule (so an allow can
-//                  follow). This lets you chain "rate-limit AND then allow"
-//                  in a single rule by setting effect: rate_limit only.
+//     token is available, rejected. If a token is taken, the
+//     decision falls through to the next rule (so an allow can
+//     follow). This lets you chain "rate-limit AND then allow"
+//     in a single rule by setting effect: rate_limit only.
 //
 // If no rule matches, Spec.Default decides (default: allow).
 type RuleEngine struct {
@@ -60,9 +60,14 @@ func (e *RuleEngine) evaluate(_ context.Context, h HookCtx) Decision {
 		case EffectRateLimit:
 			lim := e.limiterFor(r, h)
 			if !lim.Allow() {
-				return Decision{Allow: false, Reason: r.reasonOr("rate limited by " + r.Name)}
+				return Decision{Allow: false, Exhausted: true, Reason: r.reasonOr("rate limited by " + r.Name)}
 			}
 			// Token consumed; fall through to subsequent rules.
+		case EffectCap:
+			if msg := capExceeded(r, h); msg != "" {
+				return Decision{Allow: false, Exhausted: true, Reason: r.reasonOr(msg + " (rule " + r.Name + ")")}
+			}
+			// Within caps; fall through to subsequent rules.
 		}
 	}
 	if e.spec.Default == DefaultDeny {
@@ -110,6 +115,22 @@ func bucketKey(r *Rule, h HookCtx) string {
 		parts = append(parts, "o="+string(h.Op))
 	}
 	return strings.Join(parts, "|")
+}
+
+// capExceeded returns a non-empty message when the request's magnitude breaches
+// any set bound on the rule, otherwise "".
+func capExceeded(r *Rule, h HookCtx) string {
+	switch {
+	case r.Max.TopK > 0 && h.TopK > r.Max.TopK:
+		return fmt.Sprintf("top_k %d exceeds cap %d", h.TopK, r.Max.TopK)
+	case r.Max.Limit > 0 && h.Limit > r.Max.Limit:
+		return fmt.Sprintf("limit %d exceeds cap %d", h.Limit, r.Max.Limit)
+	case r.Max.Depth > 0 && h.Depth > r.Max.Depth:
+		return fmt.Sprintf("depth %d exceeds cap %d", h.Depth, r.Max.Depth)
+	case r.Max.FanOut > 0 && h.FanOut > r.Max.FanOut:
+		return fmt.Sprintf("fan_out %d exceeds cap %d", h.FanOut, r.Max.FanOut)
+	}
+	return ""
 }
 
 func ruleMatches(r *Rule, h HookCtx) bool {
@@ -213,8 +234,12 @@ func (s *Spec) validate() error {
 			if r.Bucket.RatePerSecond <= 0 {
 				return fmt.Errorf("policy: rule %q: bucket.rate_per_second must be > 0", r.Name)
 			}
+		case EffectCap:
+			if r.Max == (Cap{}) {
+				return fmt.Errorf("policy: rule %q: cap effect requires at least one max.* bound", r.Name)
+			}
 		default:
-			return fmt.Errorf("policy: rule %q: unknown effect %q (allow|deny|rate_limit)", r.Name, r.Effect)
+			return fmt.Errorf("policy: rule %q: unknown effect %q (allow|deny|rate_limit|cap)", r.Name, r.Effect)
 		}
 	}
 	return nil

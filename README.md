@@ -8,7 +8,7 @@
 [![ADR](https://img.shields.io/badge/ADR-0001-555)](docs/decisions/adr-0001-memory-sidecar.md)
 
 memsidecar runs as a co-process to one or more agents and exposes a small,
-opinionated gRPC API over **pluggable backends** for the five kinds of memory
+opinionated gRPC API over **pluggable backends** for the kinds of memory
 every agent stack ends up reinventing. Agents talk to the sidecar; the
 sidecar talks to the substrate.
 
@@ -19,6 +19,7 @@ sidecar talks to the substrate.
 | **semantic** | Embed-and-search over arbitrary records | in-memory, pgvector |
 | **artifact** | Blob storage with metadata for generated files | in-memory, local FS, S3/MinIO |
 | **lease** | Distributed locks with TTL for shared-state coordination | in-memory, Postgres |
+| **graph** | Typed nodes/edges with bounded relationship traversal | in-memory |
 
 Every popular agent framework (LangGraph, CrewAI, Autogen, …) re-implements
 this plumbing in incompatible ways. memsidecar moves it out of the agent

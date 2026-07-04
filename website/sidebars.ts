@@ -25,6 +25,7 @@ const sidebars: SidebarsConfig = {
         'blocks/semantic',
         'blocks/artifact',
         'blocks/lease',
+        'blocks/graph',
       ],
     },
     {

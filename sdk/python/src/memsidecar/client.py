@@ -28,6 +28,7 @@ from .episodic.v1 import episodic_pb2, episodic_pb2_grpc
 from .semantic.v1 import semantic_pb2, semantic_pb2_grpc
 from .artifact.v1 import artifact_pb2, artifact_pb2_grpc
 from .lease.v1 import lease_pb2, lease_pb2_grpc
+from .graph.v1 import graph_pb2, graph_pb2_grpc
 
 
 # ---------------------------------------------------------------------------
@@ -292,6 +293,63 @@ class _Lease:
         return self._stub.Inspect(lease_pb2.InspectRequest(namespace=namespace, key=key))
 
 
+class _Graph:
+    """Relationship-aware recall: node/edge upserts and bounded traversal.
+
+    Traversal is always bounded server-side; ``depth``/``max_nodes``/``limit``
+    of 0 use the server defaults. Node/edge ids are caller-supplied and can be
+    shared with semantic record ids for agent-orchestrated hybrid recall.
+    """
+
+    def __init__(self, channel: grpc.Channel):
+        self._stub = graph_pb2_grpc.GraphStub(channel)
+
+    def upsert_nodes(self, namespace: str, nodes: Iterable[graph_pb2.Node]) -> List[str]:
+        return list(self._stub.UpsertNodes(graph_pb2.UpsertNodesRequest(
+            namespace=namespace, nodes=list(nodes),
+        )).ids)
+
+    def upsert_edges(self, namespace: str, edges: Iterable[graph_pb2.Edge]) -> List[str]:
+        return list(self._stub.UpsertEdges(graph_pb2.UpsertEdgesRequest(
+            namespace=namespace, edges=list(edges),
+        )).ids)
+
+    def get_node(self, namespace: str, id: str) -> graph_pb2.Node:
+        return self._stub.GetNode(graph_pb2.GetNodeRequest(namespace=namespace, id=id))
+
+    def neighbors(
+        self, namespace: str, node_id: str, *,
+        edge_types: Optional[Iterable[str]] = None,
+        direction: "graph_pb2.Direction.ValueType" = graph_pb2.DIRECTION_UNSPECIFIED,
+        node_labels: Optional[Iterable[str]] = None, limit: int = 0,
+    ) -> graph_pb2.NeighborsResponse:
+        return self._stub.Neighbors(graph_pb2.NeighborsRequest(
+            namespace=namespace, node_id=node_id,
+            edge_types=list(edge_types or []), direction=direction,
+            node_labels=list(node_labels or []), limit=limit,
+        ))
+
+    def traverse(
+        self, namespace: str, start_id: str, *,
+        edge_types: Optional[Iterable[str]] = None,
+        direction: "graph_pb2.Direction.ValueType" = graph_pb2.DIRECTION_UNSPECIFIED,
+        depth: int = 0, max_nodes: int = 0,
+    ) -> graph_pb2.Subgraph:
+        return self._stub.Traverse(graph_pb2.TraverseRequest(
+            namespace=namespace, start_id=start_id,
+            edge_types=list(edge_types or []), direction=direction,
+            depth=depth, max_nodes=max_nodes,
+        ))
+
+    def delete_node(self, namespace: str, id: str, *, cascade: bool = False) -> bool:
+        return self._stub.DeleteNode(graph_pb2.DeleteNodeRequest(
+            namespace=namespace, id=id, cascade=cascade,
+        )).existed
+
+    def delete_edge(self, namespace: str, id: str) -> bool:
+        return self._stub.DeleteEdge(graph_pb2.DeleteEdgeRequest(namespace=namespace, id=id)).existed
+
+
 # ---------------------------------------------------------------------------
 # Top-level client
 
@@ -315,6 +373,7 @@ class MemSidecar:
         self.semantic = _Semantic(self._channel)
         self.artifact = _Artifact(self._channel)
         self.lease = _Lease(self._channel)
+        self.graph = _Graph(self._channel)
 
     def close(self) -> None:
         self._channel.close()

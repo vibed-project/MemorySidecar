@@ -37,6 +37,13 @@ var methodToOp = map[string]struct {
 	"/memsidecar.lease.v1.Lease/Renew":        {auth.OpLeaseRenew, "lease", true},
 	"/memsidecar.lease.v1.Lease/Release":      {auth.OpLeaseRelease, "lease", true},
 	"/memsidecar.lease.v1.Lease/Inspect":      {auth.OpLeaseInspect, "lease", false},
+	"/memsidecar.graph.v1.Graph/UpsertNodes":  {auth.OpGraphUpsert, "graph", true},
+	"/memsidecar.graph.v1.Graph/UpsertEdges":  {auth.OpGraphUpsert, "graph", true},
+	"/memsidecar.graph.v1.Graph/GetNode":      {auth.OpGraphGet, "graph", false},
+	"/memsidecar.graph.v1.Graph/Neighbors":    {auth.OpGraphQuery, "graph", false},
+	"/memsidecar.graph.v1.Graph/Traverse":     {auth.OpGraphQuery, "graph", false},
+	"/memsidecar.graph.v1.Graph/DeleteNode":   {auth.OpGraphDelete, "graph", true},
+	"/memsidecar.graph.v1.Graph/DeleteEdge":   {auth.OpGraphDelete, "graph", true},
 }
 
 // PolicyUnary invokes the configured policy engine for every recognized method.
@@ -48,15 +55,20 @@ func PolicyUnary(eng policy.Engine) grpc.UnaryServerInterceptor {
 			return handler(ctx, req)
 		}
 		cap, _ := auth.FromContext(ctx)
+		topK, limit, depth, fanOut := costFromRequest(req)
 		hook := policy.HookCtx{
 			Capability: cap,
 			Block:      mapping.block,
 			Op:         mapping.op,
 			Namespace:  namespaceFromRequest(req),
+			TopK:       topK,
+			Limit:      limit,
+			Depth:      depth,
+			FanOut:     fanOut,
 		}
 		dec := decide(ctx, eng, mapping.write, hook)
 		if !dec.Allow {
-			return nil, status.Errorf(codes.PermissionDenied, "policy denied: %s", dec.Reason)
+			return nil, status.Errorf(policyCode(dec), "policy: %s", dec.Reason)
 		}
 		return handler(ctx, req)
 	}
@@ -73,10 +85,38 @@ func PolicyStream(eng policy.Engine) grpc.StreamServerInterceptor {
 		hook := policy.HookCtx{Capability: cap, Block: mapping.block, Op: mapping.op}
 		dec := decide(ss.Context(), eng, mapping.write, hook)
 		if !dec.Allow {
-			return status.Errorf(codes.PermissionDenied, "policy denied: %s", dec.Reason)
+			return status.Errorf(policyCode(dec), "policy: %s", dec.Reason)
 		}
 		return handler(srv, ss)
 	}
+}
+
+// policyCode maps a rejected decision to a gRPC status code: resource/cost
+// limits (rate limit, cap) surface as ResourceExhausted, everything else
+// (deny, default deny) as PermissionDenied.
+func policyCode(dec policy.Decision) codes.Code {
+	if dec.Exhausted {
+		return codes.ResourceExhausted
+	}
+	return codes.PermissionDenied
+}
+
+// costFromRequest extracts request-magnitude fields for cap rules from request
+// types that expose them. Missing getters yield zero (no bound applies).
+func costFromRequest(req any) (topK, limit, depth, fanOut uint32) {
+	if r, ok := req.(interface{ GetTopK() uint32 }); ok {
+		topK = r.GetTopK()
+	}
+	if r, ok := req.(interface{ GetLimit() uint32 }); ok {
+		limit = r.GetLimit()
+	}
+	if r, ok := req.(interface{ GetDepth() uint32 }); ok {
+		depth = r.GetDepth()
+	}
+	if r, ok := req.(interface{ GetFanOut() uint32 }); ok {
+		fanOut = r.GetFanOut()
+	}
+	return
 }
 
 func decide(ctx context.Context, eng policy.Engine, write bool, hook policy.HookCtx) policy.Decision {

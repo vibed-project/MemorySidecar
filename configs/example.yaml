@@ -79,6 +79,13 @@ policy:
         per_tenant: true
         rate_per_second: 5
         burst: 10
+    - name: cap-search-topk
+      effect: cap
+      reason: "top_k over 200 is not allowed"
+      match:
+        op: ["semantic.search"]
+      max:
+        top_k: 200
   # Or, for JWT:
   # verifier: jwt
   # jwt:
@@ -129,6 +136,9 @@ namespaces:
     backend: blob-local
   - block: lease
     name: locks
+    backend: mem-default
+  - block: graph
+    name: knowledge
     backend: mem-default
   # Ollama example — requires a running Ollama and `ollama pull nomic-embed-text`:
   # - block: semantic

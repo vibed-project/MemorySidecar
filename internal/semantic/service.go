@@ -21,11 +21,12 @@ const defaultTopK = 10
 // Service implements the generated SemanticServer.
 type Service struct {
 	semanticv1.UnimplementedSemanticServer
-	reg *Registry
+	reg   *Registry
+	instr *instruments
 }
 
 func NewService(reg *Registry) *Service {
-	return &Service{reg: reg}
+	return &Service{reg: reg, instr: newInstruments()}
 }
 
 func (s *Service) resolve(ctx context.Context, namespace string, op auth.Op) (BoundNamespace, error) {
@@ -116,12 +117,16 @@ func (s *Service) Upsert(ctx context.Context, req *semanticv1.UpsertRequest) (*s
 		recs[idx].Vector = embedded[j]
 	}
 
-	if err := b.Driver.Upsert(ctx, recs); err != nil {
-		if errors.Is(err, ErrVersionMismatch) {
+	upStart := time.Now()
+	upErr := b.Driver.Upsert(ctx, recs)
+	s.instr.backend(ctx, auth.OpSemanticUpsert, req.GetNamespace(), time.Since(upStart))
+	if upErr != nil {
+		if errors.Is(upErr, ErrVersionMismatch) {
 			return nil, status.Error(codes.FailedPrecondition, "version mismatch")
 		}
-		return nil, status.Errorf(codes.Internal, "upsert: %v", err)
+		return nil, status.Errorf(codes.Internal, "upsert: %v", upErr)
 	}
+	s.instr.result(ctx, auth.OpSemanticUpsert, req.GetNamespace(), len(recs))
 
 	ids := make([]string, len(recs))
 	versions := make([]uint64, len(recs))
@@ -161,6 +166,7 @@ func (s *Service) Search(ctx context.Context, req *semanticv1.SearchRequest) (*s
 		topK = defaultTopK
 	}
 
+	searchStart := time.Now()
 	hits, err := b.Driver.Search(ctx, SearchOptions{
 		QueryVector:        queryVec,
 		TopK:               topK,
@@ -170,8 +176,13 @@ func (s *Service) Search(ctx context.Context, req *semanticv1.SearchRequest) (*s
 		AsOf:               tsToTime(req.GetAsOf()),
 		IncludeInvalidated: req.GetIncludeInvalidated(),
 	})
+	s.instr.backend(ctx, auth.OpSemanticSearch, req.GetNamespace(), time.Since(searchStart))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "search: %v", err)
+	}
+	s.instr.result(ctx, auth.OpSemanticSearch, req.GetNamespace(), len(hits))
+	if len(hits) > 0 {
+		s.instr.searchTopScore(ctx, req.GetNamespace(), hits[0].Score)
 	}
 
 	resp := &semanticv1.SearchResponse{Hits: make([]*semanticv1.Hit, len(hits))}
@@ -192,7 +203,9 @@ func (s *Service) Delete(ctx context.Context, req *semanticv1.DeleteRequest) (*s
 	if err != nil {
 		return nil, err
 	}
+	delStart := time.Now()
 	existed, err := b.Driver.Delete(ctx, req.GetId(), DeleteOptions{Hard: req.GetHard()})
+	s.instr.backend(ctx, auth.OpSemanticDelete, req.GetNamespace(), time.Since(delStart))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "delete: %v", err)
 	}
@@ -211,14 +224,17 @@ func (s *Service) Expire(ctx context.Context, req *semanticv1.ExpireRequest) (*s
 	if err != nil {
 		return nil, err
 	}
+	expStart := time.Now()
 	affected, err := b.Driver.Expire(ctx, ExpireOptions{
 		Filter:  req.GetFilter(),
 		Action:  action,
 		MaxRows: req.GetMaxRows(),
 	})
+	s.instr.backend(ctx, auth.OpSemanticExpire, req.GetNamespace(), time.Since(expStart))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "expire: %v", err)
 	}
+	s.instr.result(ctx, auth.OpSemanticExpire, req.GetNamespace(), int(affected))
 	return &semanticv1.ExpireResponse{Affected: affected}, nil
 }
 

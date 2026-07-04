@@ -7,6 +7,7 @@ const (
 	EffectAllow     Effect = "allow"
 	EffectDeny      Effect = "deny"
 	EffectRateLimit Effect = "rate_limit"
+	EffectCap       Effect = "cap"
 )
 
 // Default describes the engine's behaviour when no rule matches.
@@ -42,6 +43,16 @@ type Bucket struct {
 	Burst         int     `koanf:"burst"`
 }
 
+// Cap bounds the magnitude of a single request for an EffectCap rule (O4 /
+// ADR-0002 §8). A zero field imposes no bound on that dimension; a request
+// exceeding any set bound is rejected with ResourceExhausted.
+type Cap struct {
+	TopK   uint32 `koanf:"top_k"`
+	Limit  uint32 `koanf:"limit"`
+	Depth  uint32 `koanf:"depth"`
+	FanOut uint32 `koanf:"fan_out"`
+}
+
 // Rule is one entry in the policy engine's ordered list.
 type Rule struct {
 	Name   string `koanf:"name"`
@@ -49,6 +60,7 @@ type Rule struct {
 	Reason string `koanf:"reason"`
 	Match  Match  `koanf:"match"`
 	Bucket Bucket `koanf:"bucket"`
+	Max    Cap    `koanf:"max"`
 }
 
 // Spec is the full policy configuration.
