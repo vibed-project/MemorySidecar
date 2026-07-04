@@ -196,6 +196,10 @@ type EmbedderConfig struct {
 	Model      string                 `koanf:"model"`
 	Dimensions int                    `koanf:"dimensions"`
 	Options    map[string]interface{} `koanf:"options"`
+	// CacheSize bounds the per-namespace embedding cache (identical content is
+	// embedded once). 0 (unset) enables a default-sized cache; a negative value
+	// disables caching for the namespace.
+	CacheSize int `koanf:"cache_size"`
 }
 
 // Load reads a YAML config file and overlays MEMSIDECAR_* environment vars.

@@ -184,6 +184,7 @@ namespaces:
       provider: openai             # fake | ollama | openai
       model: text-embedding-3-small
       dimensions: 1536
+      cache_size: 4096             # optional; embed-once cache (see below)
       options:
         api_key_env: OPENAI_API_KEY
         timeout: 30s
@@ -192,6 +193,14 @@ namespaces:
 Semantic namespaces require an `embedder` block. The driver chosen for the
 backend must support the block (e.g. you can't use `driver: fs` for
 `block: kv`).
+
+`embedder.cache_size` bounds a per-namespace **embedding cache**: identical
+content (same `(namespace, model, content)`) is embedded once and served from a
+bounded LRU thereafter, cutting provider calls and cost on repeated or duplicate
+text. Omit it or set `0` for the default (4096 entries); set a **negative** value
+to disable caching for the namespace. Hit/miss rates are exported as
+`memsidecar.embedder.cache.{hits,misses}` — see
+[Observability](../ops/observability.md).
 
 ## What hot-reloads
 
