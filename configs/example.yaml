@@ -131,6 +131,9 @@ namespaces:
       provider: fake       # deterministic content-hash embedder (dev only)
       model: fake-64
       dimensions: 64
+      # cache_size: 4096   # per-namespace embed cache entries. Omit/0 = default
+                           # (4096); a negative value disables caching. Identical
+                           # content is embedded once (cuts provider calls/cost).
   - block: artifact
     name: blobs
     backend: blob-local

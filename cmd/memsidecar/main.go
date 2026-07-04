@@ -441,6 +441,11 @@ func buildSemanticRegistry(ctx context.Context, cfg *config.Config) (*semantic.R
 		if err != nil {
 			return nil, fmt.Errorf("namespace %q: embedder: %w", ns.Name, err)
 		}
+		emb = semantic.NewCachingEmbedder(emb, semantic.CacheOptions{
+			Namespace: ns.Name,
+			Model:     ns.Embedder.Model,
+			Capacity:  ns.Embedder.CacheSize,
+		})
 		var drv semantic.Driver
 		switch b.Driver {
 		case "memory":

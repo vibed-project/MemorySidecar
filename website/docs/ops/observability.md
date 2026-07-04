@@ -120,6 +120,11 @@ memsidecar_result_top_score{block="semantic",namespace="notes"}                 
 - `memsidecar.result.size` — records returned (Search) or affected (Upsert / Expire).
 - `memsidecar.result.top_score` — top-1 cosine of a Search, a cheap
   evidence-completion proxy (retrieval quality, not just latency).
+- `memsidecar.embedder.cache.hits` / `.misses` — embedding-cache effectiveness
+  by `namespace` and `model`. Identical content is embedded once; a high hit
+  rate means the semantic namespace is avoiding repeat provider calls (see
+  [`embedder.cache_size`](../config/reference.md#namespaces)). Miss rate ×
+  provider latency is the embed cost the cache is shaving off.
 
 `backend.duration` shares the `block` / `op` / `namespace` labels with
 `op.duration`, so **sidecar overhead is a direct subtraction** — no extra

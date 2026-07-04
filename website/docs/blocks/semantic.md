@@ -134,6 +134,7 @@ namespaces:
       provider: openai
       model: text-embedding-3-small
       dimensions: 1536
+      cache_size: 4096              # optional; embed-once cache, default 4096
       options:
         api_key_env: OPENAI_API_KEY
         timeout: 30s
@@ -141,6 +142,12 @@ namespaces:
 
 The pgvector driver creates the table `semantic_notes` on startup with
 `vector(1536)`.
+
+Each namespace keeps a bounded **embedding cache** in front of its embedder:
+identical content is embedded once and reused, so re-indexing the same text or
+running a repeated `query_text` skips the provider round-trip. Tune it with
+`embedder.cache_size` (omit/`0` = default 4096 entries; negative = disabled);
+effectiveness shows up as `memsidecar.embedder.cache.{hits,misses}`.
 
 ## gRPC example
 
