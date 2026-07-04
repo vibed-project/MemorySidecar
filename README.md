@@ -40,21 +40,29 @@ shape may still change.
 
 What works:
 
-- All 5 ADR building blocks (KV, Episodic, Semantic, Artifact, Lease) over
-  gRPC.
+- All 6 building blocks (KV, Episodic, Semantic, Artifact, Lease, **Graph**)
+  over gRPC.
+- **Semantic is bitemporal & revisable**: `valid_from`/`valid_to` validity,
+  soft-delete, `supersedes`/`source` provenance, "as-of" reads, bulk
+  `Expire`-by-filter, and optimistic-concurrency versions (`if_version`).
+- **Graph**: typed nodes/edges with bounded, structured recall
+  (`Neighbors`/`Traverse`), hard-capped server-side.
 - Drivers: in-memory, Postgres / pgvector, local filesystem, S3 / MinIO.
 - Real embedders: fake (tests), Ollama (local dev), OpenAI (prod).
 - gRPC TCP + UDS listeners, optional TLS / mTLS, plus an HTTP/JSON
   gateway via grpc-gateway.
 - Capability tokens (PASETO v4.public default, JWT optional) with
   multi-key rotation.
-- YAML policy engine — `allow` / `deny` / `rate_limit` rules, hot-reloadable.
-- OpenTelemetry tracing (stdout / OTLP), Prometheus `/metrics`,
-  structured JSON access log.
+- YAML policy engine — `allow` / `deny` / `rate_limit` / `cap` (per-request
+  cost bounds), hot-reloadable.
+- OpenTelemetry tracing (stdout / OTLP), Prometheus `/metrics` — including a
+  memory-aware write-vs-query op-latency split plus backend-latency and
+  result-shape metrics — and a structured JSON access log.
 - Python SDK with idiomatic per-block clients.
 - Multi-stage Docker image (distroless `nonroot`) + Helm chart.
 
-What's not in yet: bidi-streaming RPCs, a TypeScript SDK, real release tooling.
+What's not in yet: bidi-streaming RPCs, a TypeScript SDK, a production graph
+driver, real release tooling.
 
 ## Quickstart
 
@@ -93,7 +101,7 @@ curl -sS -X POST http://127.0.0.1:8080/memsidecar.kv.v1.KV/Put \
   -d '{"namespace":"scratchpad","key":"hello","value":"d29ybGQ="}'
 ```
 
-The [Quickstart docs page](website/docs/quickstart.md) covers all five
+The [Quickstart docs page](website/docs/quickstart.md) covers all six
 blocks and the Python SDK.
 
 ## Python
@@ -151,7 +159,7 @@ Highlights:
 - [Overview](website/docs/intro.md)
 - [Architecture](website/docs/concepts/architecture.md)
 - [Capability tokens](website/docs/concepts/capabilities.md) and [Policy](website/docs/concepts/policy.md)
-- Per-block: [KV](website/docs/blocks/kv.md), [Episodic](website/docs/blocks/episodic.md), [Semantic](website/docs/blocks/semantic.md), [Artifact](website/docs/blocks/artifact.md), [Lease](website/docs/blocks/lease.md)
+- Per-block: [KV](website/docs/blocks/kv.md), [Episodic](website/docs/blocks/episodic.md), [Semantic](website/docs/blocks/semantic.md), [Artifact](website/docs/blocks/artifact.md), [Lease](website/docs/blocks/lease.md), [Graph](website/docs/blocks/graph.md)
 - [YAML config reference](website/docs/config/reference.md), [Hot reload](website/docs/config/hot-reload.md)
 - [TLS & mTLS](website/docs/ops/tls.md), [Key rotation](website/docs/ops/key-rotation.md), [Observability](website/docs/ops/observability.md)
 
@@ -168,15 +176,15 @@ internal/      everything else
   config/      koanf-based YAML config + validation
   interceptor/ gRPC interceptors: recovery, observability, auth, policy
   obs/         OTel + Prometheus + slog bootstrap
-  policy/      rule engine (allow/deny/rate-limit) + atomic.Pointer holder
+  policy/      rule engine (allow/deny/rate-limit/cap) + atomic.Pointer holder
   server/      lifecycle, listeners, TLS, HTTP gateway
-  kv/, episodic/, semantic/, artifact/, lease/
+  kv/, episodic/, semantic/, artifact/, lease/, graph/
                 each block: driver interface, registry, gRPC service, drivers
 sdk/python/    Python client (`pip install -e .[dev]`)
 deploy/helm/   Helm chart for Kubernetes
 website/       Docusaurus docs site
 configs/       example YAML config
-docs/decisions/ ADR-0001
+docs/decisions/ ADR-0001 (sidecar), ADR-0002 (graph), ADR-0003 (lifecycle)
 Dockerfile     multi-stage build → distroless nonroot
 ```
 

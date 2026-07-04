@@ -57,7 +57,7 @@ Each rule has:
   the limiter.
 - `max` (cap only) — per-request magnitude bounds: `top_k` (semantic
   Search), `limit` (scan/range page size), `depth` / `fan_out` (graph
-  traversal, once the graph block lands). At least one bound is required;
+  traversal). At least one bound is required;
   a zero bound imposes no limit on that dimension. This is how bounded
   traversal is enforced server-side (ADR-0002 §8).
 
@@ -95,8 +95,8 @@ See [Hot reload](../config/hot-reload.md) for the full reload contract.
 
 ## What policy is *not*
 
-The walking-skeleton policy engine handles **access decisions** —
-allow / deny / rate-limit. The ADR's larger policy story (PII redaction,
+The walking-skeleton policy engine handles **access and cost decisions** —
+allow / deny / rate-limit / cost-cap. The ADR's larger policy story (PII redaction,
 post-read transforms, retention enforcement) is intentionally deferred;
 the [HookCtx](https://github.com/m-koerbaecher/memsidecar/blob/main/internal/policy/engine.go)
 type already carries the fields a richer engine would need.

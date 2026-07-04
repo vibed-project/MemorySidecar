@@ -10,7 +10,7 @@ wrapper, talk to memsidecar directly with the standard gRPC tooling.
 
 ## Reflection
 
-Server reflection is registered alongside the five services and the
+Server reflection is registered alongside the six services and the
 gRPC health protocol, so any gRPC client can discover the API without
 the .proto files:
 
@@ -21,6 +21,7 @@ grpc.reflection.v1.ServerReflection
 grpc.reflection.v1alpha.ServerReflection
 memsidecar.artifact.v1.Artifact
 memsidecar.episodic.v1.Episodic
+memsidecar.graph.v1.Graph
 memsidecar.kv.v1.KV
 memsidecar.lease.v1.Lease
 memsidecar.semantic.v1.Semantic
@@ -89,7 +90,7 @@ The chart's Kubernetes probes use the gRPC health protocol on this port.
 
 ## Generated stubs
 
-The Go stubs ship in `gen/memsidecar/{kv,episodic,semantic,artifact,lease}/v1/`.
+The Go stubs ship in `gen/memsidecar/{kv,episodic,semantic,artifact,lease,graph}/v1/`.
 The Python stubs ship under `sdk/python/src/memsidecar/`. Other languages:
 regenerate from `proto/` with your favourite protoc plugin or a buf
 remote plugin (`buf.build/protocolbuffers/<lang>` + `buf.build/grpc/<lang>`).

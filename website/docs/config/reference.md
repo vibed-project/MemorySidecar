@@ -101,7 +101,7 @@ policy:
   default: allow                  # allow | deny
   rules:
     - name: block-secrets
-      effect: deny                # allow | deny | rate_limit
+      effect: deny                # allow | deny | rate_limit | cap
       reason: "secret-* namespaces are off-limits"
       match:
         tenant:    ["acme"]       # any field optional; empty = match anything
@@ -116,7 +116,18 @@ policy:
         per_op: true
         rate_per_second: 5.0
         burst: 10
+    - name: cap-search-topk
+      effect: cap                 # bound the magnitude of a single request
+      match: { op: ["semantic.search"] }
+      max:                        # only used when effect=cap; ≥1 bound required
+        top_k:  200               # semantic Search result count
+        limit:  0                 # scan/range page size (0 = no bound)
+        depth:  0                 # graph traversal depth
+        fan_out: 0                # graph traversal fan-out
 ```
+
+`deny` (and `default: deny`) surface as `PermissionDenied`; `rate_limit` and
+`cap` rejections surface as `ResourceExhausted` so clients can back off.
 
 The whole `policy` block is reloaded on `SIGHUP`. See
 [Hot reload](./hot-reload.md).
@@ -154,7 +165,8 @@ backends:
 
 Not every driver fits every block — `fs` and `s3` only serve `artifact`;
 `memory` and `postgres` serve everything except artifact-on-`postgres`
-(which isn't implemented).
+(which isn't implemented). The `graph` block ships an in-memory driver only
+for now (a production graph backend is a follow-up, ADR-0002 §6).
 
 ## namespaces
 
@@ -164,6 +176,7 @@ namespaces:
   - { block: episodic, name: events,     backend: pg-main }
   - { block: artifact, name: blobs,      backend: blob-local }
   - { block: lease,    name: locks,      backend: pg-main }
+  - { block: graph,    name: knowledge,  backend: mem-default }
   - block: semantic
     name: notes
     backend: pg-main

@@ -4,21 +4,23 @@ memsidecar is a co-located process exposing a small, framework-agnostic API
 over pluggable backends for agent memory. The target architecture is described
 in [ADR-0001](decisions/adr-0001-memory-sidecar.md).
 
-This document describes the **walking skeleton** that ships in the first
-slice — KV only — and points at where the seams for future building blocks live.
+This document describes the **walking skeleton**, which now covers all six
+building blocks (`kv`, `episodic`, `semantic`, `artifact`, `lease`, `graph`)
+over pluggable backends. Every block follows the same internal shape, so the
+seams described here are the same for all of them.
 
 ## Request flow
 
 ```
 ┌──────────┐ gRPC ┌───────────────────────────────────────────────────────────┐
-│  Agent   │─────▶│ recovery → observability → auth → policy → KV service     │
-│ (client) │      │            (slog+OTel)    (token  (NoopEngine, hooks for  │
-└──────────┘      │                            check) future rules)            │
+│  Agent   │─────▶│ recovery → observability → auth → policy → block service  │
+│ (client) │      │            (slog+OTel)    (token  (NoopEngine or          │
+└──────────┘      │                            check) YAML RuleEngine)         │
                   │                                              │              │
                   │                                              ▼              │
                   │                              ┌──────────────────────────┐  │
-                  │                              │ kv.Registry → kv.Driver   │  │
-                  │                              │ (memory │ postgres)       │  │
+                  │                              │ <block>.Registry → Driver │  │
+                  │                              │ (memory │ postgres │ …)   │  │
                   │                              └──────────────────────────┘  │
                   └───────────────────────────────────────────────────────────┘
 ```
@@ -26,10 +28,14 @@ slice — KV only — and points at where the seams for future building blocks l
 The interceptor chain order is intentional:
 
 1. **Recovery** wraps everything so panics become `Internal` errors.
-2. **Observability** records latency + a span on the wire boundary.
+2. **Observability** records latency + a span on the wire boundary, plus a
+   memory-aware `memsidecar.op.duration` (split by write/query op-class) and
+   per-block backend-latency / result-shape metrics.
 3. **Auth** verifies the bearer token (`x-memsidecar-capability` metadata) and
    attaches a `*auth.Capability` to the request context.
-4. **Policy** evaluates the configured `policy.Engine` (currently `NoopEngine`).
+4. **Policy** evaluates the configured `policy.Engine`: `NoopEngine` (default,
+   allow-all) when no `policy` section is present, otherwise the YAML-driven
+   `RuleEngine` (allow / deny / rate_limit / cap).
 5. **Service** dispatches to the building-block implementation.
 
 ## Package layout
@@ -40,14 +46,14 @@ The interceptor chain order is intentional:
 | `internal/auth` | `TokenVerifier` interface, PASETO and JWT impls, `Capability` scoping |
 | `internal/config` | YAML + env loader (koanf) with validation |
 | `internal/interceptor` | gRPC interceptors |
-| `internal/policy` | Policy engine: `NoopEngine` + YAML-driven `RuleEngine` (allow/deny/rate-limit) |
+| `internal/policy` | Policy engine: `NoopEngine` + YAML-driven `RuleEngine` (allow/deny/rate-limit/cap) |
 | `internal/kv` | KV service + driver interface + registry |
 | `internal/kv/drivers/memory` | In-memory KV driver (lazy expiry + sweeper) |
 | `internal/kv/drivers/postgres` | Postgres KV driver via pgx/v5 + embedded migrations |
 | `internal/episodic` | Episodic service + driver interface + registry |
 | `internal/episodic/drivers/memory` | In-memory episodic driver with Tail fan-out |
 | `internal/episodic/drivers/postgres` | Postgres episodic driver (polling Tail) |
-| `internal/semantic` | Semantic service + driver interface + registry |
+| `internal/semantic` | Semantic service + driver interface + registry; bitemporal lifecycle (validity, soft-delete, supersedes/source, as-of reads, bulk `Expire`, `if_version` CAS) |
 | `internal/semantic/embedder` | `Embedder` interface + deterministic `Fake` impl |
 | `internal/semantic/embedder/ollama` | Adapter for Ollama `/api/embed` (local, zero API key) |
 | `internal/semantic/embedder/openai` | Adapter for OpenAI-compatible `/v1/embeddings` |
@@ -60,6 +66,8 @@ The interceptor chain order is intentional:
 | `internal/lease` | Lease service + driver interface + registry |
 | `internal/lease/drivers/memory` | In-memory lease driver (poll-on-wait, cond on Release) |
 | `internal/lease/drivers/postgres` | Postgres lease driver (INSERT…ON CONFLICT…WHERE expired) |
+| `internal/graph` | Graph service + driver interface + registry; bounded `Neighbors`/`Traverse` with server-side depth/fan-out/node/edge hard caps |
+| `internal/graph/drivers/memory` | In-memory graph driver (adjacency maps, BFS traversal) |
 | `internal/obs` | OTel tracing (stdout / OTLP) + Prometheus metrics + slog bootstrap |
 | `internal/server` | Listener lifecycle, interceptor wiring, gRPC server |
 | `cmd/memsidecar` | Server binary (composition root) |
@@ -67,16 +75,19 @@ The interceptor chain order is intentional:
 
 ## Adding a new building block
 
-When you add the next block (e.g. `episodic`):
+All six blocks exist today; the most recent, `graph`, is a fully worked
+example of this recipe (see [ADR-0002 §11](decisions/adr-0002-graph-building-block.md)).
+To add the next one — call it `<block>`:
 
-1. Add `proto/memsidecar/episodic/v1/episodic.proto`, run `make proto`.
-2. Mirror `internal/kv/` under `internal/episodic/`: `driver.go`, `registry.go`,
-   `service.go`, `drivers/<name>/...`.
-3. Add the new ops to `internal/auth/capability.go` (`OpEpisodic*` constants).
-4. Wire the service in `internal/server/server.go` and the registry in
-   `cmd/memsidecar/main.go`.
-5. Map the gRPC methods to ops in `internal/interceptor/policy.go`.
-6. Add a `block: episodic` clause to `internal/config/config.go` validation.
+1. Add `proto/memsidecar/<block>/v1/<block>.proto`, run `make proto`.
+2. Mirror `internal/kv/` under `internal/<block>/`: `driver.go`, `registry.go`,
+   `service.go`, `drivers/<name>/...`, `<block>test/conformance.go`.
+3. Add the new ops to `internal/auth/capability.go` (`Op<Block>*` constants).
+4. Wire the service in `internal/server/server.go` and the registry
+   (`build<Block>Registry`) in `cmd/memsidecar/main.go`.
+5. Map the gRPC methods to ops in `internal/interceptor/policy.go`
+   (`methodToOp`), marking writes so the op-class metric split is correct.
+6. Add a `block: <block>` clause to `internal/config/config.go` validation.
 
 ## Adding a new backend
 
@@ -146,9 +157,14 @@ configuration on the next request after the SIGHUP fires.
 
 ## What's out of scope today
 
-Highlights still pending:
+Since the earliest slice, mTLS, the Helm chart, the container image, real
+embedders (Ollama/OpenAI), the S3 driver, the YAML policy engine, the semantic
+lifecycle primitives (ADR-0003), and the `graph` block (ADR-0002) have all
+landed. Highlights still pending:
 
-- mTLS between client and sidecar; multi-tenant DB hardening
-- Hot-reload of backends/listeners
-- Helm chart, container images
-- Additional language SDKs beyond Python
+- A production `graph` backend driver (only the in-memory reference driver
+  ships today — ADR-0002 §6).
+- Bidi-streaming RPCs; additional language SDKs beyond Python (e.g. TypeScript).
+- Multi-tenant DB hardening.
+- Hot-reload of backends/listeners.
+- Real release/versioning tooling (proto shapes may still change).

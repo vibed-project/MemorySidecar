@@ -22,7 +22,7 @@ through.
                   │                                              ▼              │
                   │                              ┌──────────────────────────┐   │
                   │                              │ kv / episodic / semantic │   │
-                  │                              │ artifact / lease         │   │
+                  │                              │ artifact / lease / graph │   │
                   │                              │       ↓ registry          │   │
                   │                              │       ↓ driver            │   │
                   │                              │   backend (mem│pg│s3│…)   │   │
@@ -37,14 +37,16 @@ The interceptor chain is intentional:
 2. **Observability** records a span and an access-log line at the wire
    boundary. OTel metrics flow through the same `otelgrpc.StatsHandler`,
    so `/metrics` reports per-method latency histograms and counters for
-   free.
+   free — plus a memory-aware `memsidecar.op.duration` split by
+   write/query op-class and per-block backend-latency / result-shape
+   metrics. See [Observability](../ops/observability.md).
 3. **Auth** reads `x-memsidecar-capability` from gRPC metadata, verifies
    the token (PASETO or JWT), and attaches a typed `*auth.Capability` to
    the request context. Missing → `Unauthenticated`; out-of-scope →
    `PermissionDenied`. See [Capabilities](./capabilities.md).
 4. **Policy** consults the configured engine. The default `NoopEngine`
-   allows everything; the YAML rule engine (allow / deny / rate-limit)
-   slots in seamlessly. See [Policy](./policy.md).
+   allows everything; the YAML rule engine (allow / deny / rate-limit /
+   cost-cap) slots in seamlessly. See [Policy](./policy.md).
 5. **Service** dispatches to the building-block implementation, which
    resolves the namespace through a per-block **registry** to the
    appropriate **driver**.
@@ -96,6 +98,11 @@ full restart. See [Hot reload](../config/hot-reload.md).
 - **No prompt assembly.** Final context-window construction stays in the
   agent or framework.
 - **No inference cache.** Prompt/response caching for LLM calls is a
-  future concern (could fit as a sixth block).
-- **No vector index of its own.** The semantic block fronts pgvector,
-  Qdrant, Pinecone, etc. — it doesn't implement ANN search.
+  future concern (could fit as another block).
+- **No vector index or graph engine of its own.** The semantic block fronts
+  pgvector / Qdrant / Pinecone (it doesn't implement ANN search), and the
+  graph block fronts graph engines (it doesn't implement storage, a query
+  planner, or a query language) — both stay thin substrate layers.
+- **No retrieval orchestration.** "Semantic-search then graph-expand" hybrid
+  recall is composed by the agent (sharing ids across blocks), not by the
+  sidecar.

@@ -67,6 +67,8 @@ const sidebars: SidebarsConfig = {
       label: 'Reference',
       items: [
         'reference/adr-0001',
+        'reference/adr-0002',
+        'reference/adr-0003',
       ],
     },
   ],
