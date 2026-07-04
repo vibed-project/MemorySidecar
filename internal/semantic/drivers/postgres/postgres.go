@@ -92,6 +92,25 @@ func New(ctx context.Context, opts Options) (*Driver, error) {
 	}, nil
 }
 
+// Size returns an estimated record count for the namespace's table via the
+// planner's reltuples statistic — deliberately not count(*), which would scan
+// the whole table on every metric collection (O3). The estimate is maintained
+// by ANALYZE/autovacuum and may lag very recent writes; that is an acceptable
+// trade for a cheap namespace-growth gauge.
+func (d *Driver) Size(ctx context.Context) (int64, error) {
+	var n int64
+	err := d.pool.QueryRow(ctx,
+		`SELECT GREATEST(reltuples, 0)::bigint FROM pg_class WHERE oid = to_regclass($1)::oid`,
+		d.tableName).Scan(&n)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil // table not yet created / not visible
+	}
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 func (d *Driver) Close() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()

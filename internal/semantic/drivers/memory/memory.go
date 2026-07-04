@@ -58,6 +58,14 @@ func New(opts Options) (*Driver, error) {
 
 func (d *Driver) Close() error { return nil }
 
+// Size returns the number of records held in the namespace, including
+// soft-deleted tombstones and invalidated rows that still occupy memory.
+func (d *Driver) Size(_ context.Context) (int64, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return int64(len(d.byID)), nil
+}
+
 func (d *Driver) Dimensions() int { return d.dim }
 
 func (d *Driver) Upsert(_ context.Context, records []semantic.Record) error {

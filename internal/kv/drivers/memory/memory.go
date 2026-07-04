@@ -18,12 +18,17 @@ type Driver struct {
 	sweeperInterval time.Duration
 	stopSweep       chan struct{}
 	wg              sync.WaitGroup
+	onEvict         func(namespace string, n int)
 }
 
 // Options configures a Driver.
 type Options struct {
 	SweeperInterval time.Duration // 0 disables; default 30s
 	NowFunc         func() time.Time
+	// OnEvict, if set, is called (best-effort, outside the driver lock) when
+	// keys are removed because their TTL elapsed — on the background sweep and
+	// on lazy expiry during Get. Never called with n <= 0.
+	OnEvict func(namespace string, n int)
 }
 
 // New builds a Driver and starts the background sweeper if SweeperInterval > 0.
@@ -33,6 +38,7 @@ func New(opts Options) *Driver {
 		now:             time.Now,
 		sweeperInterval: opts.SweeperInterval,
 		stopSweep:       make(chan struct{}),
+		onEvict:         opts.OnEvict,
 	}
 	if opts.NowFunc != nil {
 		d.now = opts.NowFunc
@@ -75,17 +81,44 @@ func (d *Driver) sweepLoop() {
 func (d *Driver) sweepExpired() {
 	now := d.now()
 	d.mu.Lock()
-	defer d.mu.Unlock()
+	var evicted map[string]int
 	for ns, m := range d.items {
+		removed := 0
 		for k, r := range m {
 			if !r.ExpiresAt.IsZero() && !r.ExpiresAt.After(now) {
 				delete(m, k)
+				removed++
 			}
+		}
+		if removed > 0 {
+			if evicted == nil {
+				evicted = make(map[string]int)
+			}
+			evicted[ns] = removed
 		}
 		if len(m) == 0 {
 			delete(d.items, ns)
 		}
 	}
+	d.mu.Unlock()
+	for ns, n := range evicted {
+		d.evicted(ns, n)
+	}
+}
+
+// evicted reports n TTL evictions in namespace to the optional OnEvict hook.
+func (d *Driver) evicted(namespace string, n int) {
+	if d.onEvict != nil && n > 0 {
+		d.onEvict(namespace, n)
+	}
+}
+
+// Size returns the number of keys held for namespace (its in-memory footprint,
+// including any expired-but-not-yet-swept keys still occupying the map).
+func (d *Driver) Size(_ context.Context, namespace string) (int64, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return int64(len(d.items[namespace])), nil
 }
 
 func (d *Driver) Get(_ context.Context, namespace, key string) (kv.Record, error) {
@@ -98,10 +131,15 @@ func (d *Driver) Get(_ context.Context, namespace, key string) (kv.Record, error
 	if !r.ExpiresAt.IsZero() && !r.ExpiresAt.After(d.now()) {
 		// lazy expiry; best-effort delete
 		d.mu.Lock()
+		removed := false
 		if cur, still := d.items[namespace][key]; still && cur == r {
 			delete(d.items[namespace], key)
+			removed = true
 		}
 		d.mu.Unlock()
+		if removed {
+			d.evicted(namespace, 1)
+		}
 		return kv.Record{}, kv.ErrNotFound
 	}
 	return *r, nil

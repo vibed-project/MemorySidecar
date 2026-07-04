@@ -1,6 +1,7 @@
 package semantic
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -52,6 +53,29 @@ func (r *Registry) Resolve(namespace string) (BoundNamespace, bool) {
 	defer r.mu.RUnlock()
 	b, ok := r.byName[namespace]
 	return b, ok
+}
+
+// namespaceSizer is the optional capability a semantic driver implements to
+// report its record count cheaply (memory: map length; pgvector: reltuples).
+// Semantic drivers are namespace-bound, so Size takes no namespace argument.
+type namespaceSizer interface {
+	Size(ctx context.Context) (int64, error)
+}
+
+// NamespaceItems returns the record count for every bound namespace whose
+// driver can report it cheaply. Feeds the memsidecar.namespace.items gauge.
+func (r *Registry) NamespaceItems(ctx context.Context) map[string]int64 {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make(map[string]int64, len(r.byName))
+	for ns, b := range r.byName {
+		if s, ok := b.Driver.(namespaceSizer); ok {
+			if n, err := s.Size(ctx); err == nil {
+				out[ns] = n
+			}
+		}
+	}
+	return out
 }
 
 // Close closes every owned driver. Returns the first error.

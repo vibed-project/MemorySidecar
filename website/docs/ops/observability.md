@@ -141,6 +141,28 @@ instrument needed:
 These service-layer metrics currently cover the `semantic` block; extending
 `backend.duration`/`result.size` to the other blocks is a mechanical follow-up.
 
+### Namespace growth & eviction
+
+Two cheap instruments track how much a namespace is holding and how fast it
+turns over — the unbounded-growth side of the cost story:
+
+```
+memsidecar_namespace_items{block="kv",namespace="scratchpad"}        128
+memsidecar_eviction_total{block="kv",namespace="scratchpad",cause="ttl"}  57
+```
+
+- `memsidecar.namespace.items` — an observable **gauge** of the live item count
+  per `block` / `namespace`, polled on scrape. Memory drivers report map length;
+  the pgvector semantic driver uses the planner's `reltuples` estimate, never
+  `count(*)` on the scrape path. Shared-table Postgres blocks (`kv`, `episodic`,
+  `lease`) and object-store artifact backends (`fs`, `s3`) are intentionally
+  omitted — a cheap per-namespace count isn't available there; watch those at
+  the datastore layer.
+- `memsidecar.eviction.total` — a **counter** of items dropped from a namespace,
+  labelled by `cause`. Today `cause="ttl"` is emitted by the in-memory KV driver
+  at lazy-expiry (on `Get`) and on the background sweep; `consolidation` is
+  reserved. `rate(memsidecar_eviction_total[5m])` is your TTL churn.
+
 ## Logs
 
 slog JSON to stderr. Two lines per RPC:
