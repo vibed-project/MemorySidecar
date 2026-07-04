@@ -60,6 +60,10 @@ type SearchOptions struct {
 	Filter         map[string]string
 	IncludePayload bool
 	IncludeVector  bool
+	// IDsOnly makes Search return only each hit's record id and score, skipping
+	// content, payload, vector, and metadata (and the storage load they cost).
+	// It overrides IncludePayload/IncludeVector. See ADR-0002 §8 / plan Q5.
+	IDsOnly bool
 
 	// Lifecycle-aware read (ADR-0003). By default Search returns only records
 	// that are live and valid as of AsOf (or now() when AsOf is zero).

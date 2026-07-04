@@ -51,6 +51,7 @@ message SearchRequest {
   bool include_vector = 7;
   google.protobuf.Timestamp as_of = 8;   // evaluate validity at this instant (default now)
   bool include_invalidated = 9;          // also return tombstoned/expired/future records
+  bool ids_only = 10;                    // return only id + score (cheap seed set)
 }
 
 message DeleteRequest {
@@ -228,3 +229,11 @@ n = m.semantic.expire("notes", filter={"topic": "food"},
 - Lifecycle timestamps and `supersedes`/`source` are **stored, not interpreted**:
   the sidecar never decides what supersedes what or resolves entities — the agent
   supplies the values (consistent with the ADR non-goals).
+- `ids_only=true` returns just each hit's `record.id` and `score`, skipping
+  content/payload/vector/metadata (and the storage load / marshaling they cost);
+  it overrides `include_payload`/`include_vector`. It's the **seed step** of
+  agent-orchestrated hybrid recall: a semantic `Search` selects candidate ids,
+  then the [Graph block](graph.md) expands them via `Neighbors`/`Traverse`. By
+  convention a semantic record id and a graph node id denote the same entity, so
+  the seed ids drop straight into a traversal — the sidecar does **no** traversal
+  or orchestration itself (ADR-0002 §8).

@@ -5,7 +5,7 @@ import grpc
 from memsidecar.lease.v1 import lease_pb2 as memsidecar_dot_lease_dot_v1_dot_lease__pb2
 
 
-class LeaseStub(object):
+class LeaseStub:
     """Lease provides distributed locks scoped by namespace. A lease is identified
     by (namespace, key). Holders are fenced by a server-assigned holder_id —
     Renew and Release require it.
@@ -42,7 +42,7 @@ class LeaseStub(object):
                 _registered_method=True)
 
 
-class LeaseServicer(object):
+class LeaseServicer:
     """Lease provides distributed locks scoped by namespace. A lease is identified
     by (namespace, key). Holders are fenced by a server-assigned holder_id —
     Renew and Release require it.
@@ -106,7 +106,7 @@ def add_LeaseServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class Lease(object):
+class Lease:
     """Lease provides distributed locks scoped by namespace. A lease is identified
     by (namespace, key). Holders are fenced by a server-assigned holder_id —
     Renew and Release require it.

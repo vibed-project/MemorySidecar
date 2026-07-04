@@ -5,7 +5,7 @@ import grpc
 from memsidecar.kv.v1 import kv_pb2 as memsidecar_dot_kv_dot_v1_dot_kv__pb2
 
 
-class KVStub(object):
+class KVStub:
     """KV provides typed, TTL'd key-value storage scoped by namespace.
     Every RPC requires a capability token carried in the gRPC metadata
     key "x-memsidecar-capability" with value "Bearer <token>".
@@ -39,7 +39,7 @@ class KVStub(object):
                 _registered_method=True)
 
 
-class KVServicer(object):
+class KVServicer:
     """KV provides typed, TTL'd key-value storage scoped by namespace.
     Every RPC requires a capability token carried in the gRPC metadata
     key "x-memsidecar-capability" with value "Bearer <token>".
@@ -100,7 +100,7 @@ def add_KVServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class KV(object):
+class KV:
     """KV provides typed, TTL'd key-value storage scoped by namespace.
     Every RPC requires a capability token carried in the gRPC metadata
     key "x-memsidecar-capability" with value "Bearer <token>".

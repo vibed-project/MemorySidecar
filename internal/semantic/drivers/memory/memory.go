@@ -276,6 +276,9 @@ func liveAt(r *semantic.Record, asOf time.Time) bool {
 }
 
 func shallowCopyForResponse(r semantic.Record, opts semantic.SearchOptions) semantic.Record {
+	if opts.IDsOnly {
+		return semantic.Record{ID: r.ID}
+	}
 	out := r
 	if !opts.IncludePayload {
 		out.Payload = nil

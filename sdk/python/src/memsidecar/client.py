@@ -173,16 +173,21 @@ class _Semantic:
         top_k: int = 10, filter: Optional[Mapping[str, str]] = None,
         include_payload: bool = False, include_vector: bool = False,
         as_of: Optional[_dt.datetime] = None, include_invalidated: bool = False,
+        ids_only: bool = False,
     ) -> List[semantic_pb2.Hit]:
         """Search a namespace. By default only records live and valid *now* are
         returned; pass ``as_of`` for point-in-time recall or
         ``include_invalidated=True`` to also see tombstoned/expired records.
+
+        ``ids_only=True`` returns just each hit's ``record.id`` and ``score``
+        (content/payload/vector/metadata are skipped) — a cheap seed set whose
+        ids you can expand through the graph block's ``neighbors``/``traverse``.
         """
         req = semantic_pb2.SearchRequest(
             namespace=namespace, query_text=query_text, top_k=top_k,
             filter=dict(filter or {}),
             include_payload=include_payload, include_vector=include_vector,
-            include_invalidated=include_invalidated,
+            include_invalidated=include_invalidated, ids_only=ids_only,
         )
         if query_vector is not None:
             req.query_vector.extend(query_vector)

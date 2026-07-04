@@ -5,7 +5,7 @@ import grpc
 from memsidecar.episodic.v1 import episodic_pb2 as memsidecar_dot_episodic_dot_v1_dot_episodic__pb2
 
 
-class EpisodicStub(object):
+class EpisodicStub:
     """Episodic is an append-only log of agent events scoped by namespace.
     Every RPC requires a capability token in the gRPC metadata key
     "x-memsidecar-capability" with value "Bearer <token>".
@@ -37,7 +37,7 @@ class EpisodicStub(object):
                 _registered_method=True)
 
 
-class EpisodicServicer(object):
+class EpisodicServicer:
     """Episodic is an append-only log of agent events scoped by namespace.
     Every RPC requires a capability token in the gRPC metadata key
     "x-memsidecar-capability" with value "Bearer <token>".
@@ -90,7 +90,7 @@ def add_EpisodicServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class Episodic(object):
+class Episodic:
     """Episodic is an append-only log of agent events scoped by namespace.
     Every RPC requires a capability token in the gRPC metadata key
     "x-memsidecar-capability" with value "Bearer <token>".

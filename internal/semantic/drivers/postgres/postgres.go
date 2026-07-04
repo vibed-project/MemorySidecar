@@ -241,6 +241,40 @@ func (d *Driver) Search(ctx context.Context, opts semantic.SearchOptions) ([]sem
 		))
 	}
 
+	if opts.IDsOnly {
+		// Seed-set path (plan Q5): select only id + distance so Postgres never
+		// reads or ships the content/payload/vector/metadata columns.
+		lq := strings.Builder{}
+		fmt.Fprintf(&lq, "SELECT id, (vector <=> $1) AS distance FROM %s", d.tableName)
+		if len(conds) > 0 {
+			fmt.Fprintf(&lq, " WHERE %s", strings.Join(conds, " AND "))
+		}
+		args = append(args, int32(topK))
+		fmt.Fprintf(&lq, " ORDER BY vector <=> $1 LIMIT $%d", len(args))
+
+		rows, err := d.pool.Query(ctx, lq.String(), args...)
+		if err != nil {
+			return nil, fmt.Errorf("semantic/postgres: search: %w", err)
+		}
+		defer rows.Close()
+
+		hits := make([]semantic.Hit, 0, topK)
+		for rows.Next() {
+			var (
+				id       string
+				distance float64
+			)
+			if err := rows.Scan(&id, &distance); err != nil {
+				return nil, fmt.Errorf("semantic/postgres: scan: %w", err)
+			}
+			hits = append(hits, semantic.Hit{
+				Record: semantic.Record{ID: id},
+				Score:  similarityFromDistance(distance),
+			})
+		}
+		return hits, rows.Err()
+	}
+
 	q := strings.Builder{}
 	fmt.Fprintf(&q, `SELECT id, content, payload, vector, metadata, created_at, valid_from, valid_to, deleted_at,
 	                 COALESCE(supersedes, '{}'::text[]) AS supersedes, source, version,
