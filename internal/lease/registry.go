@@ -1,6 +1,7 @@
 package lease
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -47,6 +48,30 @@ func (r *Registry) Resolve(namespace string) (Driver, bool) {
 	defer r.mu.RUnlock()
 	d, ok := r.byName[namespace]
 	return d, ok
+}
+
+// namespaceSizer is the optional capability a driver implements to report its
+// per-namespace item count cheaply.
+type namespaceSizer interface {
+	Size(ctx context.Context, namespace string) (int64, error)
+}
+
+// NamespaceItems returns the current item count for every bound namespace whose
+// driver can report it cheaply (memory drivers; Postgres via a reltuples
+// estimate). Namespaces whose driver has no Size method are omitted. Feeds the
+// memsidecar.namespace.items gauge.
+func (r *Registry) NamespaceItems(ctx context.Context) map[string]int64 {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make(map[string]int64, len(r.byName))
+	for ns, d := range r.byName {
+		if s, ok := d.(namespaceSizer); ok {
+			if n, err := s.Size(ctx, ns); err == nil {
+				out[ns] = n
+			}
+		}
+	}
+	return out
 }
 
 func (r *Registry) Close() error {

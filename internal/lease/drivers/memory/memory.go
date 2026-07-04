@@ -52,6 +52,13 @@ func (d *Driver) Close() error {
 	return nil
 }
 
+// Size returns the number of leases currently held in namespace.
+func (d *Driver) Size(_ context.Context, namespace string) (int64, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return int64(len(d.leases[namespace])), nil
+}
+
 func (d *Driver) Acquire(ctx context.Context, namespace, key string, opts lease.AcquireOptions) (lease.Lease, error) {
 	deadline := d.now().Add(opts.WaitFor)
 	for {

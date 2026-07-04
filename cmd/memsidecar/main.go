@@ -126,7 +126,9 @@ func run() error {
 	}
 	verifierHolder := auth.NewVerifierHolder(verifier)
 
-	kvReg, err := buildKVRegistry(cfg)
+	evict := obs.NewEvictionCounter()
+
+	kvReg, err := buildKVRegistry(cfg, evict)
 	if err != nil {
 		return fmt.Errorf("kv registry: %w", err)
 	}
@@ -176,6 +178,19 @@ func run() error {
 		return fmt.Errorf("graph registry: %w", err)
 	}
 	defer func() { _ = graphReg.Close() }()
+
+	// Namespace-growth gauge (memsidecar.namespace.items) over every block's
+	// registry. Best-effort: a registration error must not stop startup.
+	if err := obs.RegisterNamespaceItemsGauge([]obs.NamespaceItemSource{
+		{Block: "kv", Items: kvReg.NamespaceItems},
+		{Block: "episodic", Items: epReg.NamespaceItems},
+		{Block: "semantic", Items: semReg.NamespaceItems},
+		{Block: "artifact", Items: artReg.NamespaceItems},
+		{Block: "lease", Items: leaseReg.NamespaceItems},
+		{Block: "graph", Items: graphReg.NamespaceItems},
+	}); err != nil {
+		log.Warn("register namespace.items gauge", slog.String("error", err.Error()))
+	}
 
 	polEngine, err := buildPolicyEngine(cfg.Policy)
 	if err != nil {
@@ -316,7 +331,7 @@ func findBackend(cfg *config.Config, name string) (config.BackendConfig, bool) {
 	return config.BackendConfig{}, false
 }
 
-func buildKVRegistry(cfg *config.Config) (*kv.Registry, error) {
+func buildKVRegistry(cfg *config.Config, evict *obs.EvictionCounter) (*kv.Registry, error) {
 	reg := kv.NewRegistry()
 	drivers := make(map[string]kv.Driver)
 	for name := range neededBackends(cfg, "kv") {
@@ -326,7 +341,9 @@ func buildKVRegistry(cfg *config.Config) (*kv.Registry, error) {
 		}
 		switch b.Driver {
 		case "memory":
-			drivers[b.Name] = memdrv.New(memdrv.Options{})
+			drivers[b.Name] = memdrv.New(memdrv.Options{
+				OnEvict: func(ns string, n int) { evict.Add("kv", ns, obs.EvictionTTL, int64(n)) },
+			})
 		case "postgres":
 			d, err := newKVPostgresDriver(b)
 			if err != nil {

@@ -53,6 +53,17 @@ func New(opts Options) *Driver {
 
 func (d *Driver) Close() error { return nil }
 
+// Size returns the number of nodes in namespace (the graph's item count;
+// edges are relationships, not counted here).
+func (d *Driver) Size(_ context.Context, namespace string) (int64, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	if s := d.ns[namespace]; s != nil {
+		return int64(len(s.nodes)), nil
+	}
+	return 0, nil
+}
+
 // space returns the namespace partition, creating it if absent. Caller holds
 // the write lock.
 func (d *Driver) space(namespace string) *nsData {

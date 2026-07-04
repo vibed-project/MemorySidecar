@@ -42,6 +42,13 @@ func New(opts Options) *Driver {
 
 func (d *Driver) Close() error { return nil }
 
+// Size returns the number of artifacts stored in namespace.
+func (d *Driver) Size(_ context.Context, namespace string) (int64, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return int64(len(d.items[namespace])), nil
+}
+
 func (d *Driver) Put(_ context.Context, namespace string, header artifact.PutHeader, r io.Reader) (artifact.Meta, error) {
 	buf, err := io.ReadAll(r)
 	if err != nil {
@@ -156,4 +163,3 @@ func cloneMeta(m map[string]string) map[string]string {
 	}
 	return out
 }
-

@@ -87,6 +87,16 @@ func (d *Driver) Close() error {
 	return nil
 }
 
+// Size returns the number of events retained in namespace.
+func (d *Driver) Size(_ context.Context, namespace string) (int64, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if s := d.streams[namespace]; s != nil {
+		return int64(len(s.events)), nil
+	}
+	return 0, nil
+}
+
 func (d *Driver) Append(_ context.Context, namespace string, opts episodic.AppendOptions) (episodic.Event, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
