@@ -177,6 +177,8 @@ func (s *Service) Search(ctx context.Context, req *semanticv1.SearchRequest) (*s
 		TopK:               topK,
 		Filter:             req.GetFilter(),
 		Predicates:         preds,
+		CreatedAfter:       tsToTime(req.GetCreatedAfter()),
+		CreatedBefore:      tsToTime(req.GetCreatedBefore()),
 		IncludePayload:     req.GetIncludePayload(),
 		IncludeVector:      req.GetIncludeVector(),
 		AsOf:               tsToTime(req.GetAsOf()),

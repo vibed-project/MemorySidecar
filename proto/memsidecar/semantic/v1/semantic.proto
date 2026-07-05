@@ -106,6 +106,12 @@ message SearchRequest {
   // Structured metadata predicates — ranges and set membership beyond the
   // exact-match `filter` map. ANDed with each other and with `filter`.
   repeated FieldPredicate predicates = 11;
+  // Optional creation-time window applied before ranking (index-friendly, no
+  // decay scoring — the agent re-ranks by the returned created_at). Exclusive:
+  // created_after is a lower bound (created_at > it), created_before an upper
+  // bound (created_at < it). Unset = unbounded on that side.
+  google.protobuf.Timestamp created_after = 12;
+  google.protobuf.Timestamp created_before = 13;
 }
 
 // PredicateOp is the comparison in a FieldPredicate. EQ/NEQ/IN compare the

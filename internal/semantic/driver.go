@@ -67,6 +67,11 @@ type SearchOptions struct {
 	// Predicates are structured metadata filters (Q3), ANDed with each other and
 	// with Filter. Empty = no additional filtering.
 	Predicates []FieldPredicate
+	// CreatedAfter / CreatedBefore bound the record creation time (Q2),
+	// exclusive on each side; a zero value means unbounded. Applied before
+	// ranking — no recency scoring.
+	CreatedAfter  time.Time
+	CreatedBefore time.Time
 
 	// Lifecycle-aware read (ADR-0003). By default Search returns only records
 	// that are live and valid as of AsOf (or now() when AsOf is zero).

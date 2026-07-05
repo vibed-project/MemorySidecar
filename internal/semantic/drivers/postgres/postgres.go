@@ -237,6 +237,14 @@ func (d *Driver) Search(ctx context.Context, opts semantic.SearchOptions) ([]sem
 		conds = append(conds, cond)
 		args = append(args, pargs...)
 	}
+	if !opts.CreatedAfter.IsZero() {
+		args = append(args, opts.CreatedAfter)
+		conds = append(conds, fmt.Sprintf("created_at > $%d", len(args)))
+	}
+	if !opts.CreatedBefore.IsZero() {
+		args = append(args, opts.CreatedBefore)
+		conds = append(conds, fmt.Sprintf("created_at < $%d", len(args)))
+	}
 	if !opts.IncludeInvalidated {
 		// Lifecycle pre-filter (ADR-0003): live and valid as of AsOf (nil = now()).
 		args = append(args, nullTime(opts.AsOf))
@@ -517,6 +525,13 @@ func ensureSchema(ctx context.Context, pool *pgxpool.Pool, table string, dim int
 		table, table,
 	)); err != nil {
 		return fmt.Errorf("create live index on %s: %w", table, err)
+	}
+	// Btree on created_at backs the Q2 time-range pre-filter.
+	if _, err := pool.Exec(ctx, fmt.Sprintf(
+		`CREATE INDEX IF NOT EXISTS %s_created_at ON %s (created_at)`,
+		table, table,
+	)); err != nil {
+		return fmt.Errorf("create created_at index on %s: %w", table, err)
 	}
 	// HNSW is the modern choice (pgvector >= 0.5.0). Falls back to no-op on
 	// older pgvector via IF NOT EXISTS — but the CREATE INDEX itself would
