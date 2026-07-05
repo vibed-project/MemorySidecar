@@ -208,6 +208,9 @@ func (d *Driver) Search(_ context.Context, opts semantic.SearchOptions) ([]seman
 		if !matchesFilter(r.Metadata, opts.Filter) {
 			continue
 		}
+		if !matchesPredicates(r.Metadata, opts.Predicates) {
+			continue
+		}
 		if !opts.IncludeInvalidated && !liveAt(r, asOf) {
 			continue
 		}
@@ -254,6 +257,15 @@ func (d *Driver) Delete(_ context.Context, id string, opts semantic.DeleteOption
 func matchesFilter(meta, filter map[string]string) bool {
 	for k, v := range filter {
 		if meta[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
+func matchesPredicates(meta map[string]string, preds []semantic.FieldPredicate) bool {
+	for _, p := range preds {
+		if !p.Matches(meta) {
 			return false
 		}
 	}

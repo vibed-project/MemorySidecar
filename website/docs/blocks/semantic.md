@@ -52,6 +52,14 @@ message SearchRequest {
   google.protobuf.Timestamp as_of = 8;   // evaluate validity at this instant (default now)
   bool include_invalidated = 9;          // also return tombstoned/expired/future records
   bool ids_only = 10;                    // return only id + score (cheap seed set)
+  repeated FieldPredicate predicates = 11;   // ranges / set membership, ANDed with filter
+}
+
+// EQ/NEQ/IN compare as strings; GT/GTE/LT/LTE compare numerically.
+message FieldPredicate {
+  string key = 1;
+  PredicateOp op = 2;          // EQ | NEQ | GT | GTE | LT | LTE | IN
+  repeated string values = 3;  // one value; IN takes one or more
 }
 
 message DeleteRequest {
@@ -111,7 +119,7 @@ agent decides what is valid or superseded (no inference is done server-side).
 | Driver | Notes |
 |---|---|
 | `memory` | Brute-force cosine over an internal map. Normalises on write. Suitable for tests and small dev workloads. Honours the full lifecycle model above. |
-| `postgres` | pgvector. One table **per namespace** (because `vector(N)` bakes the dimension into the column type), HNSW cosine index, `vector <=> $1` distance. `metadata @> $::jsonb` for filter. Lifecycle columns (`valid_from`/`valid_to`/`deleted_at`/`supersedes`/`source`/`version`) are added idempotently in `ensureSchema`; the default live-search pre-filter is backed by a partial index over non-tombstoned rows. |
+| `postgres` | pgvector. One table **per namespace** (because `vector(N)` bakes the dimension into the column type), HNSW cosine index, `vector <=> $1` distance. `metadata @> $::jsonb` for filter; `predicates` compile to parameterized `metadata->>$k <op> $v` expressions (numeric casts guarded by a regex so malformed data is skipped, not fatal). Lifecycle columns (`valid_from`/`valid_to`/`deleted_at`/`supersedes`/`source`/`version`) are added idempotently in `ensureSchema`; the default live-search pre-filter is backed by a partial index over non-tombstoned rows. |
 
 ## Embedders
 
@@ -226,6 +234,13 @@ n = m.semantic.expire("notes", filter={"topic": "food"},
   precision; pgvector clamps server-side.
 - Records can carry a pre-computed `vector` instead of `content` — useful
   when you embed offline and only use memsidecar for storage + search.
+- `filter` is exact-match (AND of equalities); `predicates` adds ranges and
+  set membership. `EQ`/`NEQ`/`IN` compare metadata values as strings;
+  `GT`/`GTE`/`LT`/`LTE` compare **numerically** — the predicate value must
+  parse as a number (else `InvalidArgument`), and a record whose stored value
+  isn't numeric is simply skipped, never erroring the query. A predicate only
+  matches when the key is present. `filter` and all `predicates` AND together
+  and run as a pre-filter before the ANN ordering.
 - Lifecycle timestamps and `supersedes`/`source` are **stored, not interpreted**:
   the sidecar never decides what supersedes what or resolves entities — the agent
   supplies the values (consistent with the ADR non-goals).

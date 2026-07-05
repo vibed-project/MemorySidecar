@@ -166,11 +166,17 @@ func (s *Service) Search(ctx context.Context, req *semanticv1.SearchRequest) (*s
 		topK = defaultTopK
 	}
 
+	preds, err := predicatesFromProto(req.GetPredicates())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
 	searchStart := time.Now()
 	hits, err := b.Driver.Search(ctx, SearchOptions{
 		QueryVector:        queryVec,
 		TopK:               topK,
 		Filter:             req.GetFilter(),
+		Predicates:         preds,
 		IncludePayload:     req.GetIncludePayload(),
 		IncludeVector:      req.GetIncludeVector(),
 		AsOf:               tsToTime(req.GetAsOf()),
@@ -287,4 +293,46 @@ func tsToTime(ts *timestamppb.Timestamp) time.Time {
 		return time.Time{}
 	}
 	return ts.AsTime()
+}
+
+// predicatesFromProto converts and validates the wire predicates. A validation
+// error is returned for the caller to surface as InvalidArgument.
+func predicatesFromProto(pb []*semanticv1.FieldPredicate) ([]FieldPredicate, error) {
+	if len(pb) == 0 {
+		return nil, nil
+	}
+	out := make([]FieldPredicate, len(pb))
+	for i, p := range pb {
+		fp := FieldPredicate{
+			Key:    p.GetKey(),
+			Op:     predicateOpFromProto(p.GetOp()),
+			Values: p.GetValues(),
+		}
+		if err := fp.Validate(); err != nil {
+			return nil, err
+		}
+		out[i] = fp
+	}
+	return out, nil
+}
+
+func predicateOpFromProto(op semanticv1.PredicateOp) PredicateOp {
+	switch op {
+	case semanticv1.PredicateOp_PREDICATE_OP_EQ:
+		return PredEQ
+	case semanticv1.PredicateOp_PREDICATE_OP_NEQ:
+		return PredNEQ
+	case semanticv1.PredicateOp_PREDICATE_OP_GT:
+		return PredGT
+	case semanticv1.PredicateOp_PREDICATE_OP_GTE:
+		return PredGTE
+	case semanticv1.PredicateOp_PREDICATE_OP_LT:
+		return PredLT
+	case semanticv1.PredicateOp_PREDICATE_OP_LTE:
+		return PredLTE
+	case semanticv1.PredicateOp_PREDICATE_OP_IN:
+		return PredIN
+	default:
+		return PredUnspecified
+	}
 }

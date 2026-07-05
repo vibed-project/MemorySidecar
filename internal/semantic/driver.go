@@ -64,6 +64,9 @@ type SearchOptions struct {
 	// content, payload, vector, and metadata (and the storage load they cost).
 	// It overrides IncludePayload/IncludeVector. See ADR-0002 §8 / plan Q5.
 	IDsOnly bool
+	// Predicates are structured metadata filters (Q3), ANDed with each other and
+	// with Filter. Empty = no additional filtering.
+	Predicates []FieldPredicate
 
 	// Lifecycle-aware read (ADR-0003). By default Search returns only records
 	// that are live and valid as of AsOf (or now() when AsOf is zero).

@@ -183,6 +183,7 @@ class _Semantic:
         self, namespace: str, *,
         query_text: str = "", query_vector: Optional[Iterable[float]] = None,
         top_k: int = 10, filter: Optional[Mapping[str, str]] = None,
+        predicates: Optional[Iterable[semantic_pb2.FieldPredicate]] = None,
         include_payload: bool = False, include_vector: bool = False,
         as_of: Optional[_dt.datetime] = None, include_invalidated: bool = False,
         ids_only: bool = False,
@@ -191,13 +192,17 @@ class _Semantic:
         returned; pass ``as_of`` for point-in-time recall or
         ``include_invalidated=True`` to also see tombstoned/expired records.
 
+        ``filter`` is exact-match; ``predicates`` adds ranges and set membership
+        (``semantic_pb2.FieldPredicate`` with ``PREDICATE_OP_GT``/``_IN``/…),
+        ANDed with ``filter``.
+
         ``ids_only=True`` returns just each hit's ``record.id`` and ``score``
         (content/payload/vector/metadata are skipped) — a cheap seed set whose
         ids you can expand through the graph block's ``neighbors``/``traverse``.
         """
         req = semantic_pb2.SearchRequest(
             namespace=namespace, query_text=query_text, top_k=top_k,
-            filter=dict(filter or {}),
+            filter=dict(filter or {}), predicates=list(predicates or []),
             include_payload=include_payload, include_vector=include_vector,
             include_invalidated=include_invalidated, ids_only=ids_only,
         )
