@@ -41,6 +41,8 @@ message Edge {
   string to = 4;                       // target node id
   map<string, string> props = 5;
   google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp valid_from = 7;  // bitemporal validity (default reads skip
+  google.protobuf.Timestamp valid_to = 8;    //   edges not valid now; both unset = always)
 }
 
 enum Direction { DIRECTION_UNSPECIFIED = 0; DIRECTION_OUT = 1; DIRECTION_IN = 2; DIRECTION_BOTH = 3; }
@@ -52,6 +54,7 @@ message NeighborsRequest {
   Direction direction = 4;
   repeated string node_labels = 5;  // filter returned neighbors
   uint32 limit = 6;                 // fan-out cap; 0 = server default; hard-capped
+  google.protobuf.Timestamp as_of = 7;  // evaluate edge validity at this instant
 }
 
 message TraverseRequest {
@@ -61,8 +64,16 @@ message TraverseRequest {
   Direction direction = 4;
   uint32 depth = 5;      // max hops; 0 = server default (1); hard-capped
   uint32 max_nodes = 6;  // result cap; 0 = server default; hard-capped
+  google.protobuf.Timestamp as_of = 7;  // evaluate edge validity at this instant
 }
 ```
+
+**Bitemporal edges.** An edge holds while `valid_from <= t < valid_to`; unset
+bounds are open (both unset ⇒ always valid, so existing edges are unaffected).
+`Neighbors`/`Traverse` skip edges not valid *now* by default and never cross an
+invalidated relationship — the same "hallucinations of the past" fix the
+[semantic block](semantic.md) applies to facts, applied to relationships
+(`Alice WORKS_AT Acme` until she leaves). Pass `as_of` for point-in-time recall.
 
 Reads are **structured, not free-form**: the caller specifies node/edge type
 filters, direction, depth, and a fan-out/result cap. There is no query string —

@@ -147,13 +147,19 @@ func (x *Node) GetCreatedAt() *timestamppb.Timestamp {
 }
 
 type Edge struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`     // caller-supplied; empty is rejected on upsert
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"` // relationship type, e.g. "AUTHORED"
-	From          string                 `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"` // source node id
-	To            string                 `protobuf:"bytes,4,opt,name=to,proto3" json:"to,omitempty"`     // target node id
-	Props         map[string]string      `protobuf:"bytes,5,rep,name=props,proto3" json:"props,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`     // caller-supplied; empty is rejected on upsert
+	Type      string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"` // relationship type, e.g. "AUTHORED"
+	From      string                 `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"` // source node id
+	To        string                 `protobuf:"bytes,4,opt,name=to,proto3" json:"to,omitempty"`     // target node id
+	Props     map[string]string      `protobuf:"bytes,5,rep,name=props,proto3" json:"props,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// Bitemporal validity (ADR-0002 Phase 4, mirrors semantic ADR-0003). The
+	// relationship holds while valid_from <= t < valid_to. Unset valid_from means
+	// "always started"; unset valid_to means "open-ended". Default reads exclude
+	// edges not valid now; existing edges (both unset) read as always-valid.
+	ValidFrom     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=valid_from,json=validFrom,proto3" json:"valid_from,omitempty"`
+	ValidTo       *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=valid_to,json=validTo,proto3" json:"valid_to,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -226,6 +232,20 @@ func (x *Edge) GetProps() map[string]string {
 func (x *Edge) GetCreatedAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Edge) GetValidFrom() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ValidFrom
+	}
+	return nil
+}
+
+func (x *Edge) GetValidTo() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ValidTo
 	}
 	return nil
 }
@@ -482,7 +502,9 @@ type NeighborsRequest struct {
 	Direction  Direction              `protobuf:"varint,4,opt,name=direction,proto3,enum=memsidecar.graph.v1.Direction" json:"direction,omitempty"`
 	NodeLabels []string               `protobuf:"bytes,5,rep,name=node_labels,json=nodeLabels,proto3" json:"node_labels,omitempty"` // filter returned neighbors; empty = any
 	// Fan-out cap. 0 = server default. Hard-capped server-side.
-	Limit         uint32 `protobuf:"varint,6,opt,name=limit,proto3" json:"limit,omitempty"`
+	Limit uint32 `protobuf:"varint,6,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Evaluate edge validity at this instant instead of now (point-in-time).
+	AsOf          *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=as_of,json=asOf,proto3" json:"as_of,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -559,6 +581,13 @@ func (x *NeighborsRequest) GetLimit() uint32 {
 	return 0
 }
 
+func (x *NeighborsRequest) GetAsOf() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AsOf
+	}
+	return nil
+}
+
 type NeighborsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Nodes         []*Node                `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
@@ -620,7 +649,9 @@ type TraverseRequest struct {
 	// Max hops. 0 = server default (1). Hard-capped server-side.
 	Depth uint32 `protobuf:"varint,5,opt,name=depth,proto3" json:"depth,omitempty"`
 	// Result-size cap (total nodes). 0 = server default. Hard-capped server-side.
-	MaxNodes      uint32 `protobuf:"varint,6,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
+	MaxNodes uint32 `protobuf:"varint,6,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
+	// Evaluate edge validity at this instant instead of now (point-in-time).
+	AsOf          *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=as_of,json=asOf,proto3" json:"as_of,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -695,6 +726,13 @@ func (x *TraverseRequest) GetMaxNodes() uint32 {
 		return x.MaxNodes
 	}
 	return 0
+}
+
+func (x *TraverseRequest) GetAsOf() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AsOf
+	}
+	return nil
 }
 
 type Subgraph struct {
@@ -965,7 +1003,7 @@ const file_memsidecar_graph_v1_graph_proto_rawDesc = "" +
 	"\n" +
 	"PropsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xff\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf1\x02\n" +
 	"\x04Edge\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x12\n" +
@@ -973,7 +1011,10 @@ const file_memsidecar_graph_v1_graph_proto_rawDesc = "" +
 	"\x02to\x18\x04 \x01(\tR\x02to\x12:\n" +
 	"\x05props\x18\x05 \x03(\v2$.memsidecar.graph.v1.Edge.PropsEntryR\x05props\x129\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x1a8\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"valid_from\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tvalidFrom\x125\n" +
+	"\bvalid_to\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\avalidTo\x1a8\n" +
 	"\n" +
 	"PropsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -990,7 +1031,7 @@ const file_memsidecar_graph_v1_graph_proto_rawDesc = "" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\">\n" +
 	"\x0eGetNodeRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\"\xdd\x01\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\"\x8e\x02\n" +
 	"\x10NeighborsRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x17\n" +
 	"\anode_id\x18\x02 \x01(\tR\x06nodeId\x12\x1d\n" +
@@ -999,10 +1040,11 @@ const file_memsidecar_graph_v1_graph_proto_rawDesc = "" +
 	"\tdirection\x18\x04 \x01(\x0e2\x1e.memsidecar.graph.v1.DirectionR\tdirection\x12\x1f\n" +
 	"\vnode_labels\x18\x05 \x03(\tR\n" +
 	"nodeLabels\x12\x14\n" +
-	"\x05limit\x18\x06 \x01(\rR\x05limit\"u\n" +
+	"\x05limit\x18\x06 \x01(\rR\x05limit\x12/\n" +
+	"\x05as_of\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x04asOf\"u\n" +
 	"\x11NeighborsResponse\x12/\n" +
 	"\x05nodes\x18\x01 \x03(\v2\x19.memsidecar.graph.v1.NodeR\x05nodes\x12/\n" +
-	"\x05edges\x18\x02 \x03(\v2\x19.memsidecar.graph.v1.EdgeR\x05edges\"\xda\x01\n" +
+	"\x05edges\x18\x02 \x03(\v2\x19.memsidecar.graph.v1.EdgeR\x05edges\"\x8b\x02\n" +
 	"\x0fTraverseRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x19\n" +
 	"\bstart_id\x18\x02 \x01(\tR\astartId\x12\x1d\n" +
@@ -1010,7 +1052,8 @@ const file_memsidecar_graph_v1_graph_proto_rawDesc = "" +
 	"edge_types\x18\x03 \x03(\tR\tedgeTypes\x12<\n" +
 	"\tdirection\x18\x04 \x01(\x0e2\x1e.memsidecar.graph.v1.DirectionR\tdirection\x12\x14\n" +
 	"\x05depth\x18\x05 \x01(\rR\x05depth\x12\x1b\n" +
-	"\tmax_nodes\x18\x06 \x01(\rR\bmaxNodes\"l\n" +
+	"\tmax_nodes\x18\x06 \x01(\rR\bmaxNodes\x12/\n" +
+	"\x05as_of\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x04asOf\"l\n" +
 	"\bSubgraph\x12/\n" +
 	"\x05nodes\x18\x01 \x03(\v2\x19.memsidecar.graph.v1.NodeR\x05nodes\x12/\n" +
 	"\x05edges\x18\x02 \x03(\v2\x19.memsidecar.graph.v1.EdgeR\x05edges\"[\n" +
@@ -1083,33 +1126,37 @@ var file_memsidecar_graph_v1_graph_proto_depIdxs = []int32{
 	18, // 1: memsidecar.graph.v1.Node.created_at:type_name -> google.protobuf.Timestamp
 	17, // 2: memsidecar.graph.v1.Edge.props:type_name -> memsidecar.graph.v1.Edge.PropsEntry
 	18, // 3: memsidecar.graph.v1.Edge.created_at:type_name -> google.protobuf.Timestamp
-	1,  // 4: memsidecar.graph.v1.UpsertNodesRequest.nodes:type_name -> memsidecar.graph.v1.Node
-	2,  // 5: memsidecar.graph.v1.UpsertEdgesRequest.edges:type_name -> memsidecar.graph.v1.Edge
-	0,  // 6: memsidecar.graph.v1.NeighborsRequest.direction:type_name -> memsidecar.graph.v1.Direction
-	1,  // 7: memsidecar.graph.v1.NeighborsResponse.nodes:type_name -> memsidecar.graph.v1.Node
-	2,  // 8: memsidecar.graph.v1.NeighborsResponse.edges:type_name -> memsidecar.graph.v1.Edge
-	0,  // 9: memsidecar.graph.v1.TraverseRequest.direction:type_name -> memsidecar.graph.v1.Direction
-	1,  // 10: memsidecar.graph.v1.Subgraph.nodes:type_name -> memsidecar.graph.v1.Node
-	2,  // 11: memsidecar.graph.v1.Subgraph.edges:type_name -> memsidecar.graph.v1.Edge
-	3,  // 12: memsidecar.graph.v1.Graph.UpsertNodes:input_type -> memsidecar.graph.v1.UpsertNodesRequest
-	5,  // 13: memsidecar.graph.v1.Graph.UpsertEdges:input_type -> memsidecar.graph.v1.UpsertEdgesRequest
-	7,  // 14: memsidecar.graph.v1.Graph.GetNode:input_type -> memsidecar.graph.v1.GetNodeRequest
-	8,  // 15: memsidecar.graph.v1.Graph.Neighbors:input_type -> memsidecar.graph.v1.NeighborsRequest
-	10, // 16: memsidecar.graph.v1.Graph.Traverse:input_type -> memsidecar.graph.v1.TraverseRequest
-	12, // 17: memsidecar.graph.v1.Graph.DeleteNode:input_type -> memsidecar.graph.v1.DeleteNodeRequest
-	14, // 18: memsidecar.graph.v1.Graph.DeleteEdge:input_type -> memsidecar.graph.v1.DeleteEdgeRequest
-	4,  // 19: memsidecar.graph.v1.Graph.UpsertNodes:output_type -> memsidecar.graph.v1.UpsertNodesResponse
-	6,  // 20: memsidecar.graph.v1.Graph.UpsertEdges:output_type -> memsidecar.graph.v1.UpsertEdgesResponse
-	1,  // 21: memsidecar.graph.v1.Graph.GetNode:output_type -> memsidecar.graph.v1.Node
-	9,  // 22: memsidecar.graph.v1.Graph.Neighbors:output_type -> memsidecar.graph.v1.NeighborsResponse
-	11, // 23: memsidecar.graph.v1.Graph.Traverse:output_type -> memsidecar.graph.v1.Subgraph
-	13, // 24: memsidecar.graph.v1.Graph.DeleteNode:output_type -> memsidecar.graph.v1.DeleteNodeResponse
-	15, // 25: memsidecar.graph.v1.Graph.DeleteEdge:output_type -> memsidecar.graph.v1.DeleteEdgeResponse
-	19, // [19:26] is the sub-list for method output_type
-	12, // [12:19] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	18, // 4: memsidecar.graph.v1.Edge.valid_from:type_name -> google.protobuf.Timestamp
+	18, // 5: memsidecar.graph.v1.Edge.valid_to:type_name -> google.protobuf.Timestamp
+	1,  // 6: memsidecar.graph.v1.UpsertNodesRequest.nodes:type_name -> memsidecar.graph.v1.Node
+	2,  // 7: memsidecar.graph.v1.UpsertEdgesRequest.edges:type_name -> memsidecar.graph.v1.Edge
+	0,  // 8: memsidecar.graph.v1.NeighborsRequest.direction:type_name -> memsidecar.graph.v1.Direction
+	18, // 9: memsidecar.graph.v1.NeighborsRequest.as_of:type_name -> google.protobuf.Timestamp
+	1,  // 10: memsidecar.graph.v1.NeighborsResponse.nodes:type_name -> memsidecar.graph.v1.Node
+	2,  // 11: memsidecar.graph.v1.NeighborsResponse.edges:type_name -> memsidecar.graph.v1.Edge
+	0,  // 12: memsidecar.graph.v1.TraverseRequest.direction:type_name -> memsidecar.graph.v1.Direction
+	18, // 13: memsidecar.graph.v1.TraverseRequest.as_of:type_name -> google.protobuf.Timestamp
+	1,  // 14: memsidecar.graph.v1.Subgraph.nodes:type_name -> memsidecar.graph.v1.Node
+	2,  // 15: memsidecar.graph.v1.Subgraph.edges:type_name -> memsidecar.graph.v1.Edge
+	3,  // 16: memsidecar.graph.v1.Graph.UpsertNodes:input_type -> memsidecar.graph.v1.UpsertNodesRequest
+	5,  // 17: memsidecar.graph.v1.Graph.UpsertEdges:input_type -> memsidecar.graph.v1.UpsertEdgesRequest
+	7,  // 18: memsidecar.graph.v1.Graph.GetNode:input_type -> memsidecar.graph.v1.GetNodeRequest
+	8,  // 19: memsidecar.graph.v1.Graph.Neighbors:input_type -> memsidecar.graph.v1.NeighborsRequest
+	10, // 20: memsidecar.graph.v1.Graph.Traverse:input_type -> memsidecar.graph.v1.TraverseRequest
+	12, // 21: memsidecar.graph.v1.Graph.DeleteNode:input_type -> memsidecar.graph.v1.DeleteNodeRequest
+	14, // 22: memsidecar.graph.v1.Graph.DeleteEdge:input_type -> memsidecar.graph.v1.DeleteEdgeRequest
+	4,  // 23: memsidecar.graph.v1.Graph.UpsertNodes:output_type -> memsidecar.graph.v1.UpsertNodesResponse
+	6,  // 24: memsidecar.graph.v1.Graph.UpsertEdges:output_type -> memsidecar.graph.v1.UpsertEdgesResponse
+	1,  // 25: memsidecar.graph.v1.Graph.GetNode:output_type -> memsidecar.graph.v1.Node
+	9,  // 26: memsidecar.graph.v1.Graph.Neighbors:output_type -> memsidecar.graph.v1.NeighborsResponse
+	11, // 27: memsidecar.graph.v1.Graph.Traverse:output_type -> memsidecar.graph.v1.Subgraph
+	13, // 28: memsidecar.graph.v1.Graph.DeleteNode:output_type -> memsidecar.graph.v1.DeleteNodeResponse
+	15, // 29: memsidecar.graph.v1.Graph.DeleteEdge:output_type -> memsidecar.graph.v1.DeleteEdgeResponse
+	23, // [23:30] is the sub-list for method output_type
+	16, // [16:23] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_memsidecar_graph_v1_graph_proto_init() }

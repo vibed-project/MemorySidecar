@@ -103,6 +103,8 @@ func (s *Service) UpsertEdges(ctx context.Context, req *graphv1.UpsertEdgesReque
 			To:        e.GetTo(),
 			Props:     e.GetProps(),
 			CreatedAt: tsToTime(e.GetCreatedAt()),
+			ValidFrom: tsToTime(e.GetValidFrom()),
+			ValidTo:   tsToTime(e.GetValidTo()),
 		}
 		ids[i] = e.GetId()
 	}
@@ -144,6 +146,7 @@ func (s *Service) Neighbors(ctx context.Context, req *graphv1.NeighborsRequest) 
 		Direction:  directionFromProto(req.GetDirection()),
 		NodeLabels: req.GetNodeLabels(),
 		Limit:      clamp(req.GetLimit(), defaultNeighborLimit, maxNeighborLimit),
+		AsOf:       tsToTime(req.GetAsOf()),
 	})
 	if errors.Is(err, ErrNotFound) {
 		return nil, status.Errorf(codes.NotFound, "node %q not found", req.GetNodeId())
@@ -170,6 +173,7 @@ func (s *Service) Traverse(ctx context.Context, req *graphv1.TraverseRequest) (*
 		MaxNodes:  clamp(req.GetMaxNodes(), defaultTraverseNodes, maxTraverseNodes),
 		MaxEdges:  maxTraverseEdges,
 		FanOut:    maxTraverseFanOut,
+		AsOf:      tsToTime(req.GetAsOf()),
 	})
 	if errors.Is(err, ErrNotFound) {
 		return nil, status.Errorf(codes.NotFound, "node %q not found", req.GetStartId())
@@ -255,6 +259,12 @@ func edgeToProto(e Edge) *graphv1.Edge {
 	out := &graphv1.Edge{Id: e.ID, Type: e.Type, From: e.From, To: e.To, Props: e.Props}
 	if !e.CreatedAt.IsZero() {
 		out.CreatedAt = timestamppb.New(e.CreatedAt)
+	}
+	if !e.ValidFrom.IsZero() {
+		out.ValidFrom = timestamppb.New(e.ValidFrom)
+	}
+	if !e.ValidTo.IsZero() {
+		out.ValidTo = timestamppb.New(e.ValidTo)
 	}
 	return out
 }

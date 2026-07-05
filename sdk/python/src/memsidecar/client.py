@@ -352,24 +352,34 @@ class _Graph:
         edge_types: Optional[Iterable[str]] = None,
         direction: "graph_pb2.Direction.ValueType" = graph_pb2.DIRECTION_UNSPECIFIED,
         node_labels: Optional[Iterable[str]] = None, limit: int = 0,
+        as_of: Optional[_dt.datetime] = None,
     ) -> graph_pb2.NeighborsResponse:
-        return self._stub.Neighbors(graph_pb2.NeighborsRequest(
+        req = graph_pb2.NeighborsRequest(
             namespace=namespace, node_id=node_id,
             edge_types=list(edge_types or []), direction=direction,
             node_labels=list(node_labels or []), limit=limit,
-        ))
+        )
+        ts = _to_timestamp(as_of)
+        if ts is not None:
+            req.as_of.CopyFrom(ts)
+        return self._stub.Neighbors(req)
 
     def traverse(
         self, namespace: str, start_id: str, *,
         edge_types: Optional[Iterable[str]] = None,
         direction: "graph_pb2.Direction.ValueType" = graph_pb2.DIRECTION_UNSPECIFIED,
         depth: int = 0, max_nodes: int = 0,
+        as_of: Optional[_dt.datetime] = None,
     ) -> graph_pb2.Subgraph:
-        return self._stub.Traverse(graph_pb2.TraverseRequest(
+        req = graph_pb2.TraverseRequest(
             namespace=namespace, start_id=start_id,
             edge_types=list(edge_types or []), direction=direction,
             depth=depth, max_nodes=max_nodes,
-        ))
+        )
+        ts = _to_timestamp(as_of)
+        if ts is not None:
+            req.as_of.CopyFrom(ts)
+        return self._stub.Traverse(req)
 
     def delete_node(self, namespace: str, id: str, *, cascade: bool = False) -> bool:
         return self._stub.DeleteNode(graph_pb2.DeleteNodeRequest(

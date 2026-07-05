@@ -86,6 +86,8 @@ func ensureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 			to_id      text        NOT NULL,
 			props      jsonb       NOT NULL DEFAULT '{}',
 			created_at timestamptz NOT NULL DEFAULT now(),
+			valid_from timestamptz,
+			valid_to   timestamptz,
 			PRIMARY KEY (namespace, id)
 		)`,
 		`CREATE INDEX IF NOT EXISTS graph_edges_from ON graph_edges (namespace, from_id)`,
@@ -126,12 +128,14 @@ func (d *Driver) UpsertEdges(ctx context.Context, namespace string, edges []grap
 	batch := &pgx.Batch{}
 	for _, e := range edges {
 		batch.Queue(`
-			INSERT INTO graph_edges (namespace, id, type, from_id, to_id, props, created_at)
-			     VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, now()))
+			INSERT INTO graph_edges (namespace, id, type, from_id, to_id, props, created_at, valid_from, valid_to)
+			     VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, now()), $8, $9)
 			ON CONFLICT (namespace, id) DO UPDATE
 			  SET type = EXCLUDED.type, from_id = EXCLUDED.from_id,
-			      to_id = EXCLUDED.to_id, props = EXCLUDED.props`,
-			namespace, e.ID, e.Type, e.From, e.To, mustJSON(e.Props), nullTime(e.CreatedAt))
+			      to_id = EXCLUDED.to_id, props = EXCLUDED.props,
+			      valid_from = EXCLUDED.valid_from, valid_to = EXCLUDED.valid_to`,
+			namespace, e.ID, e.Type, e.From, e.To, mustJSON(e.Props),
+			nullTime(e.CreatedAt), nullTime(e.ValidFrom), nullTime(e.ValidTo))
 	}
 	return sendBatch(ctx, d.pool, batch, len(edges))
 }
@@ -176,6 +180,10 @@ func (d *Driver) Neighbors(ctx context.Context, namespace string, opts graph.Nei
 
 	typeSet := toSet(opts.EdgeTypes)
 	labelSet := toSet(opts.NodeLabels)
+	asOf := opts.AsOf
+	if asOf.IsZero() {
+		asOf = time.Now()
+	}
 	seen := map[string]struct{}{}
 	var outNodes []graph.Node
 	var outEdges []graph.Edge
@@ -187,6 +195,9 @@ func (d *Driver) Neighbors(ctx context.Context, namespace string, opts graph.Nei
 			if _, ok := typeSet[e.Type]; !ok {
 				continue
 			}
+		}
+		if !e.ValidAt(asOf) {
+			continue
 		}
 		neighborID := otherEndpoint(e, opts.NodeID)
 		if neighborID == opts.NodeID {
@@ -224,6 +235,10 @@ func (d *Driver) Traverse(ctx context.Context, namespace string, opts graph.Trav
 	}
 
 	typeSet := toSet(opts.EdgeTypes)
+	asOf := opts.AsOf
+	if asOf.IsZero() {
+		asOf = time.Now()
+	}
 	maxNodes := opts.MaxNodes
 	if maxNodes == 0 {
 		maxNodes = 1
@@ -251,6 +266,9 @@ func (d *Driver) Traverse(ctx context.Context, namespace string, opts graph.Trav
 					if _, ok := typeSet[e.Type]; !ok {
 						continue
 					}
+				}
+				if !e.ValidAt(asOf) {
+					continue
 				}
 				neighborID := otherEndpoint(e, nodeID)
 				if _, done := visited[neighborID]; !done {
@@ -404,7 +422,7 @@ func incidentEdges(ctx context.Context, q rowQuerier, namespace, nodeID string, 
 		pred = "(from_id = $2 OR to_id = $2)"
 	}
 	rows, err := q.Query(ctx, fmt.Sprintf(
-		`SELECT id, type, from_id, to_id, props, created_at
+		`SELECT id, type, from_id, to_id, props, created_at, valid_from, valid_to
 		   FROM graph_edges WHERE namespace = $1 AND %s ORDER BY id`, pred),
 		namespace, nodeID)
 	if err != nil {
@@ -414,13 +432,21 @@ func incidentEdges(ctx context.Context, q rowQuerier, namespace, nodeID string, 
 	var out []graph.Edge
 	for rows.Next() {
 		var (
-			e     graph.Edge
-			props []byte
+			e         graph.Edge
+			props     []byte
+			validFrom *time.Time
+			validTo   *time.Time
 		)
-		if err := rows.Scan(&e.ID, &e.Type, &e.From, &e.To, &props, &e.CreatedAt); err != nil {
+		if err := rows.Scan(&e.ID, &e.Type, &e.From, &e.To, &props, &e.CreatedAt, &validFrom, &validTo); err != nil {
 			return nil, fmt.Errorf("graph/postgres: scan edge: %w", err)
 		}
 		e.Props = unmarshalProps(props)
+		if validFrom != nil {
+			e.ValidFrom = *validFrom
+		}
+		if validTo != nil {
+			e.ValidTo = *validTo
+		}
 		out = append(out, e)
 	}
 	return out, rows.Err()

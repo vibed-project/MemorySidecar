@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,6 +43,7 @@ func RunConformance(t *testing.T, h Harness) {
 		{"DeleteEdge", testDeleteEdge},
 		{"DeleteNode_RejectWithEdges", testDeleteNodeRejectWithEdges},
 		{"DeleteNode_Cascade", testDeleteNodeCascade},
+		{"EdgeValidity", testEdgeValidity},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) { tc.fn(t, h) })
@@ -256,6 +258,43 @@ func testTraverseEdgeTypeFilter(t *testing.T, h Harness) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"a", "b", "d"}, nodeIDs(sub.Nodes))
 	assert.Equal(t, []string{"e1", "e3"}, edgeIDs(sub.Edges))
+}
+
+// testEdgeValidity checks bitemporal edge validity (ADR-0002 Phase 4): default
+// reads skip edges outside their validity window, and as_of recovers them at a
+// past instant. Existing edges with no validity read as always-valid.
+func testEdgeValidity(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+	now := time.Now()
+	past := now.Add(-2 * time.Hour)
+	older := now.Add(-3 * time.Hour)
+	future := now.Add(2 * time.Hour)
+
+	require.NoError(t, d.UpsertNodes(ctx, ns, []graph.Node{{ID: "a"}, {ID: "b"}, {ID: "c"}}))
+	require.NoError(t, d.UpsertEdges(ctx, ns, []graph.Edge{
+		{ID: "live", Type: "KNOWS", From: "a", To: "b", ValidFrom: past, ValidTo: future},
+		{ID: "expired", Type: "KNOWS", From: "a", To: "c", ValidFrom: older, ValidTo: past},
+	}))
+
+	// Default (now): only the live edge → neighbour b.
+	nodes, edges, err := d.Neighbors(ctx, ns, graph.NeighborOptions{NodeID: "a", Direction: graph.DirectionOut})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"b"}, nodeIDs(nodes))
+	assert.Equal(t, []string{"live"}, edgeIDs(edges))
+
+	// as_of inside the expired edge's window: c is reachable, and the live edge
+	// (which starts at `past`) is not yet valid.
+	asOf := now.Add(-150 * time.Minute) // between older(-3h) and past(-2h)
+	nodes, edges, err = d.Neighbors(ctx, ns, graph.NeighborOptions{NodeID: "a", Direction: graph.DirectionOut, AsOf: asOf})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"c"}, nodeIDs(nodes))
+	assert.Equal(t, []string{"expired"}, edgeIDs(edges))
+
+	// Traverse default does not cross the expired edge to c.
+	sub, err := d.Traverse(ctx, ns, graph.TraverseOptions{StartID: "a", Direction: graph.DirectionOut, MaxDepth: 3, MaxNodes: 100})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a", "b"}, nodeIDs(sub.Nodes))
 }
 
 func testDeleteEdge(t *testing.T, h Harness) {
