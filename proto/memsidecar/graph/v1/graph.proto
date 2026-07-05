@@ -52,6 +52,12 @@ message Edge {
   string to = 4; // target node id
   map<string, string> props = 5;
   google.protobuf.Timestamp created_at = 6;
+  // Bitemporal validity (ADR-0002 Phase 4, mirrors semantic ADR-0003). The
+  // relationship holds while valid_from <= t < valid_to. Unset valid_from means
+  // "always started"; unset valid_to means "open-ended". Default reads exclude
+  // edges not valid now; existing edges (both unset) read as always-valid.
+  google.protobuf.Timestamp valid_from = 7;
+  google.protobuf.Timestamp valid_to = 8;
 }
 
 message UpsertNodesRequest {
@@ -85,6 +91,8 @@ message NeighborsRequest {
   repeated string node_labels = 5; // filter returned neighbors; empty = any
   // Fan-out cap. 0 = server default. Hard-capped server-side.
   uint32 limit = 6;
+  // Evaluate edge validity at this instant instead of now (point-in-time).
+  google.protobuf.Timestamp as_of = 7;
 }
 
 message NeighborsResponse {
@@ -101,6 +109,8 @@ message TraverseRequest {
   uint32 depth = 5;
   // Result-size cap (total nodes). 0 = server default. Hard-capped server-side.
   uint32 max_nodes = 6;
+  // Evaluate edge validity at this instant instead of now (point-in-time).
+  google.protobuf.Timestamp as_of = 7;
 }
 
 message Subgraph {

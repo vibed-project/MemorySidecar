@@ -109,6 +109,7 @@ func (d *Driver) UpsertEdges(_ context.Context, namespace string, edges []graph.
 		stored := graph.Edge{
 			ID: e.ID, Type: e.Type, From: e.From, To: e.To,
 			Props: cloneMap(e.Props), CreatedAt: e.CreatedAt,
+			ValidFrom: e.ValidFrom, ValidTo: e.ValidTo,
 		}
 		if stored.CreatedAt.IsZero() {
 			stored.CreatedAt = d.now().UTC()
@@ -147,6 +148,10 @@ func (d *Driver) Neighbors(_ context.Context, namespace string, opts graph.Neigh
 
 	typeSet := toSet(opts.EdgeTypes)
 	labelSet := toSet(opts.NodeLabels)
+	asOf := opts.AsOf
+	if asOf.IsZero() {
+		asOf = d.now()
+	}
 	seen := map[string]struct{}{}
 	var outNodes []graph.Node
 	var outEdges []graph.Edge
@@ -160,6 +165,9 @@ func (d *Driver) Neighbors(_ context.Context, namespace string, opts graph.Neigh
 			if _, ok := typeSet[e.Type]; !ok {
 				continue
 			}
+		}
+		if !e.ValidAt(asOf) {
+			continue
 		}
 		neighborID := otherEndpoint(e, opts.NodeID)
 		if neighborID == opts.NodeID {
@@ -195,6 +203,10 @@ func (d *Driver) Traverse(_ context.Context, namespace string, opts graph.Traver
 	}
 
 	typeSet := toSet(opts.EdgeTypes)
+	asOf := opts.AsOf
+	if asOf.IsZero() {
+		asOf = d.now()
+	}
 	maxNodes := opts.MaxNodes
 	if maxNodes == 0 {
 		maxNodes = 1
@@ -219,6 +231,9 @@ func (d *Driver) Traverse(_ context.Context, namespace string, opts graph.Traver
 					if _, ok := typeSet[e.Type]; !ok {
 						continue
 					}
+				}
+				if !e.ValidAt(asOf) {
+					continue
 				}
 				neighborID := otherEndpoint(e, nodeID)
 				if _, done := visited[neighborID]; !done {
