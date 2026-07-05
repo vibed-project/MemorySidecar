@@ -23,6 +23,7 @@ import (
 	eppgdrv "memsidecar/internal/episodic/drivers/postgres"
 	"memsidecar/internal/graph"
 	graphmemdrv "memsidecar/internal/graph/drivers/memory"
+	graphpgdrv "memsidecar/internal/graph/drivers/postgres"
 	"memsidecar/internal/kv"
 	memdrv "memsidecar/internal/kv/drivers/memory"
 	pgdrv "memsidecar/internal/kv/drivers/postgres"
@@ -168,7 +169,7 @@ func run() error {
 	}
 	defer func() { _ = leaseReg.Close() }()
 
-	graphReg, err := buildGraphRegistry(cfg)
+	graphReg, err := buildGraphRegistry(ctx, cfg)
 	if err != nil {
 		_ = kvReg.Close()
 		_ = epReg.Close()
@@ -586,7 +587,7 @@ func buildLeaseRegistry(ctx context.Context, cfg *config.Config) (*lease.Registr
 	return reg, nil
 }
 
-func buildGraphRegistry(cfg *config.Config) (*graph.Registry, error) {
+func buildGraphRegistry(ctx context.Context, cfg *config.Config) (*graph.Registry, error) {
 	reg := graph.NewRegistry()
 	drivers := make(map[string]graph.Driver)
 	for name := range neededBackends(cfg, "graph") {
@@ -597,8 +598,21 @@ func buildGraphRegistry(cfg *config.Config) (*graph.Registry, error) {
 		switch b.Driver {
 		case "memory":
 			drivers[b.Name] = graphmemdrv.New(graphmemdrv.Options{})
+		case "postgres":
+			dsn, dsnErr := resolveDSN(b)
+			if dsnErr != nil {
+				return nil, fmt.Errorf("backend %q: %w", b.Name, dsnErr)
+			}
+			d, err := graphpgdrv.New(ctx, graphpgdrv.Options{
+				DSN:      dsn,
+				MaxConns: int32(intOpt(b.Options, "max_conns", 10)),
+			})
+			if err != nil {
+				return nil, fmt.Errorf("backend %q: %w", b.Name, err)
+			}
+			drivers[b.Name] = d
 		default:
-			return nil, fmt.Errorf("backend %q: driver %q not supported for graph block (only memory today)", b.Name, b.Driver)
+			return nil, fmt.Errorf("backend %q: unknown driver %q for graph block", b.Name, b.Driver)
 		}
 	}
 	used := make(map[string]bool)

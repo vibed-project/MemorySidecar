@@ -86,7 +86,8 @@ Traversal cost is capped in two layers:
 
 | Driver | Notes |
 |---|---|
-| `memory` | Reference driver: nodes/edges in maps with out/in adjacency and bounded BFS traversal. Zero-dependency; the conformance baseline. A production graph backend follows (ADR-0002 §6). |
+| `memory` | Reference driver: nodes/edges in maps with out/in adjacency and bounded BFS traversal. Zero-dependency; the conformance baseline. |
+| `postgres` | Production driver (ADR-0002 §6). Two shared tables (`graph_nodes`, `graph_edges`) keyed by `(namespace, id)`, adjacency indexes on `(namespace, from_id)` / `(namespace, to_id)`. `Neighbors`/`Traverse` fetch adjacency and run the same bounded walk in Go inside a read transaction (consistent snapshot) — it fronts Postgres rather than pushing a recursive query down, trading traversal throughput for a faithful, portable implementation of the hard-capped contract. Passes the same conformance suite as `memory`. |
 
 ## Composing with `semantic`
 
@@ -101,11 +102,19 @@ agent, not the sidecar (ADR-0002 §2.2).
 backends:
   - name: mem-default
     driver: memory
+  - name: pg-main            # durable, shared across processes
+    driver: postgres
+    options:
+      dsn_env: MEMSIDECAR_PG_DSN
+      max_conns: 10
 namespaces:
   - block: graph
     name: knowledge
-    backend: mem-default
+    backend: mem-default     # or pg-main for a durable graph
 ```
+
+The Postgres driver creates its `graph_nodes` / `graph_edges` tables on
+startup; a namespace is a column, so one backend serves many graph namespaces.
 
 ## gRPC example
 
