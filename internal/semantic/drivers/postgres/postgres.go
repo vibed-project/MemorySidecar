@@ -232,6 +232,11 @@ func (d *Driver) Search(ctx context.Context, opts semantic.SearchOptions) ([]sem
 		args = append(args, mustMarshalFilter(opts.Filter))
 		conds = append(conds, fmt.Sprintf("metadata @> $%d::jsonb", len(args)))
 	}
+	for _, p := range opts.Predicates {
+		cond, pargs := predicateCond(p, len(args))
+		conds = append(conds, cond)
+		args = append(args, pargs...)
+	}
 	if !opts.IncludeInvalidated {
 		// Lifecycle pre-filter (ADR-0003): live and valid as of AsOf (nil = now()).
 		args = append(args, nullTime(opts.AsOf))
@@ -426,6 +431,51 @@ func similarityFromDistance(d float64) float32 {
 func mustMarshalFilter(m map[string]string) []byte {
 	b, _ := json.Marshal(m)
 	return b
+}
+
+// numericTextRe matches an optionally-signed integer or decimal. Numeric
+// predicates guard the ::numeric cast behind it so a non-numeric stored value
+// is skipped rather than erroring the whole query.
+const numericTextRe = `^-?[0-9]+(\.[0-9]+)?$`
+
+// predicateCond compiles a FieldPredicate (Q3) into a parameterized SQL
+// condition plus the ordered args it introduces. base is len(args) before the
+// args are appended, so the first placeholder is $base+1. The metadata key and
+// every value are bound as parameters (never string-interpolated) to avoid
+// injection. Predicates are validated in the service, so the ops here are known
+// and numeric values already parse.
+func predicateCond(p semantic.FieldPredicate, base int) (string, []any) {
+	keyIdx := base + 1
+	valIdx := base + 2
+	switch p.Op {
+	case semantic.PredEQ:
+		return fmt.Sprintf("metadata->>$%d = $%d", keyIdx, valIdx), []any{p.Key, p.Values[0]}
+	case semantic.PredNEQ:
+		return fmt.Sprintf("metadata->>$%d <> $%d", keyIdx, valIdx), []any{p.Key, p.Values[0]}
+	case semantic.PredIN:
+		return fmt.Sprintf("metadata->>$%d = ANY($%d)", keyIdx, valIdx), []any{p.Key, p.Values}
+	case semantic.PredGT, semantic.PredGTE, semantic.PredLT, semantic.PredLTE:
+		return fmt.Sprintf(
+			"(metadata->>$%d ~ '%s' AND (metadata->>$%d)::numeric %s $%d::numeric)",
+			keyIdx, numericTextRe, keyIdx, sqlNumericOp(p.Op), valIdx,
+		), []any{p.Key, p.Values[0]}
+	default:
+		return "false", nil // unreachable: validated upstream
+	}
+}
+
+func sqlNumericOp(op semantic.PredicateOp) string {
+	switch op {
+	case semantic.PredGT:
+		return ">"
+	case semantic.PredGTE:
+		return ">="
+	case semantic.PredLT:
+		return "<"
+	case semantic.PredLTE:
+		return "<="
+	}
+	return ""
 }
 
 func ensureSchema(ctx context.Context, pool *pgxpool.Pool, table string, dim int) error {

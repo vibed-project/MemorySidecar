@@ -22,6 +22,74 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// PredicateOp is the comparison in a FieldPredicate. EQ/NEQ/IN compare the
+// metadata value as a string; GT/GTE/LT/LTE compare it numerically — both the
+// predicate value and the stored field must parse as numbers, otherwise the
+// record does not match (never an error).
+type PredicateOp int32
+
+const (
+	PredicateOp_PREDICATE_OP_UNSPECIFIED PredicateOp = 0
+	PredicateOp_PREDICATE_OP_EQ          PredicateOp = 1
+	PredicateOp_PREDICATE_OP_NEQ         PredicateOp = 2
+	PredicateOp_PREDICATE_OP_GT          PredicateOp = 3
+	PredicateOp_PREDICATE_OP_GTE         PredicateOp = 4
+	PredicateOp_PREDICATE_OP_LT          PredicateOp = 5
+	PredicateOp_PREDICATE_OP_LTE         PredicateOp = 6
+	PredicateOp_PREDICATE_OP_IN          PredicateOp = 7
+)
+
+// Enum value maps for PredicateOp.
+var (
+	PredicateOp_name = map[int32]string{
+		0: "PREDICATE_OP_UNSPECIFIED",
+		1: "PREDICATE_OP_EQ",
+		2: "PREDICATE_OP_NEQ",
+		3: "PREDICATE_OP_GT",
+		4: "PREDICATE_OP_GTE",
+		5: "PREDICATE_OP_LT",
+		6: "PREDICATE_OP_LTE",
+		7: "PREDICATE_OP_IN",
+	}
+	PredicateOp_value = map[string]int32{
+		"PREDICATE_OP_UNSPECIFIED": 0,
+		"PREDICATE_OP_EQ":          1,
+		"PREDICATE_OP_NEQ":         2,
+		"PREDICATE_OP_GT":          3,
+		"PREDICATE_OP_GTE":         4,
+		"PREDICATE_OP_LT":          5,
+		"PREDICATE_OP_LTE":         6,
+		"PREDICATE_OP_IN":          7,
+	}
+)
+
+func (x PredicateOp) Enum() *PredicateOp {
+	p := new(PredicateOp)
+	*p = x
+	return p
+}
+
+func (x PredicateOp) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PredicateOp) Descriptor() protoreflect.EnumDescriptor {
+	return file_memsidecar_semantic_v1_semantic_proto_enumTypes[0].Descriptor()
+}
+
+func (PredicateOp) Type() protoreflect.EnumType {
+	return &file_memsidecar_semantic_v1_semantic_proto_enumTypes[0]
+}
+
+func (x PredicateOp) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PredicateOp.Descriptor instead.
+func (PredicateOp) EnumDescriptor() ([]byte, []int) {
+	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{0}
+}
+
 // ExpireAction selects what Expire does to each matched record.
 type ExpireAction int32
 
@@ -62,11 +130,11 @@ func (x ExpireAction) String() string {
 }
 
 func (ExpireAction) Descriptor() protoreflect.EnumDescriptor {
-	return file_memsidecar_semantic_v1_semantic_proto_enumTypes[0].Descriptor()
+	return file_memsidecar_semantic_v1_semantic_proto_enumTypes[1].Descriptor()
 }
 
 func (ExpireAction) Type() protoreflect.EnumType {
-	return &file_memsidecar_semantic_v1_semantic_proto_enumTypes[0]
+	return &file_memsidecar_semantic_v1_semantic_proto_enumTypes[1]
 }
 
 func (x ExpireAction) Number() protoreflect.EnumNumber {
@@ -75,7 +143,7 @@ func (x ExpireAction) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ExpireAction.Descriptor instead.
 func (ExpireAction) EnumDescriptor() ([]byte, []int) {
-	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{0}
+	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{1}
 }
 
 type Record struct {
@@ -379,7 +447,10 @@ type SearchRequest struct {
 	// entity, so seed ids drop straight into a traversal — the orchestration
 	// stays in the agent; the sidecar performs no traversal here (ADR-0002 §8).
 	// Overrides include_payload / include_vector.
-	IdsOnly       bool `protobuf:"varint,10,opt,name=ids_only,json=idsOnly,proto3" json:"ids_only,omitempty"`
+	IdsOnly bool `protobuf:"varint,10,opt,name=ids_only,json=idsOnly,proto3" json:"ids_only,omitempty"`
+	// Structured metadata predicates — ranges and set membership beyond the
+	// exact-match `filter` map. ANDed with each other and with `filter`.
+	Predicates    []*FieldPredicate `protobuf:"bytes,11,rep,name=predicates,proto3" json:"predicates,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -484,6 +555,76 @@ func (x *SearchRequest) GetIdsOnly() bool {
 	return false
 }
 
+func (x *SearchRequest) GetPredicates() []*FieldPredicate {
+	if x != nil {
+		return x.Predicates
+	}
+	return nil
+}
+
+// FieldPredicate filters on a single metadata key. EQ/NEQ/GT/GTE/LT/LTE take
+// exactly one value; IN takes one or more (matches if the field equals any of
+// them). A record matches only when the key is present and the comparison holds.
+type FieldPredicate struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Op            PredicateOp            `protobuf:"varint,2,opt,name=op,proto3,enum=memsidecar.semantic.v1.PredicateOp" json:"op,omitempty"`
+	Values        []string               `protobuf:"bytes,3,rep,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FieldPredicate) Reset() {
+	*x = FieldPredicate{}
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FieldPredicate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FieldPredicate) ProtoMessage() {}
+
+func (x *FieldPredicate) ProtoReflect() protoreflect.Message {
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FieldPredicate.ProtoReflect.Descriptor instead.
+func (*FieldPredicate) Descriptor() ([]byte, []int) {
+	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *FieldPredicate) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *FieldPredicate) GetOp() PredicateOp {
+	if x != nil {
+		return x.Op
+	}
+	return PredicateOp_PREDICATE_OP_UNSPECIFIED
+}
+
+func (x *FieldPredicate) GetValues() []string {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
 type SearchResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Hits          []*Hit                 `protobuf:"bytes,1,rep,name=hits,proto3" json:"hits,omitempty"`
@@ -493,7 +634,7 @@ type SearchResponse struct {
 
 func (x *SearchResponse) Reset() {
 	*x = SearchResponse{}
-	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[4]
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -505,7 +646,7 @@ func (x *SearchResponse) String() string {
 func (*SearchResponse) ProtoMessage() {}
 
 func (x *SearchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[4]
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -518,7 +659,7 @@ func (x *SearchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchResponse.ProtoReflect.Descriptor instead.
 func (*SearchResponse) Descriptor() ([]byte, []int) {
-	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{4}
+	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SearchResponse) GetHits() []*Hit {
@@ -539,7 +680,7 @@ type Hit struct {
 
 func (x *Hit) Reset() {
 	*x = Hit{}
-	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[5]
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -551,7 +692,7 @@ func (x *Hit) String() string {
 func (*Hit) ProtoMessage() {}
 
 func (x *Hit) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[5]
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -564,7 +705,7 @@ func (x *Hit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Hit.ProtoReflect.Descriptor instead.
 func (*Hit) Descriptor() ([]byte, []int) {
-	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{5}
+	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Hit) GetRecord() *Record {
@@ -594,7 +735,7 @@ type DeleteRequest struct {
 
 func (x *DeleteRequest) Reset() {
 	*x = DeleteRequest{}
-	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[6]
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -606,7 +747,7 @@ func (x *DeleteRequest) String() string {
 func (*DeleteRequest) ProtoMessage() {}
 
 func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[6]
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -619,7 +760,7 @@ func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRequest) Descriptor() ([]byte, []int) {
-	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{6}
+	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *DeleteRequest) GetNamespace() string {
@@ -652,7 +793,7 @@ type DeleteResponse struct {
 
 func (x *DeleteResponse) Reset() {
 	*x = DeleteResponse{}
-	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[7]
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -664,7 +805,7 @@ func (x *DeleteResponse) String() string {
 func (*DeleteResponse) ProtoMessage() {}
 
 func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[7]
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -677,7 +818,7 @@ func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteResponse.ProtoReflect.Descriptor instead.
 func (*DeleteResponse) Descriptor() ([]byte, []int) {
-	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{7}
+	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *DeleteResponse) GetExisted() bool {
@@ -703,7 +844,7 @@ type ExpireRequest struct {
 
 func (x *ExpireRequest) Reset() {
 	*x = ExpireRequest{}
-	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[8]
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -715,7 +856,7 @@ func (x *ExpireRequest) String() string {
 func (*ExpireRequest) ProtoMessage() {}
 
 func (x *ExpireRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[8]
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -728,7 +869,7 @@ func (x *ExpireRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExpireRequest.ProtoReflect.Descriptor instead.
 func (*ExpireRequest) Descriptor() ([]byte, []int) {
-	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{8}
+	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ExpireRequest) GetNamespace() string {
@@ -769,7 +910,7 @@ type ExpireResponse struct {
 
 func (x *ExpireResponse) Reset() {
 	*x = ExpireResponse{}
-	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[9]
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -781,7 +922,7 @@ func (x *ExpireResponse) String() string {
 func (*ExpireResponse) ProtoMessage() {}
 
 func (x *ExpireResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[9]
+	mi := &file_memsidecar_semantic_v1_semantic_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -794,7 +935,7 @@ func (x *ExpireResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExpireResponse.ProtoReflect.Descriptor instead.
 func (*ExpireResponse) Descriptor() ([]byte, []int) {
-	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{9}
+	return file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ExpireResponse) GetAffected() uint64 {
@@ -839,7 +980,7 @@ const file_memsidecar_semantic_v1_semantic_proto_rawDesc = "" +
 	"\arecords\x18\x02 \x03(\v2\x1e.memsidecar.semantic.v1.RecordR\arecords\">\n" +
 	"\x0eUpsertResponse\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\x12\x1a\n" +
-	"\bversions\x18\x02 \x03(\x04R\bversions\"\xd7\x03\n" +
+	"\bversions\x18\x02 \x03(\x04R\bversions\"\x9f\x04\n" +
 	"\rSearchRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x1d\n" +
 	"\n" +
@@ -852,10 +993,17 @@ const file_memsidecar_semantic_v1_semantic_proto_rawDesc = "" +
 	"\x05as_of\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x04asOf\x12/\n" +
 	"\x13include_invalidated\x18\t \x01(\bR\x12includeInvalidated\x12\x19\n" +
 	"\bids_only\x18\n" +
-	" \x01(\bR\aidsOnly\x1a9\n" +
+	" \x01(\bR\aidsOnly\x12F\n" +
+	"\n" +
+	"predicates\x18\v \x03(\v2&.memsidecar.semantic.v1.FieldPredicateR\n" +
+	"predicates\x1a9\n" +
 	"\vFilterEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"A\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"o\n" +
+	"\x0eFieldPredicate\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x123\n" +
+	"\x02op\x18\x02 \x01(\x0e2#.memsidecar.semantic.v1.PredicateOpR\x02op\x12\x16\n" +
+	"\x06values\x18\x03 \x03(\tR\x06values\"A\n" +
 	"\x0eSearchResponse\x12/\n" +
 	"\x04hits\x18\x01 \x03(\v2\x1b.memsidecar.semantic.v1.HitR\x04hits\"S\n" +
 	"\x03Hit\x126\n" +
@@ -876,7 +1024,16 @@ const file_memsidecar_semantic_v1_semantic_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\",\n" +
 	"\x0eExpireResponse\x12\x1a\n" +
-	"\baffected\x18\x01 \x01(\x04R\baffected*\x89\x01\n" +
+	"\baffected\x18\x01 \x01(\x04R\baffected*\xc1\x01\n" +
+	"\vPredicateOp\x12\x1c\n" +
+	"\x18PREDICATE_OP_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fPREDICATE_OP_EQ\x10\x01\x12\x14\n" +
+	"\x10PREDICATE_OP_NEQ\x10\x02\x12\x13\n" +
+	"\x0fPREDICATE_OP_GT\x10\x03\x12\x14\n" +
+	"\x10PREDICATE_OP_GTE\x10\x04\x12\x13\n" +
+	"\x0fPREDICATE_OP_LT\x10\x05\x12\x14\n" +
+	"\x10PREDICATE_OP_LTE\x10\x06\x12\x13\n" +
+	"\x0fPREDICATE_OP_IN\x10\a*\x89\x01\n" +
 	"\fExpireAction\x12\x1d\n" +
 	"\x19EXPIRE_ACTION_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18EXPIRE_ACTION_INVALIDATE\x10\x01\x12\x1d\n" +
@@ -901,51 +1058,55 @@ func file_memsidecar_semantic_v1_semantic_proto_rawDescGZIP() []byte {
 	return file_memsidecar_semantic_v1_semantic_proto_rawDescData
 }
 
-var file_memsidecar_semantic_v1_semantic_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_memsidecar_semantic_v1_semantic_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_memsidecar_semantic_v1_semantic_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_memsidecar_semantic_v1_semantic_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_memsidecar_semantic_v1_semantic_proto_goTypes = []any{
-	(ExpireAction)(0),             // 0: memsidecar.semantic.v1.ExpireAction
-	(*Record)(nil),                // 1: memsidecar.semantic.v1.Record
-	(*UpsertRequest)(nil),         // 2: memsidecar.semantic.v1.UpsertRequest
-	(*UpsertResponse)(nil),        // 3: memsidecar.semantic.v1.UpsertResponse
-	(*SearchRequest)(nil),         // 4: memsidecar.semantic.v1.SearchRequest
-	(*SearchResponse)(nil),        // 5: memsidecar.semantic.v1.SearchResponse
-	(*Hit)(nil),                   // 6: memsidecar.semantic.v1.Hit
-	(*DeleteRequest)(nil),         // 7: memsidecar.semantic.v1.DeleteRequest
-	(*DeleteResponse)(nil),        // 8: memsidecar.semantic.v1.DeleteResponse
-	(*ExpireRequest)(nil),         // 9: memsidecar.semantic.v1.ExpireRequest
-	(*ExpireResponse)(nil),        // 10: memsidecar.semantic.v1.ExpireResponse
-	nil,                           // 11: memsidecar.semantic.v1.Record.MetadataEntry
-	nil,                           // 12: memsidecar.semantic.v1.SearchRequest.FilterEntry
-	nil,                           // 13: memsidecar.semantic.v1.ExpireRequest.FilterEntry
-	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
+	(PredicateOp)(0),              // 0: memsidecar.semantic.v1.PredicateOp
+	(ExpireAction)(0),             // 1: memsidecar.semantic.v1.ExpireAction
+	(*Record)(nil),                // 2: memsidecar.semantic.v1.Record
+	(*UpsertRequest)(nil),         // 3: memsidecar.semantic.v1.UpsertRequest
+	(*UpsertResponse)(nil),        // 4: memsidecar.semantic.v1.UpsertResponse
+	(*SearchRequest)(nil),         // 5: memsidecar.semantic.v1.SearchRequest
+	(*FieldPredicate)(nil),        // 6: memsidecar.semantic.v1.FieldPredicate
+	(*SearchResponse)(nil),        // 7: memsidecar.semantic.v1.SearchResponse
+	(*Hit)(nil),                   // 8: memsidecar.semantic.v1.Hit
+	(*DeleteRequest)(nil),         // 9: memsidecar.semantic.v1.DeleteRequest
+	(*DeleteResponse)(nil),        // 10: memsidecar.semantic.v1.DeleteResponse
+	(*ExpireRequest)(nil),         // 11: memsidecar.semantic.v1.ExpireRequest
+	(*ExpireResponse)(nil),        // 12: memsidecar.semantic.v1.ExpireResponse
+	nil,                           // 13: memsidecar.semantic.v1.Record.MetadataEntry
+	nil,                           // 14: memsidecar.semantic.v1.SearchRequest.FilterEntry
+	nil,                           // 15: memsidecar.semantic.v1.ExpireRequest.FilterEntry
+	(*timestamppb.Timestamp)(nil), // 16: google.protobuf.Timestamp
 }
 var file_memsidecar_semantic_v1_semantic_proto_depIdxs = []int32{
-	11, // 0: memsidecar.semantic.v1.Record.metadata:type_name -> memsidecar.semantic.v1.Record.MetadataEntry
-	14, // 1: memsidecar.semantic.v1.Record.created_at:type_name -> google.protobuf.Timestamp
-	14, // 2: memsidecar.semantic.v1.Record.valid_from:type_name -> google.protobuf.Timestamp
-	14, // 3: memsidecar.semantic.v1.Record.valid_to:type_name -> google.protobuf.Timestamp
-	14, // 4: memsidecar.semantic.v1.Record.deleted_at:type_name -> google.protobuf.Timestamp
-	1,  // 5: memsidecar.semantic.v1.UpsertRequest.records:type_name -> memsidecar.semantic.v1.Record
-	12, // 6: memsidecar.semantic.v1.SearchRequest.filter:type_name -> memsidecar.semantic.v1.SearchRequest.FilterEntry
-	14, // 7: memsidecar.semantic.v1.SearchRequest.as_of:type_name -> google.protobuf.Timestamp
-	6,  // 8: memsidecar.semantic.v1.SearchResponse.hits:type_name -> memsidecar.semantic.v1.Hit
-	1,  // 9: memsidecar.semantic.v1.Hit.record:type_name -> memsidecar.semantic.v1.Record
-	13, // 10: memsidecar.semantic.v1.ExpireRequest.filter:type_name -> memsidecar.semantic.v1.ExpireRequest.FilterEntry
-	0,  // 11: memsidecar.semantic.v1.ExpireRequest.action:type_name -> memsidecar.semantic.v1.ExpireAction
-	2,  // 12: memsidecar.semantic.v1.Semantic.Upsert:input_type -> memsidecar.semantic.v1.UpsertRequest
-	4,  // 13: memsidecar.semantic.v1.Semantic.Search:input_type -> memsidecar.semantic.v1.SearchRequest
-	7,  // 14: memsidecar.semantic.v1.Semantic.Delete:input_type -> memsidecar.semantic.v1.DeleteRequest
-	9,  // 15: memsidecar.semantic.v1.Semantic.Expire:input_type -> memsidecar.semantic.v1.ExpireRequest
-	3,  // 16: memsidecar.semantic.v1.Semantic.Upsert:output_type -> memsidecar.semantic.v1.UpsertResponse
-	5,  // 17: memsidecar.semantic.v1.Semantic.Search:output_type -> memsidecar.semantic.v1.SearchResponse
-	8,  // 18: memsidecar.semantic.v1.Semantic.Delete:output_type -> memsidecar.semantic.v1.DeleteResponse
-	10, // 19: memsidecar.semantic.v1.Semantic.Expire:output_type -> memsidecar.semantic.v1.ExpireResponse
-	16, // [16:20] is the sub-list for method output_type
-	12, // [12:16] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	13, // 0: memsidecar.semantic.v1.Record.metadata:type_name -> memsidecar.semantic.v1.Record.MetadataEntry
+	16, // 1: memsidecar.semantic.v1.Record.created_at:type_name -> google.protobuf.Timestamp
+	16, // 2: memsidecar.semantic.v1.Record.valid_from:type_name -> google.protobuf.Timestamp
+	16, // 3: memsidecar.semantic.v1.Record.valid_to:type_name -> google.protobuf.Timestamp
+	16, // 4: memsidecar.semantic.v1.Record.deleted_at:type_name -> google.protobuf.Timestamp
+	2,  // 5: memsidecar.semantic.v1.UpsertRequest.records:type_name -> memsidecar.semantic.v1.Record
+	14, // 6: memsidecar.semantic.v1.SearchRequest.filter:type_name -> memsidecar.semantic.v1.SearchRequest.FilterEntry
+	16, // 7: memsidecar.semantic.v1.SearchRequest.as_of:type_name -> google.protobuf.Timestamp
+	6,  // 8: memsidecar.semantic.v1.SearchRequest.predicates:type_name -> memsidecar.semantic.v1.FieldPredicate
+	0,  // 9: memsidecar.semantic.v1.FieldPredicate.op:type_name -> memsidecar.semantic.v1.PredicateOp
+	8,  // 10: memsidecar.semantic.v1.SearchResponse.hits:type_name -> memsidecar.semantic.v1.Hit
+	2,  // 11: memsidecar.semantic.v1.Hit.record:type_name -> memsidecar.semantic.v1.Record
+	15, // 12: memsidecar.semantic.v1.ExpireRequest.filter:type_name -> memsidecar.semantic.v1.ExpireRequest.FilterEntry
+	1,  // 13: memsidecar.semantic.v1.ExpireRequest.action:type_name -> memsidecar.semantic.v1.ExpireAction
+	3,  // 14: memsidecar.semantic.v1.Semantic.Upsert:input_type -> memsidecar.semantic.v1.UpsertRequest
+	5,  // 15: memsidecar.semantic.v1.Semantic.Search:input_type -> memsidecar.semantic.v1.SearchRequest
+	9,  // 16: memsidecar.semantic.v1.Semantic.Delete:input_type -> memsidecar.semantic.v1.DeleteRequest
+	11, // 17: memsidecar.semantic.v1.Semantic.Expire:input_type -> memsidecar.semantic.v1.ExpireRequest
+	4,  // 18: memsidecar.semantic.v1.Semantic.Upsert:output_type -> memsidecar.semantic.v1.UpsertResponse
+	7,  // 19: memsidecar.semantic.v1.Semantic.Search:output_type -> memsidecar.semantic.v1.SearchResponse
+	10, // 20: memsidecar.semantic.v1.Semantic.Delete:output_type -> memsidecar.semantic.v1.DeleteResponse
+	12, // 21: memsidecar.semantic.v1.Semantic.Expire:output_type -> memsidecar.semantic.v1.ExpireResponse
+	18, // [18:22] is the sub-list for method output_type
+	14, // [14:18] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_memsidecar_semantic_v1_semantic_proto_init() }
@@ -959,8 +1120,8 @@ func file_memsidecar_semantic_v1_semantic_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_memsidecar_semantic_v1_semantic_proto_rawDesc), len(file_memsidecar_semantic_v1_semantic_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   13,
+			NumEnums:      2,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

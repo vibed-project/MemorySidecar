@@ -4,6 +4,7 @@ package semantictest
 
 import (
 	"context"
+	"sort"
 	"testing"
 	"time"
 
@@ -39,6 +40,7 @@ func RunConformance(t *testing.T, h Harness) {
 		{"Search_FilterMetadata", testSearchFilterMetadata},
 		{"Search_IncludeFlags", testSearchIncludeFlags},
 		{"Search_IDsOnly", testSearchIDsOnly},
+		{"Search_Predicates", testSearchPredicates},
 		{"Delete", testDelete},
 		{"Lifecycle_ValidityWindow", testLifecycleValidityWindow},
 		{"Lifecycle_SoftDeleteVisibility", testLifecycleSoftDeleteVisibility},
@@ -160,6 +162,58 @@ func testSearchIDsOnly(t *testing.T, h Harness) {
 		assert.Nil(t, hit.Record.Vector)
 		assert.Nil(t, hit.Record.Metadata)
 	}
+}
+
+// testSearchPredicates checks the structured metadata predicates (Q3): each
+// operator, numeric vs string comparison, AND with the exact-match Filter map,
+// and that a numeric op against a non-numeric stored value simply excludes the
+// record instead of erroring. All records share one vector, so results are
+// order-independent and compared as sorted id sets.
+func testSearchPredicates(t *testing.T, h Harness) {
+	d := h.New(t, Dim)
+	ctx := context.Background()
+	require.NoError(t, d.Upsert(ctx, []semantic.Record{
+		{ID: "a", Vector: axisVector(0), Metadata: map[string]string{"status": "open", "priority": "5"}},
+		{ID: "b", Vector: axisVector(0), Metadata: map[string]string{"status": "closed", "priority": "2"}},
+		{ID: "c", Vector: axisVector(0), Metadata: map[string]string{"status": "open", "priority": "8", "note": "abc"}},
+	}))
+
+	ids := func(opts semantic.SearchOptions) []string {
+		opts.QueryVector = axisVector(0)
+		opts.TopK = 10
+		hits, err := d.Search(ctx, opts)
+		require.NoError(t, err)
+		got := make([]string, 0, len(hits))
+		for _, hh := range hits {
+			got = append(got, hh.Record.ID)
+		}
+		sort.Strings(got)
+		return got
+	}
+	pred := func(key string, op semantic.PredicateOp, vals ...string) semantic.FieldPredicate {
+		return semantic.FieldPredicate{Key: key, Op: op, Values: vals}
+	}
+
+	assert.Equal(t, []string{"a", "c"},
+		ids(semantic.SearchOptions{Predicates: []semantic.FieldPredicate{pred("status", semantic.PredEQ, "open")}}))
+	assert.Equal(t, []string{"a", "c"},
+		ids(semantic.SearchOptions{Predicates: []semantic.FieldPredicate{pred("status", semantic.PredNEQ, "closed")}}))
+	assert.Equal(t, []string{"a", "c"},
+		ids(semantic.SearchOptions{Predicates: []semantic.FieldPredicate{pred("priority", semantic.PredGT, "2")}}))
+	// Numeric window 3..7 → only a (priority 5).
+	assert.Equal(t, []string{"a"}, ids(semantic.SearchOptions{Predicates: []semantic.FieldPredicate{
+		pred("priority", semantic.PredGTE, "3"), pred("priority", semantic.PredLTE, "7"),
+	}}))
+	assert.Equal(t, []string{"b"},
+		ids(semantic.SearchOptions{Predicates: []semantic.FieldPredicate{pred("status", semantic.PredIN, "closed", "archived")}}))
+	// AND with the exact-match Filter map: open AND priority>5 → c.
+	assert.Equal(t, []string{"c"}, ids(semantic.SearchOptions{
+		Filter:     map[string]string{"status": "open"},
+		Predicates: []semantic.FieldPredicate{pred("priority", semantic.PredGT, "5")},
+	}))
+	// Numeric op against a non-numeric stored value ("note":"abc") excludes the
+	// record cleanly; missing-key records are excluded too → empty.
+	assert.Empty(t, ids(semantic.SearchOptions{Predicates: []semantic.FieldPredicate{pred("note", semantic.PredGT, "1")}}))
 }
 
 func testDelete(t *testing.T, h Harness) {

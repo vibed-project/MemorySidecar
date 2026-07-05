@@ -103,6 +103,33 @@ message SearchRequest {
   // stays in the agent; the sidecar performs no traversal here (ADR-0002 §8).
   // Overrides include_payload / include_vector.
   bool ids_only = 10;
+  // Structured metadata predicates — ranges and set membership beyond the
+  // exact-match `filter` map. ANDed with each other and with `filter`.
+  repeated FieldPredicate predicates = 11;
+}
+
+// PredicateOp is the comparison in a FieldPredicate. EQ/NEQ/IN compare the
+// metadata value as a string; GT/GTE/LT/LTE compare it numerically — both the
+// predicate value and the stored field must parse as numbers, otherwise the
+// record does not match (never an error).
+enum PredicateOp {
+  PREDICATE_OP_UNSPECIFIED = 0;
+  PREDICATE_OP_EQ = 1;
+  PREDICATE_OP_NEQ = 2;
+  PREDICATE_OP_GT = 3;
+  PREDICATE_OP_GTE = 4;
+  PREDICATE_OP_LT = 5;
+  PREDICATE_OP_LTE = 6;
+  PREDICATE_OP_IN = 7;
+}
+
+// FieldPredicate filters on a single metadata key. EQ/NEQ/GT/GTE/LT/LTE take
+// exactly one value; IN takes one or more (matches if the field equals any of
+// them). A record matches only when the key is present and the comparison holds.
+message FieldPredicate {
+  string key = 1;
+  PredicateOp op = 2;
+  repeated string values = 3;
 }
 
 message SearchResponse {
