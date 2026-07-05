@@ -57,7 +57,8 @@ Each rule has:
   the limiter.
 - `max` (cap only) — per-request magnitude bounds: `top_k` (semantic
   Search), `limit` (scan/range page size), `depth` / `fan_out` (graph
-  traversal). At least one bound is required;
+  traversal), `rerank_candidate_k` (semantic hybrid per-lane candidate
+  depth). At least one bound is required;
   a zero bound imposes no limit on that dimension. This is how bounded
   traversal is enforced server-side (ADR-0002 §8).
 

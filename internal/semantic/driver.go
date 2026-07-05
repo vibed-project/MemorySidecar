@@ -55,11 +55,19 @@ type Hit struct {
 
 // SearchOptions narrows a Search call.
 type SearchOptions struct {
-	QueryVector    []float32
-	TopK           uint32
-	Filter         map[string]string
-	IncludePayload bool
-	IncludeVector  bool
+	QueryVector []float32
+	// QueryText is the raw query for the sparse lane (SPARSE/HYBRID). Empty for
+	// pure dense search.
+	QueryText string
+	// Mode selects the retrieval lanes (Q4). Zero value is ModeDense.
+	Mode SearchMode
+	// RerankCandidateK is the per-lane candidate depth for SPARSE/HYBRID before
+	// fusion. 0 uses DefaultRerankCandidateK.
+	RerankCandidateK uint32
+	TopK             uint32
+	Filter           map[string]string
+	IncludePayload   bool
+	IncludeVector    bool
 	// IDsOnly makes Search return only each hit's record id and score, skipping
 	// content, payload, vector, and metadata (and the storage load they cost).
 	// It overrides IncludePayload/IncludeVector. See ADR-0002 §8 / plan Q5.

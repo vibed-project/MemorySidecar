@@ -188,6 +188,9 @@ type NamespaceConfig struct {
 	Name     string         `koanf:"name"`
 	Backend  string         `koanf:"backend"`
 	Embedder EmbedderConfig `koanf:"embedder"` // semantic only
+	// TextSearch is the Postgres full-text config for the sparse lane of hybrid
+	// search (semantic only; e.g. "simple" or "english"). Empty = "simple".
+	TextSearch string `koanf:"text_search"`
 }
 
 // EmbedderConfig configures the embedder bound to a semantic namespace.

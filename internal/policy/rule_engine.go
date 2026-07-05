@@ -129,6 +129,8 @@ func capExceeded(r *Rule, h HookCtx) string {
 		return fmt.Sprintf("depth %d exceeds cap %d", h.Depth, r.Max.Depth)
 	case r.Max.FanOut > 0 && h.FanOut > r.Max.FanOut:
 		return fmt.Sprintf("fan_out %d exceeds cap %d", h.FanOut, r.Max.FanOut)
+	case r.Max.RerankCandidateK > 0 && h.RerankCandidateK > r.Max.RerankCandidateK:
+		return fmt.Sprintf("rerank_candidate_k %d exceeds cap %d", h.RerankCandidateK, r.Max.RerankCandidateK)
 	}
 	return ""
 }

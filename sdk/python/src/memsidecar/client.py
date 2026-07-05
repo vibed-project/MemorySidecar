@@ -186,6 +186,8 @@ class _Semantic:
         predicates: Optional[Iterable[semantic_pb2.FieldPredicate]] = None,
         created_after: Optional[_dt.datetime] = None,
         created_before: Optional[_dt.datetime] = None,
+        mode: "semantic_pb2.SearchMode.ValueType" = semantic_pb2.SEARCH_MODE_UNSPECIFIED,
+        rerank_candidate_k: int = 0,
         include_payload: bool = False, include_vector: bool = False,
         as_of: Optional[_dt.datetime] = None, include_invalidated: bool = False,
         ids_only: bool = False,
@@ -201,10 +203,16 @@ class _Semantic:
         ``ids_only=True`` returns just each hit's ``record.id`` and ``score``
         (content/payload/vector/metadata are skipped) — a cheap seed set whose
         ids you can expand through the graph block's ``neighbors``/``traverse``.
+
+        ``mode`` selects the retrieval lanes: ``SEARCH_MODE_DENSE`` (default,
+        vector-only), ``SEARCH_MODE_SPARSE`` (lexical), or ``SEARCH_MODE_HYBRID``
+        (RRF fusion of both). SPARSE and HYBRID require ``query_text``;
+        ``rerank_candidate_k`` bounds each lane's candidate depth before fusion.
         """
         req = semantic_pb2.SearchRequest(
             namespace=namespace, query_text=query_text, top_k=top_k,
             filter=dict(filter or {}), predicates=list(predicates or []),
+            mode=mode, rerank_candidate_k=rerank_candidate_k,
             include_payload=include_payload, include_vector=include_vector,
             include_invalidated=include_invalidated, ids_only=ids_only,
         )

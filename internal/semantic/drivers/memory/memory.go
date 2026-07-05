@@ -191,11 +191,29 @@ func (d *Driver) Expire(_ context.Context, opts semantic.ExpireOptions) (uint64,
 	return affected, nil
 }
 
+// candidate is a filter-passing record with its per-lane relevance signals and
+// its response copy (snapshotted under the lock to avoid holding map pointers).
+type candidate struct {
+	rec     semantic.Record // response copy (already stripped per opts)
+	cosine  float32
+	overlap int
+}
+
 func (d *Driver) Search(_ context.Context, opts semantic.SearchOptions) ([]semantic.Hit, error) {
-	if len(opts.QueryVector) != d.dim {
+	dense := opts.Mode == semantic.ModeDense || opts.Mode == semantic.ModeHybrid
+	sparse := opts.Mode == semantic.ModeSparse || opts.Mode == semantic.ModeHybrid
+	if dense && len(opts.QueryVector) != d.dim {
 		return nil, fmt.Errorf("semantic/memory: query dim %d != namespace dim %d", len(opts.QueryVector), d.dim)
 	}
-	q := normalised(opts.QueryVector)
+
+	var q []float32
+	if dense {
+		q = normalised(opts.QueryVector)
+	}
+	var queryTerms map[string]struct{}
+	if sparse {
+		queryTerms = semantic.Tokenize(opts.QueryText)
+	}
 
 	asOf := opts.AsOf
 	if asOf.IsZero() {
@@ -203,7 +221,7 @@ func (d *Driver) Search(_ context.Context, opts semantic.SearchOptions) ([]seman
 	}
 
 	d.mu.RLock()
-	hits := make([]semantic.Hit, 0, len(d.byID))
+	cands := make([]candidate, 0, len(d.byID))
 	for _, r := range d.byID {
 		if !matchesFilter(r.Metadata, opts.Filter) {
 			continue
@@ -220,19 +238,122 @@ func (d *Driver) Search(_ context.Context, opts semantic.SearchOptions) ([]seman
 		if !opts.IncludeInvalidated && !liveAt(r, asOf) {
 			continue
 		}
-		hits = append(hits, semantic.Hit{
-			Record: shallowCopyForResponse(*r, opts),
-			Score:  cosine(q, r.Vector),
-		})
+		c := candidate{rec: shallowCopyForResponse(*r, opts)}
+		if dense {
+			c.cosine = cosine(q, r.Vector)
+		}
+		if sparse {
+			c.overlap = semantic.TermOverlap(queryTerms, r.Content)
+		}
+		cands = append(cands, c)
 	}
 	d.mu.RUnlock()
 
-	sort.Slice(hits, func(i, j int) bool { return hits[i].Score > hits[j].Score })
-	k := int(opts.TopK)
-	if k > 0 && k < len(hits) {
-		hits = hits[:k]
+	topK := int(opts.TopK)
+	switch opts.Mode {
+	case semantic.ModeSparse:
+		return rankSparse(cands, topK), nil
+	case semantic.ModeHybrid:
+		return rankHybrid(cands, rerankK(opts), topK), nil
+	default:
+		return rankDense(cands, topK), nil
 	}
-	return hits, nil
+}
+
+func rerankK(opts semantic.SearchOptions) int {
+	if opts.RerankCandidateK > 0 {
+		return int(opts.RerankCandidateK)
+	}
+	return semantic.DefaultRerankCandidateK
+}
+
+// rankDense preserves the original dense behaviour: order by cosine descending,
+// then truncate to topK.
+func rankDense(cands []candidate, topK int) []semantic.Hit {
+	sort.Slice(cands, func(i, j int) bool { return cands[i].cosine > cands[j].cosine })
+	if topK > 0 && topK < len(cands) {
+		cands = cands[:topK]
+	}
+	hits := make([]semantic.Hit, len(cands))
+	for i, c := range cands {
+		hits[i] = semantic.Hit{Record: c.rec, Score: c.cosine}
+	}
+	return hits
+}
+
+// rankSparse keeps only term-overlapping records, ordered by overlap descending
+// (ties broken by id for determinism), and scores hits by the overlap count.
+func rankSparse(cands []candidate, topK int) []semantic.Hit {
+	matched := make([]candidate, 0, len(cands))
+	for _, c := range cands {
+		if c.overlap > 0 {
+			matched = append(matched, c)
+		}
+	}
+	sortByOverlap(matched)
+	if topK > 0 && topK < len(matched) {
+		matched = matched[:topK]
+	}
+	hits := make([]semantic.Hit, len(matched))
+	for i, c := range matched {
+		hits[i] = semantic.Hit{Record: c.rec, Score: float32(c.overlap)}
+	}
+	return hits
+}
+
+// rankHybrid fuses the dense and sparse lanes with Reciprocal Rank Fusion.
+func rankHybrid(cands []candidate, rerank, topK int) []semantic.Hit {
+	dense := make([]candidate, len(cands))
+	copy(dense, cands)
+	sort.Slice(dense, func(i, j int) bool {
+		if dense[i].cosine != dense[j].cosine {
+			return dense[i].cosine > dense[j].cosine
+		}
+		return dense[i].rec.ID < dense[j].rec.ID
+	})
+	denseIDs := topIDs(dense, rerank)
+
+	sparse := make([]candidate, 0, len(cands))
+	for _, c := range cands {
+		if c.overlap > 0 {
+			sparse = append(sparse, c)
+		}
+	}
+	sortByOverlap(sparse)
+	sparseIDs := topIDs(sparse, rerank)
+
+	fusedIDs, scores := semantic.RRFFuse([][]string{denseIDs, sparseIDs}, topK)
+	byID := make(map[string]semantic.Record, len(cands))
+	for _, c := range cands {
+		byID[c.rec.ID] = c.rec
+	}
+	hits := make([]semantic.Hit, 0, len(fusedIDs))
+	for _, id := range fusedIDs {
+		if rec, ok := byID[id]; ok {
+			hits = append(hits, semantic.Hit{Record: rec, Score: float32(scores[id])})
+		}
+	}
+	return hits
+}
+
+func sortByOverlap(cs []candidate) {
+	sort.Slice(cs, func(i, j int) bool {
+		if cs[i].overlap != cs[j].overlap {
+			return cs[i].overlap > cs[j].overlap
+		}
+		return cs[i].rec.ID < cs[j].rec.ID
+	})
+}
+
+func topIDs(cs []candidate, k int) []string {
+	if k > 0 && k < len(cs) {
+		cs = cs[:k]
+	}
+	ids := make([]string, len(cs))
+	for i, c := range cs {
+		ids[i] = c.rec.ID
+	}
+	return ids
 }
 
 func (d *Driver) Delete(_ context.Context, id string, opts semantic.DeleteOptions) (bool, error) {

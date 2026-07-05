@@ -55,16 +55,17 @@ func PolicyUnary(eng policy.Engine) grpc.UnaryServerInterceptor {
 			return handler(ctx, req)
 		}
 		cap, _ := auth.FromContext(ctx)
-		topK, limit, depth, fanOut := costFromRequest(req)
+		cost := costFromRequest(req)
 		hook := policy.HookCtx{
-			Capability: cap,
-			Block:      mapping.block,
-			Op:         mapping.op,
-			Namespace:  namespaceFromRequest(req),
-			TopK:       topK,
-			Limit:      limit,
-			Depth:      depth,
-			FanOut:     fanOut,
+			Capability:       cap,
+			Block:            mapping.block,
+			Op:               mapping.op,
+			Namespace:        namespaceFromRequest(req),
+			TopK:             cost.topK,
+			Limit:            cost.limit,
+			Depth:            cost.depth,
+			FanOut:           cost.fanOut,
+			RerankCandidateK: cost.rerankK,
 		}
 		dec := decide(ctx, eng, mapping.write, hook)
 		if !dec.Allow {
@@ -101,22 +102,30 @@ func policyCode(dec policy.Decision) codes.Code {
 	return codes.PermissionDenied
 }
 
+type requestCost struct {
+	topK, limit, depth, fanOut, rerankK uint32
+}
+
 // costFromRequest extracts request-magnitude fields for cap rules from request
 // types that expose them. Missing getters yield zero (no bound applies).
-func costFromRequest(req any) (topK, limit, depth, fanOut uint32) {
+func costFromRequest(req any) requestCost {
+	var c requestCost
 	if r, ok := req.(interface{ GetTopK() uint32 }); ok {
-		topK = r.GetTopK()
+		c.topK = r.GetTopK()
 	}
 	if r, ok := req.(interface{ GetLimit() uint32 }); ok {
-		limit = r.GetLimit()
+		c.limit = r.GetLimit()
 	}
 	if r, ok := req.(interface{ GetDepth() uint32 }); ok {
-		depth = r.GetDepth()
+		c.depth = r.GetDepth()
 	}
 	if r, ok := req.(interface{ GetFanOut() uint32 }); ok {
-		fanOut = r.GetFanOut()
+		c.fanOut = r.GetFanOut()
 	}
-	return
+	if r, ok := req.(interface{ GetRerankCandidateK() uint32 }); ok {
+		c.rerankK = r.GetRerankCandidateK()
+	}
+	return c
 }
 
 func decide(ctx context.Context, eng policy.Engine, write bool, hook policy.HookCtx) policy.Decision {

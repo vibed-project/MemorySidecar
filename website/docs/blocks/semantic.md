@@ -55,7 +55,12 @@ message SearchRequest {
   repeated FieldPredicate predicates = 11;   // ranges / set membership, ANDed with filter
   google.protobuf.Timestamp created_after = 12;   // exclusive lower bound on created_at
   google.protobuf.Timestamp created_before = 13;  // exclusive upper bound on created_at
+  SearchMode mode = 14;              // DENSE (default) | SPARSE | HYBRID
+  uint32 rerank_candidate_k = 15;    // per-lane candidate depth for SPARSE/HYBRID
 }
+
+// DENSE is vector-only; SPARSE is lexical only; HYBRID fuses both with RRF.
+enum SearchMode { SEARCH_MODE_UNSPECIFIED = 0; SEARCH_MODE_DENSE = 1; SEARCH_MODE_SPARSE = 2; SEARCH_MODE_HYBRID = 3; }
 
 // EQ/NEQ/IN compare as strings; GT/GTE/LT/LTE compare numerically.
 message FieldPredicate {
@@ -141,6 +146,7 @@ namespaces:
   - block: semantic
     name: notes
     backend: pg-main
+    text_search: english           # optional; FTS language for hybrid's sparse lane (default simple)
     embedder:
       provider: openai
       model: text-embedding-3-small
@@ -248,6 +254,16 @@ n = m.semantic.expire("notes", filter={"topic": "food"},
   "recent" recall. **No recency scoring** is added: results are still ordered
   by similarity, and the agent re-ranks by the `created_at` already returned.
   Postgres backs the window with a btree index on `created_at`.
+- `mode` opts into hybrid retrieval. **DENSE** (default) is vector-only and
+  unchanged. **SPARSE** is lexical only (Postgres full-text `ts_rank`; the
+  memory driver uses term overlap). **HYBRID** runs both lanes to
+  `rerank_candidate_k` candidates each and fuses them with **Reciprocal Rank
+  Fusion** (k=60) — deterministic, no cross-encoder or learned reranker. SPARSE
+  and HYBRID require `query_text`; HYBRID's `Hit.score` is the fused RRF score,
+  not cosine. `rerank_candidate_k` is bounded by the policy `cap` effect. The
+  sparse lane's language comes from the namespace's `text_search` config
+  (default `simple`); Postgres backs it with a GIN index on the content's
+  `tsvector`.
 - Lifecycle timestamps and `supersedes`/`source` are **stored, not interpreted**:
   the sidecar never decides what supersedes what or resolves entities — the agent
   supplies the values (consistent with the ADR non-goals).

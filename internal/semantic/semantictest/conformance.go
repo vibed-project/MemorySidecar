@@ -42,6 +42,7 @@ func RunConformance(t *testing.T, h Harness) {
 		{"Search_IDsOnly", testSearchIDsOnly},
 		{"Search_Predicates", testSearchPredicates},
 		{"Search_TimeWindow", testSearchTimeWindow},
+		{"Search_Hybrid", testSearchHybrid},
 		{"Delete", testDelete},
 		{"Lifecycle_ValidityWindow", testLifecycleValidityWindow},
 		{"Lifecycle_SoftDeleteVisibility", testLifecycleSoftDeleteVisibility},
@@ -255,6 +256,48 @@ func testSearchTimeWindow(t *testing.T, h Harness) {
 	assert.Equal(t, []string{"b", "c"}, inWindow(ts["a"], time.Time{})) // after excludes a
 	assert.Equal(t, []string{"a", "b"}, inWindow(time.Time{}, ts["c"])) // before excludes c
 	assert.Equal(t, []string{"b"}, inWindow(ts["a"], ts["c"]))          // open window → only b
+}
+
+// testSearchHybrid checks the Q4 modes: SPARSE finds a lexical-only match,
+// DENSE (vector-only) misses a doc that is far in vector space, and HYBRID
+// surfaces it via RRF — deterministically.
+func testSearchHybrid(t *testing.T, h Harness) {
+	d := h.New(t, Dim)
+	ctx := context.Background()
+	require.NoError(t, d.Upsert(ctx, []semantic.Record{
+		{ID: "near1", Vector: axisVector(0), Content: "common shared filler words here"},
+		{ID: "near2", Vector: axisVector(1), Content: "common shared filler words there"},
+		{ID: "target", Vector: axisVector(5), Content: "obscure zzqq marker token"},
+	}))
+
+	ids := func(opts semantic.SearchOptions) []string {
+		hits, err := d.Search(ctx, opts)
+		require.NoError(t, err)
+		out := make([]string, len(hits))
+		for i, hh := range hits {
+			out[i] = hh.Record.ID
+		}
+		return out
+	}
+
+	qVec := axisVector(0) // nearest to near1/near2, far from target
+	qText := "zzqq"       // appears only in target
+
+	// DENSE top-2 is vector-only: the two nearest, target excluded.
+	dense := ids(semantic.SearchOptions{Mode: semantic.ModeDense, QueryVector: qVec, TopK: 2})
+	assert.NotContains(t, dense, "target")
+
+	// SPARSE is lexical-only: only target contains "zzqq".
+	sparse := ids(semantic.SearchOptions{Mode: semantic.ModeSparse, QueryText: qText, TopK: 10})
+	assert.Equal(t, []string{"target"}, sparse)
+
+	// HYBRID fuses both lanes, so target surfaces despite being far in vectors.
+	hybrid := ids(semantic.SearchOptions{Mode: semantic.ModeHybrid, QueryVector: qVec, QueryText: qText, TopK: 3})
+	assert.Contains(t, hybrid, "target")
+
+	// Deterministic across identical calls.
+	hybrid2 := ids(semantic.SearchOptions{Mode: semantic.ModeHybrid, QueryVector: qVec, QueryText: qText, TopK: 3})
+	assert.Equal(t, hybrid, hybrid2)
 }
 
 func testDelete(t *testing.T, h Harness) {
