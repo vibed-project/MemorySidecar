@@ -30,9 +30,14 @@ type Event struct {
 	Cursor    uint64                 `protobuf:"varint,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	Timestamp *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	// Application-defined event type, e.g. "tool_call", "message", "observation".
-	Type          string            `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
-	Payload       []byte            `protobuf:"bytes,5,opt,name=payload,proto3" json:"payload,omitempty"`
-	Metadata      map[string]string `protobuf:"bytes,6,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Type     string            `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
+	Payload  []byte            `protobuf:"bytes,5,opt,name=payload,proto3" json:"payload,omitempty"`
+	Metadata map[string]string `protobuf:"bytes,6,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Speaker/actor of the event, e.g. "user", "assistant", "tool". First-class
+	// so conversations can be grouped without a metadata convention.
+	Role string `protobuf:"bytes,7,opt,name=role,proto3" json:"role,omitempty"`
+	// Conversation/session grouping key. First-class for cross-session assembly.
+	SessionId     string `protobuf:"bytes,8,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -109,12 +114,28 @@ func (x *Event) GetMetadata() map[string]string {
 	return nil
 }
 
+func (x *Event) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *Event) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
 type AppendRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Namespace     string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
 	Payload       []byte                 `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
 	Metadata      map[string]string      `protobuf:"bytes,4,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Role          string                 `protobuf:"bytes,5,opt,name=role,proto3" json:"role,omitempty"`
+	SessionId     string                 `protobuf:"bytes,6,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -177,6 +198,20 @@ func (x *AppendRequest) GetMetadata() map[string]string {
 	return nil
 }
 
+func (x *AppendRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *AppendRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
 type AppendResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Event         *Event                 `protobuf:"bytes,1,opt,name=event,proto3" json:"event,omitempty"`
@@ -231,7 +266,13 @@ type RangeRequest struct {
 	// 0 = unbounded.
 	Limit uint32 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
 	// false = ascending by cursor; true = descending.
-	Reverse       bool `protobuf:"varint,5,opt,name=reverse,proto3" json:"reverse,omitempty"`
+	Reverse bool `protobuf:"varint,5,opt,name=reverse,proto3" json:"reverse,omitempty"`
+	// Optional event-timestamp window, combined (AND) with the cursor bounds.
+	// after_time is an exclusive lower bound (timestamp > after_time); before_time
+	// is an exclusive upper bound (timestamp < before_time). Unset = unbounded on
+	// that side. Backed by a (namespace, timestamp) index.
+	AfterTime     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=after_time,json=afterTime,proto3" json:"after_time,omitempty"`
+	BeforeTime    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=before_time,json=beforeTime,proto3" json:"before_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -301,6 +342,20 @@ func (x *RangeRequest) GetReverse() bool {
 	return false
 }
 
+func (x *RangeRequest) GetAfterTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AfterTime
+	}
+	return nil
+}
+
+func (x *RangeRequest) GetBeforeTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.BeforeTime
+	}
+	return nil
+}
+
 type TailRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Namespace string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
@@ -368,33 +423,43 @@ var File_memsidecar_episodic_v1_episodic_proto protoreflect.FileDescriptor
 
 const file_memsidecar_episodic_v1_episodic_proto_rawDesc = "" +
 	"\n" +
-	"%memsidecar/episodic/v1/episodic.proto\x12\x16memsidecar.episodic.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9d\x02\n" +
+	"%memsidecar/episodic/v1/episodic.proto\x12\x16memsidecar.episodic.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd0\x02\n" +
 	"\x05Event\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\x04R\x06cursor\x128\n" +
 	"\ttimestamp\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x12\n" +
 	"\x04type\x18\x04 \x01(\tR\x04type\x12\x18\n" +
 	"\apayload\x18\x05 \x01(\fR\apayload\x12G\n" +
-	"\bmetadata\x18\x06 \x03(\v2+.memsidecar.episodic.v1.Event.MetadataEntryR\bmetadata\x1a;\n" +
+	"\bmetadata\x18\x06 \x03(\v2+.memsidecar.episodic.v1.Event.MetadataEntryR\bmetadata\x12\x12\n" +
+	"\x04role\x18\a \x01(\tR\x04role\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\b \x01(\tR\tsessionId\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe9\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x9c\x02\n" +
 	"\rAppendRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x18\n" +
 	"\apayload\x18\x03 \x01(\fR\apayload\x12O\n" +
-	"\bmetadata\x18\x04 \x03(\v23.memsidecar.episodic.v1.AppendRequest.MetadataEntryR\bmetadata\x1a;\n" +
+	"\bmetadata\x18\x04 \x03(\v23.memsidecar.episodic.v1.AppendRequest.MetadataEntryR\bmetadata\x12\x12\n" +
+	"\x04role\x18\x05 \x01(\tR\x04role\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x06 \x01(\tR\tsessionId\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"E\n" +
 	"\x0eAppendResponse\x123\n" +
-	"\x05event\x18\x01 \x01(\v2\x1d.memsidecar.episodic.v1.EventR\x05event\"\xa4\x01\n" +
+	"\x05event\x18\x01 \x01(\v2\x1d.memsidecar.episodic.v1.EventR\x05event\"\x9c\x02\n" +
 	"\fRangeRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
 	"\fafter_cursor\x18\x02 \x01(\x04R\vafterCursor\x12#\n" +
 	"\rbefore_cursor\x18\x03 \x01(\x04R\fbeforeCursor\x12\x14\n" +
 	"\x05limit\x18\x04 \x01(\rR\x05limit\x12\x18\n" +
-	"\areverse\x18\x05 \x01(\bR\areverse\"}\n" +
+	"\areverse\x18\x05 \x01(\bR\areverse\x129\n" +
+	"\n" +
+	"after_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tafterTime\x12;\n" +
+	"\vbefore_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"beforeTime\"}\n" +
 	"\vTailRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
 	"\fafter_cursor\x18\x02 \x01(\x04R\vafterCursor\x12-\n" +
@@ -433,17 +498,19 @@ var file_memsidecar_episodic_v1_episodic_proto_depIdxs = []int32{
 	5, // 1: memsidecar.episodic.v1.Event.metadata:type_name -> memsidecar.episodic.v1.Event.MetadataEntry
 	6, // 2: memsidecar.episodic.v1.AppendRequest.metadata:type_name -> memsidecar.episodic.v1.AppendRequest.MetadataEntry
 	0, // 3: memsidecar.episodic.v1.AppendResponse.event:type_name -> memsidecar.episodic.v1.Event
-	1, // 4: memsidecar.episodic.v1.Episodic.Append:input_type -> memsidecar.episodic.v1.AppendRequest
-	3, // 5: memsidecar.episodic.v1.Episodic.Range:input_type -> memsidecar.episodic.v1.RangeRequest
-	4, // 6: memsidecar.episodic.v1.Episodic.Tail:input_type -> memsidecar.episodic.v1.TailRequest
-	2, // 7: memsidecar.episodic.v1.Episodic.Append:output_type -> memsidecar.episodic.v1.AppendResponse
-	0, // 8: memsidecar.episodic.v1.Episodic.Range:output_type -> memsidecar.episodic.v1.Event
-	0, // 9: memsidecar.episodic.v1.Episodic.Tail:output_type -> memsidecar.episodic.v1.Event
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	7, // 4: memsidecar.episodic.v1.RangeRequest.after_time:type_name -> google.protobuf.Timestamp
+	7, // 5: memsidecar.episodic.v1.RangeRequest.before_time:type_name -> google.protobuf.Timestamp
+	1, // 6: memsidecar.episodic.v1.Episodic.Append:input_type -> memsidecar.episodic.v1.AppendRequest
+	3, // 7: memsidecar.episodic.v1.Episodic.Range:input_type -> memsidecar.episodic.v1.RangeRequest
+	4, // 8: memsidecar.episodic.v1.Episodic.Tail:input_type -> memsidecar.episodic.v1.TailRequest
+	2, // 9: memsidecar.episodic.v1.Episodic.Append:output_type -> memsidecar.episodic.v1.AppendResponse
+	0, // 10: memsidecar.episodic.v1.Episodic.Range:output_type -> memsidecar.episodic.v1.Event
+	0, // 11: memsidecar.episodic.v1.Episodic.Tail:output_type -> memsidecar.episodic.v1.Event
+	9, // [9:12] is the sub-list for method output_type
+	6, // [6:9] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_memsidecar_episodic_v1_episodic_proto_init() }

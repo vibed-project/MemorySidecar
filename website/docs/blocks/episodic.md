@@ -22,7 +22,13 @@ service Episodic {
 
 - Server assigns each event a UUID `id` and a monotonic `cursor` per
   namespace (the first event has `cursor=1`).
-- `Range` supports `after_cursor` / `before_cursor` / `limit` / `reverse`.
+- Events carry first-class `role` (speaker/actor — `user` / `assistant` /
+  `tool` / …) and `session_id` grouping keys, so conversation grouping and
+  cross-session assembly aren't a metadata convention.
+- `Range` supports `after_cursor` / `before_cursor` / `limit` / `reverse`,
+  plus an exclusive event-timestamp window (`after_time` / `before_time`)
+  that ANDs with the cursor bounds — backed by a `(namespace, timestamp)`
+  index.
 - `Tail` either starts at the live edge (`include_historical=false`) or
   replays everything with `cursor > after_cursor` before transitioning to
   live.
@@ -32,7 +38,7 @@ service Episodic {
 | Driver | Notes |
 |---|---|
 | `memory` | Per-namespace slice + channel fan-out for live `Tail`. Slow tailers are detached with `ErrSubscriberLagged` rather than blocking writers. |
-| `postgres` | Single table `episodic_events`, `(namespace, cursor)` unique. Cursor assignment is atomic via `SELECT MAX … FOR UPDATE` inside a `Serializable` tx. `Tail` polls every 250 ms (configurable). |
+| `postgres` | Single table `episodic_events`, `(namespace, cursor)` unique, with `role`/`session_id` columns and a `(namespace, timestamp)` index for time-windowed `Range`. Cursor assignment is atomic via a per-namespace counter row (`INSERT … ON CONFLICT DO UPDATE`). `Tail` polls every 250 ms (configurable). |
 
 ## Configuration
 
@@ -61,8 +67,16 @@ grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
 ## Python example
 
 ```python
-ev = m.episodic.append("events", "tool_call", b"...")
-print(ev.cursor)  # 1, 2, 3, …
+import datetime as dt
+
+ev = m.episodic.append("events", "message", b"hi",
+                       role="user", session_id="sess-1")
+print(ev.cursor, ev.role, ev.session_id)  # 1 user sess-1
+
+# Replay just this hour's events (exclusive time window, ANDs with cursor bounds).
+since = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=1)
+for ev in m.episodic.range("events", after_time=since):
+    handle(ev)
 
 # History replay + live tail in one stream.
 for ev in m.episodic.tail("events", include_historical=True, after_cursor=0):

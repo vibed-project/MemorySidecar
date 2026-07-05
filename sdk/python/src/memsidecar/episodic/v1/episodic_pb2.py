@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n%memsidecar/episodic/v1/episodic.proto\x12\x16memsidecar.episodic.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9d\x02\n\x05\x45vent\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n\x06\x63ursor\x18\x02 \x01(\x04R\x06\x63ursor\x12\x38\n\ttimestamp\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\ttimestamp\x12\x12\n\x04type\x18\x04 \x01(\tR\x04type\x12\x18\n\x07payload\x18\x05 \x01(\x0cR\x07payload\x12G\n\x08metadata\x18\x06 \x03(\x0b\x32+.memsidecar.episodic.v1.Event.MetadataEntryR\x08metadata\x1a;\n\rMetadataEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"\xe9\x01\n\rAppendRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x12\n\x04type\x18\x02 \x01(\tR\x04type\x12\x18\n\x07payload\x18\x03 \x01(\x0cR\x07payload\x12O\n\x08metadata\x18\x04 \x03(\x0b\x32\x33.memsidecar.episodic.v1.AppendRequest.MetadataEntryR\x08metadata\x1a;\n\rMetadataEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"E\n\x0e\x41ppendResponse\x12\x33\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x1d.memsidecar.episodic.v1.EventR\x05\x65vent\"\xa4\x01\n\x0cRangeRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n\x0c\x61\x66ter_cursor\x18\x02 \x01(\x04R\x0b\x61\x66terCursor\x12#\n\rbefore_cursor\x18\x03 \x01(\x04R\x0c\x62\x65\x66oreCursor\x12\x14\n\x05limit\x18\x04 \x01(\rR\x05limit\x12\x18\n\x07reverse\x18\x05 \x01(\x08R\x07reverse\"}\n\x0bTailRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n\x0c\x61\x66ter_cursor\x18\x02 \x01(\x04R\x0b\x61\x66terCursor\x12-\n\x12include_historical\x18\x03 \x01(\x08R\x11includeHistorical2\x81\x02\n\x08\x45pisodic\x12W\n\x06\x41ppend\x12%.memsidecar.episodic.v1.AppendRequest\x1a&.memsidecar.episodic.v1.AppendResponse\x12N\n\x05Range\x12$.memsidecar.episodic.v1.RangeRequest\x1a\x1d.memsidecar.episodic.v1.Event0\x01\x12L\n\x04Tail\x12#.memsidecar.episodic.v1.TailRequest\x1a\x1d.memsidecar.episodic.v1.Event0\x01\x42\x32Z0memsidecar/gen/memsidecar/episodic/v1;episodicv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n%memsidecar/episodic/v1/episodic.proto\x12\x16memsidecar.episodic.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd0\x02\n\x05\x45vent\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n\x06\x63ursor\x18\x02 \x01(\x04R\x06\x63ursor\x12\x38\n\ttimestamp\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\ttimestamp\x12\x12\n\x04type\x18\x04 \x01(\tR\x04type\x12\x18\n\x07payload\x18\x05 \x01(\x0cR\x07payload\x12G\n\x08metadata\x18\x06 \x03(\x0b\x32+.memsidecar.episodic.v1.Event.MetadataEntryR\x08metadata\x12\x12\n\x04role\x18\x07 \x01(\tR\x04role\x12\x1d\n\nsession_id\x18\x08 \x01(\tR\tsessionId\x1a;\n\rMetadataEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"\x9c\x02\n\rAppendRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x12\n\x04type\x18\x02 \x01(\tR\x04type\x12\x18\n\x07payload\x18\x03 \x01(\x0cR\x07payload\x12O\n\x08metadata\x18\x04 \x03(\x0b\x32\x33.memsidecar.episodic.v1.AppendRequest.MetadataEntryR\x08metadata\x12\x12\n\x04role\x18\x05 \x01(\tR\x04role\x12\x1d\n\nsession_id\x18\x06 \x01(\tR\tsessionId\x1a;\n\rMetadataEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"E\n\x0e\x41ppendResponse\x12\x33\n\x05\x65vent\x18\x01 \x01(\x0b\x32\x1d.memsidecar.episodic.v1.EventR\x05\x65vent\"\x9c\x02\n\x0cRangeRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n\x0c\x61\x66ter_cursor\x18\x02 \x01(\x04R\x0b\x61\x66terCursor\x12#\n\rbefore_cursor\x18\x03 \x01(\x04R\x0c\x62\x65\x66oreCursor\x12\x14\n\x05limit\x18\x04 \x01(\rR\x05limit\x12\x18\n\x07reverse\x18\x05 \x01(\x08R\x07reverse\x12\x39\n\nafter_time\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tafterTime\x12;\n\x0b\x62\x65\x66ore_time\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\nbeforeTime\"}\n\x0bTailRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n\x0c\x61\x66ter_cursor\x18\x02 \x01(\x04R\x0b\x61\x66terCursor\x12-\n\x12include_historical\x18\x03 \x01(\x08R\x11includeHistorical2\x81\x02\n\x08\x45pisodic\x12W\n\x06\x41ppend\x12%.memsidecar.episodic.v1.AppendRequest\x1a&.memsidecar.episodic.v1.AppendResponse\x12N\n\x05Range\x12$.memsidecar.episodic.v1.RangeRequest\x1a\x1d.memsidecar.episodic.v1.Event0\x01\x12L\n\x04Tail\x12#.memsidecar.episodic.v1.TailRequest\x1a\x1d.memsidecar.episodic.v1.Event0\x01\x42\x32Z0memsidecar/gen/memsidecar/episodic/v1;episodicv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -38,19 +38,19 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_APPENDREQUEST_METADATAENTRY']._loaded_options = None
   _globals['_APPENDREQUEST_METADATAENTRY']._serialized_options = b'8\001'
   _globals['_EVENT']._serialized_start=99
-  _globals['_EVENT']._serialized_end=384
-  _globals['_EVENT_METADATAENTRY']._serialized_start=325
-  _globals['_EVENT_METADATAENTRY']._serialized_end=384
-  _globals['_APPENDREQUEST']._serialized_start=387
-  _globals['_APPENDREQUEST']._serialized_end=620
-  _globals['_APPENDREQUEST_METADATAENTRY']._serialized_start=325
-  _globals['_APPENDREQUEST_METADATAENTRY']._serialized_end=384
-  _globals['_APPENDRESPONSE']._serialized_start=622
-  _globals['_APPENDRESPONSE']._serialized_end=691
-  _globals['_RANGEREQUEST']._serialized_start=694
-  _globals['_RANGEREQUEST']._serialized_end=858
-  _globals['_TAILREQUEST']._serialized_start=860
-  _globals['_TAILREQUEST']._serialized_end=985
-  _globals['_EPISODIC']._serialized_start=988
-  _globals['_EPISODIC']._serialized_end=1245
+  _globals['_EVENT']._serialized_end=435
+  _globals['_EVENT_METADATAENTRY']._serialized_start=376
+  _globals['_EVENT_METADATAENTRY']._serialized_end=435
+  _globals['_APPENDREQUEST']._serialized_start=438
+  _globals['_APPENDREQUEST']._serialized_end=722
+  _globals['_APPENDREQUEST_METADATAENTRY']._serialized_start=376
+  _globals['_APPENDREQUEST_METADATAENTRY']._serialized_end=435
+  _globals['_APPENDRESPONSE']._serialized_start=724
+  _globals['_APPENDRESPONSE']._serialized_end=793
+  _globals['_RANGEREQUEST']._serialized_start=796
+  _globals['_RANGEREQUEST']._serialized_end=1080
+  _globals['_TAILREQUEST']._serialized_start=1082
+  _globals['_TAILREQUEST']._serialized_end=1207
+  _globals['_EPISODIC']._serialized_start=1210
+  _globals['_EPISODIC']._serialized_end=1467
 # @@protoc_insertion_point(module_scope)

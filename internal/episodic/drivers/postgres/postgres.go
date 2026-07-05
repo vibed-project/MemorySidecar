@@ -148,13 +148,15 @@ func (d *Driver) Append(ctx context.Context, namespace string, opts episodic.App
 		outType      string
 		outPayload   []byte
 		outMeta      []byte
+		outRole      string
+		outSession   string
 	)
 	err = tx.QueryRow(ctx, `
-		INSERT INTO episodic_events (namespace, cursor, type, payload, metadata)
-		     VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, cursor, timestamp, type, payload, metadata`,
-		namespace, next, opts.Type, payload, metaBytes,
-	).Scan(&outID, &outCursor, &outTimestamp, &outType, &outPayload, &outMeta)
+		INSERT INTO episodic_events (namespace, cursor, type, payload, metadata, role, session_id)
+		     VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, cursor, timestamp, type, payload, metadata, role, session_id`,
+		namespace, next, opts.Type, payload, metaBytes, opts.Role, opts.SessionID,
+	).Scan(&outID, &outCursor, &outTimestamp, &outType, &outPayload, &outMeta, &outRole, &outSession)
 	if err != nil {
 		return episodic.Event{}, fmt.Errorf("episodic/postgres: insert: %w", err)
 	}
@@ -168,6 +170,8 @@ func (d *Driver) Append(ctx context.Context, namespace string, opts episodic.App
 		Timestamp: outTimestamp,
 		Type:      outType,
 		Payload:   outPayload,
+		Role:      outRole,
+		SessionID: outSession,
 	}
 	if len(outMeta) > 0 {
 		_ = json.Unmarshal(outMeta, &ev.Metadata)
@@ -178,7 +182,7 @@ func (d *Driver) Append(ctx context.Context, namespace string, opts episodic.App
 func (d *Driver) Range(ctx context.Context, namespace string, opts episodic.RangeOptions, yield func(episodic.Event) error) error {
 	args := []any{namespace}
 	q := strings.Builder{}
-	q.WriteString(`SELECT id, cursor, timestamp, type, payload, metadata
+	q.WriteString(`SELECT id, cursor, timestamp, type, payload, metadata, role, session_id
 	                 FROM episodic_events
 	                WHERE namespace = $1`)
 	if opts.AfterCursor > 0 {
@@ -188,6 +192,14 @@ func (d *Driver) Range(ctx context.Context, namespace string, opts episodic.Rang
 	if opts.BeforeCursor > 0 {
 		args = append(args, int64(opts.BeforeCursor))
 		fmt.Fprintf(&q, " AND cursor < $%d", len(args))
+	}
+	if !opts.AfterTime.IsZero() {
+		args = append(args, opts.AfterTime)
+		fmt.Fprintf(&q, " AND timestamp > $%d", len(args))
+	}
+	if !opts.BeforeTime.IsZero() {
+		args = append(args, opts.BeforeTime)
+		fmt.Fprintf(&q, " AND timestamp < $%d", len(args))
 	}
 	if opts.Reverse {
 		q.WriteString(" ORDER BY cursor DESC")
@@ -269,7 +281,7 @@ func scanEvent(rows pgx.Rows) (episodic.Event, error) {
 		cursor    int64
 		metaBytes []byte
 	)
-	err := rows.Scan(&ev.ID, &cursor, &ev.Timestamp, &ev.Type, &ev.Payload, &metaBytes)
+	err := rows.Scan(&ev.ID, &cursor, &ev.Timestamp, &ev.Type, &ev.Payload, &metaBytes, &ev.Role, &ev.SessionID)
 	if err != nil {
 		return episodic.Event{}, fmt.Errorf("episodic/postgres: scan: %w", err)
 	}

@@ -122,10 +122,11 @@ class _Episodic:
     def append(
         self, namespace: str, type: str, payload: bytes = b"",
         *, metadata: Optional[Mapping[str, str]] = None,
+        role: str = "", session_id: str = "",
     ) -> episodic_pb2.Event:
         resp = self._stub.Append(episodic_pb2.AppendRequest(
             namespace=namespace, type=type, payload=payload,
-            metadata=dict(metadata or {}),
+            metadata=dict(metadata or {}), role=role, session_id=session_id,
         ))
         return resp.event
 
@@ -133,11 +134,22 @@ class _Episodic:
         self, namespace: str, *,
         after_cursor: int = 0, before_cursor: int = 0,
         limit: int = 0, reverse: bool = False,
+        after_time: Optional[_dt.datetime] = None,
+        before_time: Optional[_dt.datetime] = None,
     ) -> Iterator[episodic_pb2.Event]:
+        """Replay events. ``after_time``/``before_time`` add an exclusive
+        event-timestamp window, combined (AND) with the cursor bounds.
+        """
         req = episodic_pb2.RangeRequest(
             namespace=namespace, after_cursor=after_cursor,
             before_cursor=before_cursor, limit=limit, reverse=reverse,
         )
+        at = _to_timestamp(after_time)
+        if at is not None:
+            req.after_time.CopyFrom(at)
+        bt = _to_timestamp(before_time)
+        if bt is not None:
+            req.before_time.CopyFrom(bt)
         return iter(self._stub.Range(req))
 
     def tail(
