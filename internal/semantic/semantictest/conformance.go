@@ -264,9 +264,15 @@ func testSearchTimeWindow(t *testing.T, h Harness) {
 func testSearchHybrid(t *testing.T, h Harness) {
 	d := h.New(t, Dim)
 	ctx := context.Background()
+	// near1 (axis 0) is closest to the query; near2 (axis 0 + axis 1) is the next
+	// closest; target (axis 5) is vector-far — but only target carries the query
+	// term. The cosines are distinct (1 > ~0.71 > 0) so the DENSE ranking is
+	// unambiguous (no tie for the top-K boundary to resolve non-deterministically).
+	near2 := make([]float32, Dim)
+	near2[0], near2[1] = 1, 1
 	require.NoError(t, d.Upsert(ctx, []semantic.Record{
 		{ID: "near1", Vector: axisVector(0), Content: "common shared filler words here"},
-		{ID: "near2", Vector: axisVector(1), Content: "common shared filler words there"},
+		{ID: "near2", Vector: near2, Content: "common shared filler words there"},
 		{ID: "target", Vector: axisVector(5), Content: "obscure zzqq marker token"},
 	}))
 
@@ -280,23 +286,24 @@ func testSearchHybrid(t *testing.T, h Harness) {
 		return out
 	}
 
-	qVec := axisVector(0) // nearest to near1/near2, far from target
+	qVec := axisVector(0) // near1 (cos 1) > near2 (cos ~0.71) > target (cos 0)
 	qText := "zzqq"       // appears only in target
 
-	// DENSE top-2 is vector-only: the two nearest, target excluded.
-	dense := ids(semantic.SearchOptions{Mode: semantic.ModeDense, QueryVector: qVec, TopK: 2})
-	assert.NotContains(t, dense, "target")
+	// DENSE top-2 is vector-only: the two nearest, target (far) excluded.
+	assert.ElementsMatch(t, []string{"near1", "near2"},
+		ids(semantic.SearchOptions{Mode: semantic.ModeDense, QueryVector: qVec, TopK: 2}))
 
 	// SPARSE is lexical-only: only target contains "zzqq".
-	sparse := ids(semantic.SearchOptions{Mode: semantic.ModeSparse, QueryText: qText, TopK: 10})
-	assert.Equal(t, []string{"target"}, sparse)
+	assert.Equal(t, []string{"target"},
+		ids(semantic.SearchOptions{Mode: semantic.ModeSparse, QueryText: qText, TopK: 10}))
 
-	// HYBRID fuses both lanes, so target surfaces despite being far in vectors.
-	hybrid := ids(semantic.SearchOptions{Mode: semantic.ModeHybrid, QueryVector: qVec, QueryText: qText, TopK: 3})
+	// HYBRID top-2: RRF lifts target (ranked #1 by the sparse lane) above near2,
+	// so it surfaces into the top-2 despite being far in vector space.
+	hybrid := ids(semantic.SearchOptions{Mode: semantic.ModeHybrid, QueryVector: qVec, QueryText: qText, TopK: 2})
 	assert.Contains(t, hybrid, "target")
 
 	// Deterministic across identical calls.
-	hybrid2 := ids(semantic.SearchOptions{Mode: semantic.ModeHybrid, QueryVector: qVec, QueryText: qText, TopK: 3})
+	hybrid2 := ids(semantic.SearchOptions{Mode: semantic.ModeHybrid, QueryVector: qVec, QueryText: qText, TopK: 2})
 	assert.Equal(t, hybrid, hybrid2)
 }
 
