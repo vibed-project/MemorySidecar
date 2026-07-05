@@ -169,8 +169,10 @@ m.graph.delete_edge(ns, "e1")
 construct with `Edge(**{"from": "alice"})` and read it with
 `getattr(edge, "from")` (there is no `from_` alias). Node and edge ids are
 caller-supplied, so they can be shared with `semantic` record ids to compose
-hybrid recall (semantic search → graph expand) in the agent. See
-[Graph](../blocks/graph.md).
+hybrid recall (semantic search → graph expand) in the agent. Seed the graph
+cheaply with `m.semantic.search(ns, query_text=..., ids_only=True)` — it returns
+just `id`+`score`, skipping content/payload/vector — then feed those ids into
+`m.graph.neighbors` / `m.graph.traverse`. See [Graph](../blocks/graph.md).
 
 ## TLS
 

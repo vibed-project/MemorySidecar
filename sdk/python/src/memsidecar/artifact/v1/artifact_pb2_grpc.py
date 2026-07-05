@@ -5,7 +5,7 @@ import grpc
 from memsidecar.artifact.v1 import artifact_pb2 as memsidecar_dot_artifact_dot_v1_dot_artifact__pb2
 
 
-class ArtifactStub(object):
+class ArtifactStub:
     """Artifact provides blob storage with metadata, scoped by namespace.
     Every RPC requires a capability token in the gRPC metadata key
     "x-memsidecar-capability" with value "Bearer <token>".
@@ -44,7 +44,7 @@ class ArtifactStub(object):
                 _registered_method=True)
 
 
-class ArtifactServicer(object):
+class ArtifactServicer:
     """Artifact provides blob storage with metadata, scoped by namespace.
     Every RPC requires a capability token in the gRPC metadata key
     "x-memsidecar-capability" with value "Bearer <token>".
@@ -110,7 +110,7 @@ def add_ArtifactServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class Artifact(object):
+class Artifact:
     """Artifact provides blob storage with metadata, scoped by namespace.
     Every RPC requires a capability token in the gRPC metadata key
     "x-memsidecar-capability" with value "Bearer <token>".

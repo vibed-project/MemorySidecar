@@ -94,6 +94,15 @@ message SearchRequest {
   // tombstoned, expired, and not-yet-valid records. Metadata filtering still
   // applies. For audit and supersession-chain inspection.
   bool include_invalidated = 9;
+  // ids_only returns just each hit's record id and score, skipping content,
+  // payload, vector, and metadata (and the storage load / marshaling they
+  // cost). It builds a cheap seed set for hybrid recall: a semantic Search
+  // selects ids, then the graph block expands them via Neighbors / Traverse.
+  // By convention a semantic record id and a graph node id denote the same
+  // entity, so seed ids drop straight into a traversal — the orchestration
+  // stays in the agent; the sidecar performs no traversal here (ADR-0002 §8).
+  // Overrides include_payload / include_vector.
+  bool ids_only = 10;
 }
 
 message SearchResponse {

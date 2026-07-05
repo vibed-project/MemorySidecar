@@ -175,6 +175,7 @@ func (s *Service) Search(ctx context.Context, req *semanticv1.SearchRequest) (*s
 		IncludeVector:      req.GetIncludeVector(),
 		AsOf:               tsToTime(req.GetAsOf()),
 		IncludeInvalidated: req.GetIncludeInvalidated(),
+		IDsOnly:            req.GetIdsOnly(),
 	})
 	s.instr.backend(ctx, auth.OpSemanticSearch, req.GetNamespace(), time.Since(searchStart))
 	if err != nil {

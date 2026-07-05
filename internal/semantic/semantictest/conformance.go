@@ -38,6 +38,7 @@ func RunConformance(t *testing.T, h Harness) {
 		{"Search_TopKOrdering", testSearchTopKOrdering},
 		{"Search_FilterMetadata", testSearchFilterMetadata},
 		{"Search_IncludeFlags", testSearchIncludeFlags},
+		{"Search_IDsOnly", testSearchIDsOnly},
 		{"Delete", testDelete},
 		{"Lifecycle_ValidityWindow", testLifecycleValidityWindow},
 		{"Lifecycle_SoftDeleteVisibility", testLifecycleSoftDeleteVisibility},
@@ -124,6 +125,41 @@ func testSearchIncludeFlags(t *testing.T, h Harness) {
 	require.Len(t, full, 1)
 	assert.Equal(t, []byte("p"), full[0].Record.Payload)
 	assert.Len(t, full[0].Record.Vector, Dim)
+}
+
+// testSearchIDsOnly checks that IDsOnly returns just id + score — stripping
+// content/payload/vector/metadata even when the include flags are set — while
+// preserving the exact ordering and scores of a full search (plan Q5).
+func testSearchIDsOnly(t *testing.T, h Harness) {
+	d := h.New(t, Dim)
+	ctx := context.Background()
+	require.NoError(t, d.Upsert(ctx, []semantic.Record{
+		{ID: "a", Vector: axisVector(0), Content: "ca", Payload: []byte("pa"), Metadata: map[string]string{"k": "v"}},
+		{ID: "b", Vector: axisVector(1), Content: "cb", Payload: []byte("pb")},
+	}))
+
+	full, err := d.Search(ctx, semantic.SearchOptions{QueryVector: axisVector(0), TopK: 2})
+	require.NoError(t, err)
+	require.Len(t, full, 2)
+
+	ids, err := d.Search(ctx, semantic.SearchOptions{
+		QueryVector:    axisVector(0),
+		TopK:           2,
+		IDsOnly:        true,
+		IncludePayload: true, // overridden by IDsOnly
+		IncludeVector:  true, // overridden by IDsOnly
+	})
+	require.NoError(t, err)
+	require.Len(t, ids, 2)
+
+	for i, hit := range ids {
+		assert.Equal(t, full[i].Record.ID, hit.Record.ID)
+		assert.InDelta(t, full[i].Score, hit.Score, 1e-4)
+		assert.Empty(t, hit.Record.Content)
+		assert.Nil(t, hit.Record.Payload)
+		assert.Nil(t, hit.Record.Vector)
+		assert.Nil(t, hit.Record.Metadata)
+	}
 }
 
 func testDelete(t *testing.T, h Harness) {

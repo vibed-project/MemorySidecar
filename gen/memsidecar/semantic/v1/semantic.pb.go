@@ -371,8 +371,17 @@ type SearchRequest struct {
 	// tombstoned, expired, and not-yet-valid records. Metadata filtering still
 	// applies. For audit and supersession-chain inspection.
 	IncludeInvalidated bool `protobuf:"varint,9,opt,name=include_invalidated,json=includeInvalidated,proto3" json:"include_invalidated,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// ids_only returns just each hit's record id and score, skipping content,
+	// payload, vector, and metadata (and the storage load / marshaling they
+	// cost). It builds a cheap seed set for hybrid recall: a semantic Search
+	// selects ids, then the graph block expands them via Neighbors / Traverse.
+	// By convention a semantic record id and a graph node id denote the same
+	// entity, so seed ids drop straight into a traversal — the orchestration
+	// stays in the agent; the sidecar performs no traversal here (ADR-0002 §8).
+	// Overrides include_payload / include_vector.
+	IdsOnly       bool `protobuf:"varint,10,opt,name=ids_only,json=idsOnly,proto3" json:"ids_only,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SearchRequest) Reset() {
@@ -464,6 +473,13 @@ func (x *SearchRequest) GetAsOf() *timestamppb.Timestamp {
 func (x *SearchRequest) GetIncludeInvalidated() bool {
 	if x != nil {
 		return x.IncludeInvalidated
+	}
+	return false
+}
+
+func (x *SearchRequest) GetIdsOnly() bool {
+	if x != nil {
+		return x.IdsOnly
 	}
 	return false
 }
@@ -823,7 +839,7 @@ const file_memsidecar_semantic_v1_semantic_proto_rawDesc = "" +
 	"\arecords\x18\x02 \x03(\v2\x1e.memsidecar.semantic.v1.RecordR\arecords\">\n" +
 	"\x0eUpsertResponse\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\x12\x1a\n" +
-	"\bversions\x18\x02 \x03(\x04R\bversions\"\xbc\x03\n" +
+	"\bversions\x18\x02 \x03(\x04R\bversions\"\xd7\x03\n" +
 	"\rSearchRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x1d\n" +
 	"\n" +
@@ -834,7 +850,9 @@ const file_memsidecar_semantic_v1_semantic_proto_rawDesc = "" +
 	"\x0finclude_payload\x18\x06 \x01(\bR\x0eincludePayload\x12%\n" +
 	"\x0einclude_vector\x18\a \x01(\bR\rincludeVector\x12/\n" +
 	"\x05as_of\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x04asOf\x12/\n" +
-	"\x13include_invalidated\x18\t \x01(\bR\x12includeInvalidated\x1a9\n" +
+	"\x13include_invalidated\x18\t \x01(\bR\x12includeInvalidated\x12\x19\n" +
+	"\bids_only\x18\n" +
+	" \x01(\bR\aidsOnly\x1a9\n" +
 	"\vFilterEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"A\n" +
