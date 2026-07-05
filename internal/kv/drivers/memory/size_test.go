@@ -34,22 +34,32 @@ func TestSizeCountsKeysPerNamespace(t *testing.T) {
 
 // evictRecorder captures OnEvict callbacks.
 type evictRecorder struct {
-	mu  sync.Mutex
-	got map[string]int
+	mu      sync.Mutex
+	got     map[string]int // namespace -> total evictions (any cause)
+	byCause map[string]int // "namespace/cause" -> evictions
 }
 
-func newEvictRecorder() *evictRecorder { return &evictRecorder{got: map[string]int{}} }
+func newEvictRecorder() *evictRecorder {
+	return &evictRecorder{got: map[string]int{}, byCause: map[string]int{}}
+}
 
-func (e *evictRecorder) hook(ns string, n int) {
+func (e *evictRecorder) hook(ns, cause string, n int) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.got[ns] += n
+	e.byCause[ns+"/"+cause] += n
 }
 
 func (e *evictRecorder) count(ns string) int {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.got[ns]
+}
+
+func (e *evictRecorder) countCause(ns, cause string) int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.byCause[ns+"/"+cause]
 }
 
 func TestEvictionHookOnLazyExpiry(t *testing.T) {
