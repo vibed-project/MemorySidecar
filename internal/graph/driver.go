@@ -39,6 +39,23 @@ type Edge struct {
 	To        string
 	Props     map[string]string
 	CreatedAt time.Time
+	// Bitemporal validity (ADR-0002 Phase 4). The edge holds while
+	// ValidFrom <= t < ValidTo. A zero ValidFrom means "always started"; a zero
+	// ValidTo means "open-ended". Both zero = always valid (back-compat).
+	ValidFrom time.Time
+	ValidTo   time.Time
+}
+
+// ValidAt reports whether the edge is valid at instant t: ValidFrom <= t and
+// t < ValidTo, treating zero bounds as unbounded.
+func (e Edge) ValidAt(t time.Time) bool {
+	if !e.ValidFrom.IsZero() && e.ValidFrom.After(t) {
+		return false // not yet valid
+	}
+	if !e.ValidTo.IsZero() && !e.ValidTo.After(t) {
+		return false // valid_to <= t → expired (exclusive upper bound)
+	}
+	return true
 }
 
 // NeighborOptions narrows a 1-hop Neighbors read. Limit is a bounded value the
@@ -49,6 +66,8 @@ type NeighborOptions struct {
 	Direction  Direction
 	NodeLabels []string // filter returned neighbors; empty = any
 	Limit      uint32
+	// AsOf evaluates edge validity at this instant; zero means now.
+	AsOf time.Time
 }
 
 // TraverseOptions narrows a bounded multi-hop Traverse read. All four bounds
@@ -62,6 +81,8 @@ type TraverseOptions struct {
 	MaxNodes  uint32 // result cap: total nodes
 	MaxEdges  uint32 // result cap: total edges
 	FanOut    uint32 // work cap: incident edges examined per frontier node
+	// AsOf evaluates edge validity at this instant; zero means now.
+	AsOf time.Time
 }
 
 // Subgraph is a Traverse result: the reached nodes and the edges among them.
