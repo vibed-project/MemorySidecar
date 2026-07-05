@@ -11,18 +11,23 @@ agentic systems**. It runs as a co-process to one or more agents and exposes
 a small, opinionated gRPC API over **pluggable backends** for the kinds
 of memory every agent stack ends up reinventing:
 
-| Block | Purpose | Typical backends |
+| Block | What it's for | Typical backends |
 |---|---|---|
-| **kv** | Typed, TTL'd key-value for tool-result caching and scratchpads | Redis, Postgres, in-memory |
-| **episodic** | Append-only log of agent events, messages, tool calls | Postgres, SQLite, Kafka |
-| **semantic** | Embed-and-search over arbitrary records — bitemporal & revisable | pgvector, Qdrant, Pinecone |
-| **artifact** | Blob storage with metadata for generated files | S3, MinIO, local FS |
-| **lease** | Distributed locks for shared-state coordination | Redis, etcd, Postgres advisory locks |
-| **graph** | Typed nodes/edges with bounded relationship traversal | graph DB, Postgres, in-memory |
+| **kv** | Tool-result caching and scratchpads — TTL'd, typed, with an optional heat-based cache tier | Redis, Postgres, in-memory |
+| **episodic** | Append-only event log — messages, tool calls, observations; replayable *and* live-tailable, with first-class roles & sessions | Postgres, SQLite, Kafka |
+| **semantic** | Embed-and-search over records — **bitemporal & revisable**, with hybrid (dense + sparse) retrieval | pgvector, Qdrant, Pinecone |
+| **artifact** | Blob storage with metadata for generated files — streamed in and out | S3, MinIO, local FS |
+| **lease** | Distributed locks with TTL for multi-agent coordination | Redis, etcd, Postgres advisory locks |
+| **graph** | Typed nodes/edges with bounded traversal — **bitemporal**, as-of queryable | graph DB, Postgres, in-memory |
 
 Agents talk to the sidecar; the sidecar talks to the substrate. The analogy
 is Dapr's building-block model, narrowed and specialised to memory for
 agentic workloads.
+
+New here? The [Use cases](./guides/use-cases.md) page is the fastest way to
+see what these blocks let you build — a hot-tier tool cache, a knowledge base
+that stays correct as facts change, hybrid retrieval, a temporal knowledge
+graph, and cost-governed autonomous agents.
 
 ## Why a sidecar
 
@@ -59,6 +64,8 @@ memsidecar moves that plumbing out of the agent and into a sidecar with:
 ## Where to go from here
 
 - New to memsidecar? Start with the [Quickstart](./quickstart.md).
+- Wondering what it's *for*? Skim the [Use cases](./guides/use-cases.md) —
+  problem-first recipes that map real agent needs onto the blocks.
 - Want to understand the model? Read the
   [Architecture](./concepts/architecture.md) page next.
 - Looking for a specific block? Jump straight to
@@ -66,8 +73,3 @@ memsidecar moves that plumbing out of the agent and into a sidecar with:
   [Semantic](./blocks/semantic.md), [Artifact](./blocks/artifact.md),
   [Lease](./blocks/lease.md), or [Graph](./blocks/graph.md).
 - Deploying to Kubernetes? See [Helm](./deploy/helm.md).
-
-The design rationale lives in the ADRs:
-[ADR-0001](./reference/adr-0001.md) (the sidecar + five core blocks),
-[ADR-0002](./reference/adr-0002.md) (the graph block), and
-[ADR-0003](./reference/adr-0003.md) (memory lifecycle primitives).

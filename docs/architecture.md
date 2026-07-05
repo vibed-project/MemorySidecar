@@ -1,10 +1,9 @@
 # Architecture
 
 memsidecar is a co-located process exposing a small, framework-agnostic API
-over pluggable backends for agent memory. The target architecture is described
-in [ADR-0001](decisions/adr-0001-memory-sidecar.md).
+over pluggable backends for agent memory.
 
-This document describes the **walking skeleton**, which now covers all six
+This document describes the **implemented architecture**, which covers all six
 building blocks (`kv`, `episodic`, `semantic`, `artifact`, `lease`, `graph`)
 over pluggable backends. Every block follows the same internal shape, so the
 seams described here are the same for all of them.
@@ -76,7 +75,7 @@ The interceptor chain order is intentional:
 ## Adding a new building block
 
 All six blocks exist today; the most recent, `graph`, is a fully worked
-example of this recipe (see [ADR-0002 §11](decisions/adr-0002-graph-building-block.md)).
+example of this recipe.
 To add the next one — call it `<block>`:
 
 1. Add `proto/memsidecar/<block>/v1/<block>.proto`, run `make proto`.
@@ -159,11 +158,9 @@ configuration on the next request after the SIGHUP fires.
 
 Since the earliest slice, mTLS, the Helm chart, the container image, real
 embedders (Ollama/OpenAI), the S3 driver, the YAML policy engine, the semantic
-lifecycle primitives (ADR-0003), and the `graph` block (ADR-0002) have all
+lifecycle primitives, and the `graph` block have all
 landed. Highlights still pending:
 
-- A production `graph` backend driver (only the in-memory reference driver
-  ships today — ADR-0002 §6).
 - Bidi-streaming RPCs; additional language SDKs beyond Python (e.g. TypeScript).
 - Multi-tenant DB hardening.
 - Hot-reload of backends/listeners.

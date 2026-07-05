@@ -19,6 +19,3 @@ sdk/python/.pytest_cache
 *.test
 coverage.html
 .pytest_cache
-
-# Local-only docs
-docs/decisions/*.docx

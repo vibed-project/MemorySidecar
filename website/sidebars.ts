@@ -4,6 +4,7 @@ const sidebars: SidebarsConfig = {
   main: [
     'intro',
     'quickstart',
+    'guides/use-cases',
     {
       type: 'category',
       label: 'Concepts',
@@ -60,15 +61,6 @@ const sidebars: SidebarsConfig = {
       items: [
         'deploy/docker',
         'deploy/helm',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Reference',
-      items: [
-        'reference/adr-0001',
-        'reference/adr-0002',
-        'reference/adr-0003',
       ],
     },
   ],

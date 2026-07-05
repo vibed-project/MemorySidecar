@@ -26,7 +26,7 @@ message Record {
   repeated float vector = 4;     // optional precomputed vector
   map<string, string> metadata = 5;
   google.protobuf.Timestamp created_at = 6;
-  // Lifecycle & revisability (ADR-0003). All optional; unset = live/open-ended.
+  // Lifecycle & revisability. All optional; unset = live/open-ended.
   google.protobuf.Timestamp valid_from = 7;   // becomes true at (default: now on write)
   google.protobuf.Timestamp valid_to   = 8;   // stops being true at (exclusive)
   google.protobuf.Timestamp deleted_at = 9;   // soft-delete tombstone
@@ -96,7 +96,7 @@ message ExpireResponse {
 
 ## Lifecycle & revisability
 
-Per ADR-0003 (memory lifecycle primitives), the semantic block is **bitemporal** and
+The semantic block is **bitemporal** and
 **revisable** — the substrate stores the timestamps and applies the read filter; the
 agent decides what is valid or superseded (no inference is done server-side).
 
@@ -266,7 +266,7 @@ n = m.semantic.expire("notes", filter={"topic": "food"},
   `tsvector`.
 - Lifecycle timestamps and `supersedes`/`source` are **stored, not interpreted**:
   the sidecar never decides what supersedes what or resolves entities — the agent
-  supplies the values (consistent with the ADR non-goals).
+  supplies the values (consistent with the block's non-goals).
 - `ids_only=true` returns just each hit's `record.id` and `score`, skipping
   content/payload/vector/metadata (and the storage load / marshaling they cost);
   it overrides `include_payload`/`include_vector`. It's the **seed step** of
@@ -274,4 +274,4 @@ n = m.semantic.expire("notes", filter={"topic": "food"},
   then the [Graph block](graph.md) expands them via `Neighbors`/`Traverse`. By
   convention a semantic record id and a graph node id denote the same entity, so
   the seed ids drop straight into a traversal — the sidecar does **no** traversal
-  or orchestration itself (ADR-0002 §8).
+  or orchestration itself.

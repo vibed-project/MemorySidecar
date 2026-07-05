@@ -4,39 +4,42 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](go.mod)
-[![Status](https://img.shields.io/badge/status-walking%20skeleton-orange)](#status)
-[![ADR](https://img.shields.io/badge/ADR-0001-555)](docs/decisions/adr-0001-memory-sidecar.md)
+[![Status](https://img.shields.io/badge/status-pre--release-blue)](#status)
 
 memsidecar runs as a co-process to one or more agents and exposes a small,
 opinionated gRPC API over **pluggable backends** for the kinds of memory
 every agent stack ends up reinventing. Agents talk to the sidecar; the
 sidecar talks to the substrate.
 
-| Block | Purpose | Backends |
+| Block | What it's for | Backends |
 |---|---|---|
-| **kv** | Typed, TTL'd key-value for tool-result caching and scratchpads | in-memory, Postgres |
-| **episodic** | Append-only log of agent events, messages, tool calls | in-memory, Postgres |
-| **semantic** | Embed-and-search over arbitrary records | in-memory, pgvector |
-| **artifact** | Blob storage with metadata for generated files | in-memory, local FS, S3/MinIO |
-| **lease** | Distributed locks with TTL for shared-state coordination | in-memory, Postgres |
-| **graph** | Typed nodes/edges with bounded relationship traversal | in-memory, Postgres |
+| **kv** | Tool-result caching and scratchpads — TTL'd, typed, optional heat-based cache tier | in-memory, Postgres |
+| **episodic** | Append-only event log — replayable *and* live-tailable, with roles & sessions | in-memory, Postgres |
+| **semantic** | Embed-and-search over records — bitemporal & revisable, hybrid (dense + sparse) retrieval | in-memory, pgvector |
+| **artifact** | Blob storage with metadata for generated files — streamed in and out | in-memory, local FS, S3/MinIO |
+| **lease** | Distributed locks with TTL for multi-agent coordination | in-memory, Postgres |
+| **graph** | Typed nodes/edges with bounded traversal — bitemporal, as-of queryable | in-memory, Postgres |
 
 Every popular agent framework (LangGraph, CrewAI, Autogen, …) re-implements
 this plumbing in incompatible ways. memsidecar moves it out of the agent
 and into a sidecar with one protocol, one auth model, one policy surface,
 one observability story.
 
-[**Documentation site →**](website/) ·
-[**Architecture decision record →**](docs/decisions/adr-0001-memory-sidecar.md)
+[**Documentation site →**](website/)
 
 ---
 
 ## Status
 
-Early — a working **walking skeleton** that already covers the full ADR
-v0.1 surface (plus most of v0.2). Functional in dev and on a real
-Kubernetes cluster, but not yet versioned, not yet released, and the proto
-shape may still change.
+**Feature-complete against the roadmap, pre-release.** All six building
+blocks are implemented — with the memory-optimisation work (bitemporal
+lifecycle, hybrid retrieval, cache-tier eviction, temporal graph, cost
+observability) landed on top — and the whole thing runs in dev and on a real
+Kubernetes cluster. It is not yet versioned or released, and the proto shape
+may still change before a tagged `v0.1.0`.
+
+New to it? The [Use cases](website/docs/guides/use-cases.md) page is the
+fastest tour of what the blocks let you build.
 
 What works:
 
@@ -146,7 +149,7 @@ overrides (TLS/mTLS, Postgres backend, ServiceMonitor, …).
 ## Documentation
 
 A full Docusaurus docs site lives under [`website/`](website/) — concepts,
-per-block reference, configuration, operations, deployment, ADR-0001.
+per-block reference, configuration, operations, and deployment.
 
 ```bash
 make docs-dev      # http://localhost:3000
@@ -156,6 +159,7 @@ make docs-build    # static site → website/build/
 Highlights:
 
 - [Overview](website/docs/intro.md)
+- [Use cases](website/docs/guides/use-cases.md) — what the blocks let you build
 - [Architecture](website/docs/concepts/architecture.md)
 - [Capability tokens](website/docs/concepts/capabilities.md) and [Policy](website/docs/concepts/policy.md)
 - Per-block: [KV](website/docs/blocks/kv.md), [Episodic](website/docs/blocks/episodic.md), [Semantic](website/docs/blocks/semantic.md), [Artifact](website/docs/blocks/artifact.md), [Lease](website/docs/blocks/lease.md), [Graph](website/docs/blocks/graph.md)
@@ -183,7 +187,6 @@ sdk/python/    Python client (`pip install -e .[dev]`)
 deploy/helm/   Helm chart for Kubernetes
 website/       Docusaurus docs site
 configs/       example YAML config
-docs/decisions/ ADR-0001 (sidecar), ADR-0002 (graph), ADR-0003 (lifecycle)
 Dockerfile     multi-stage build → distroless nonroot
 ```
 
@@ -226,6 +229,4 @@ Third-party components and their licenses are listed in [NOTICE](NOTICE).
 ## Acknowledgments
 
 The design is heavily inspired by Dapr's building-block model, narrowed
-and specialised to memory and state for agentic workloads. The original
-design rationale is captured in
-[ADR-0001](docs/decisions/adr-0001-memory-sidecar.md).
+and specialised to memory and state for agentic workloads.

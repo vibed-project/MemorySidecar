@@ -6,7 +6,7 @@ sidebar_position: 6
 # Graph
 
 Relationship-aware recall: typed nodes and edges with **bounded, structured
-traversal**, scoped by namespace (ADR-0002). The `semantic` block answers
+traversal**, scoped by namespace. The `semantic` block answers
 *"what is like this?"*; `graph` answers *"what is connected to this, and how?"*.
 
 Like every block it **fronts** an engine — it does not implement graph storage,
@@ -98,14 +98,14 @@ Traversal cost is capped in two layers:
 | Driver | Notes |
 |---|---|
 | `memory` | Reference driver: nodes/edges in maps with out/in adjacency and bounded BFS traversal. Zero-dependency; the conformance baseline. |
-| `postgres` | Production driver (ADR-0002 §6). Two shared tables (`graph_nodes`, `graph_edges`) keyed by `(namespace, id)`, adjacency indexes on `(namespace, from_id)` / `(namespace, to_id)`. `Neighbors`/`Traverse` fetch adjacency and run the same bounded walk in Go inside a read transaction (consistent snapshot) — it fronts Postgres rather than pushing a recursive query down, trading traversal throughput for a faithful, portable implementation of the hard-capped contract. Passes the same conformance suite as `memory`. |
+| `postgres` | Production driver. Two shared tables (`graph_nodes`, `graph_edges`) keyed by `(namespace, id)`, adjacency indexes on `(namespace, from_id)` / `(namespace, to_id)`. `Neighbors`/`Traverse` fetch adjacency and run the same bounded walk in Go inside a read transaction (consistent snapshot) — it fronts Postgres rather than pushing a recursive query down, trading traversal throughput for a faithful, portable implementation of the hard-capped contract. Passes the same conformance suite as `memory`. |
 
 ## Composing with `semantic`
 
 Because node ids are caller-supplied, an agent can **seed** a recall with a
 dense `semantic.Search`, then **expand** the returned ids via `Neighbors` /
 `Traverse` — a hybrid "search then walk" pattern. The orchestration lives in the
-agent, not the sidecar (ADR-0002 §2.2).
+agent, not the sidecar.
 
 ## Configuration
 
@@ -178,4 +178,4 @@ print([n.id for n in sub.nodes])
 - Edges do not cross namespaces; cross-namespace linking is out of scope
   (tenant isolation boundary).
 - Not a graph query language, not a reasoning engine, not a hybrid-retrieval
-  orchestrator — those stay out of the sidecar by design (ADR-0002 §2.2).
+  orchestrator — those stay out of the sidecar by design.
