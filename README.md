@@ -19,7 +19,7 @@ sidecar talks to the substrate.
 | **semantic** | Embed-and-search over arbitrary records | in-memory, pgvector |
 | **artifact** | Blob storage with metadata for generated files | in-memory, local FS, S3/MinIO |
 | **lease** | Distributed locks with TTL for shared-state coordination | in-memory, Postgres |
-| **graph** | Typed nodes/edges with bounded relationship traversal | in-memory |
+| **graph** | Typed nodes/edges with bounded relationship traversal | in-memory, Postgres |
 
 Every popular agent framework (LangGraph, CrewAI, Autogen, …) re-implements
 this plumbing in incompatible ways. memsidecar moves it out of the agent
@@ -61,8 +61,7 @@ What works:
 - Python SDK with idiomatic per-block clients.
 - Multi-stage Docker image (distroless `nonroot`) + Helm chart.
 
-What's not in yet: bidi-streaming RPCs, a TypeScript SDK, a production graph
-driver, real release tooling.
+What's not in yet: bidi-streaming RPCs, a TypeScript SDK, real release tooling.
 
 ## Quickstart
 
