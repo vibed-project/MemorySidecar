@@ -61,6 +61,30 @@ func TestCap_LimitDimension(t *testing.T) {
 	assert.Contains(t, over.Reason, "limit 5000 exceeds cap 1000")
 }
 
+func TestCap_RerankCandidateK(t *testing.T) {
+	e, err := NewRuleEngine(Spec{
+		Rules: []Rule{{
+			Name:   "hybrid-candidate-cap",
+			Effect: EffectCap,
+			Match:  Match{Ops: []string{"semantic.search"}},
+			Max:    Cap{RerankCandidateK: 200},
+		}},
+	})
+	require.NoError(t, err)
+
+	within := e.PreRead(context.Background(), HookCtx{
+		Capability: cap("acme", ""), Block: "semantic", Op: auth.OpSemanticSearch, RerankCandidateK: 200,
+	})
+	assert.True(t, within.Allow)
+
+	over := e.PreRead(context.Background(), HookCtx{
+		Capability: cap("acme", ""), Block: "semantic", Op: auth.OpSemanticSearch, RerankCandidateK: 500,
+	})
+	assert.False(t, over.Allow)
+	assert.True(t, over.Exhausted)
+	assert.Contains(t, over.Reason, "rerank_candidate_k 500 exceeds cap 200")
+}
+
 func TestCap_RequiresBound(t *testing.T) {
 	_, err := NewRuleEngine(Spec{
 		Rules: []Rule{{Name: "empty-cap", Effect: EffectCap}},

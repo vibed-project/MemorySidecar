@@ -32,21 +32,30 @@ type Options struct {
 	MaxConns   int32
 	Namespace  string
 	Dimensions int
+	// TextSearch is the Postgres full-text config for the sparse lane of hybrid
+	// search (e.g. "simple", "english"). Empty defaults to "simple".
+	TextSearch string
 	// If true, skip table creation (use when an external migration manages it).
 	SkipMigrations bool
 }
 
 // Driver implements semantic.Driver against pgvector.
 type Driver struct {
-	pool      *pgxpool.Pool
-	namespace string
-	tableName string
-	dim       int
-	mu        sync.Mutex
-	closed    bool
+	pool       *pgxpool.Pool
+	namespace  string
+	tableName  string
+	dim        int
+	textSearch string
+	mu         sync.Mutex
+	closed     bool
 }
 
 var safeNamespace = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,63}$`)
+
+// safeTextSearch bounds the full-text config to a plain lowercase identifier so
+// it can be inlined into the FTS expression (which an index can't parameterize)
+// without any injection surface.
+var safeTextSearch = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 
 // New opens a connection pool, ensures the pgvector extension is loaded and
 // the namespace's table exists, and returns a Driver. Caller must Close().
@@ -59,6 +68,13 @@ func New(ctx context.Context, opts Options) (*Driver, error) {
 	}
 	if opts.Dimensions <= 0 {
 		return nil, errors.New("semantic/postgres: dimensions must be > 0")
+	}
+	textSearch := opts.TextSearch
+	if textSearch == "" {
+		textSearch = "simple"
+	}
+	if !safeTextSearch.MatchString(textSearch) {
+		return nil, fmt.Errorf("semantic/postgres: text_search must match %s", safeTextSearch.String())
 	}
 
 	pcfg, err := pgxpool.ParseConfig(opts.DSN)
@@ -81,14 +97,15 @@ func New(ctx context.Context, opts Options) (*Driver, error) {
 	tableName := "semantic_" + strings.ReplaceAll(opts.Namespace, "-", "_")
 
 	if !opts.SkipMigrations {
-		if err := ensureSchema(ctx, pool, tableName, opts.Dimensions); err != nil {
+		if err := ensureSchema(ctx, pool, tableName, opts.Dimensions, textSearch); err != nil {
 			pool.Close()
 			return nil, fmt.Errorf("semantic/postgres: ensure schema: %w", err)
 		}
 	}
 
 	return &Driver{
-		pool: pool, namespace: opts.Namespace, tableName: tableName, dim: opts.Dimensions,
+		pool: pool, namespace: opts.Namespace, tableName: tableName,
+		dim: opts.Dimensions, textSearch: textSearch,
 	}, nil
 }
 
@@ -218,16 +235,31 @@ func (d *Driver) Upsert(ctx context.Context, records []semantic.Record) error {
 }
 
 func (d *Driver) Search(ctx context.Context, opts semantic.SearchOptions) ([]semantic.Hit, error) {
-	if len(opts.QueryVector) != d.dim {
+	dense := opts.Mode == semantic.ModeDense || opts.Mode == semantic.ModeHybrid
+	if dense && len(opts.QueryVector) != d.dim {
 		return nil, fmt.Errorf("semantic/postgres: query dim %d != %d", len(opts.QueryVector), d.dim)
 	}
 	topK := opts.TopK
 	if topK == 0 {
 		topK = 10
 	}
+	switch opts.Mode {
+	case semantic.ModeSparse:
+		return d.searchSparse(ctx, opts, int(topK))
+	case semantic.ModeHybrid:
+		return d.searchHybrid(ctx, opts, int(topK))
+	default:
+		return d.searchDense(ctx, opts, topK)
+	}
+}
 
-	args := []any{pgvector.NewVector(opts.QueryVector)}
+// filterConds builds the shared WHERE conditions (metadata filter, structured
+// predicates, time window, lifecycle) and the args they introduce, numbering
+// placeholders from $1. Callers append mode-specific args (vector, query text)
+// afterward.
+func (d *Driver) filterConds(opts semantic.SearchOptions) ([]string, []any) {
 	var conds []string
+	var args []any
 	if len(opts.Filter) > 0 {
 		args = append(args, mustMarshalFilter(opts.Filter))
 		conds = append(conds, fmt.Sprintf("metadata @> $%d::jsonb", len(args)))
@@ -253,96 +285,240 @@ func (d *Driver) Search(ctx context.Context, opts semantic.SearchOptions) ([]sem
 			len(args), len(args),
 		))
 	}
+	return conds, args
+}
+
+func whereClause(conds []string) string {
+	if len(conds) == 0 {
+		return ""
+	}
+	return " WHERE " + strings.Join(conds, " AND ")
+}
+
+const fullRecordColumns = `id, content, payload, vector, metadata, created_at, valid_from, valid_to, deleted_at,
+	COALESCE(supersedes, '{}'::text[]) AS supersedes, source, version`
+
+func scanFullRecord(rows pgx.Rows) (semantic.Record, float64, error) {
+	var (
+		r         semantic.Record
+		pgvec     pgvector.Vector
+		meta      []byte
+		validTo   *time.Time
+		deletedAt *time.Time
+		source    *string
+		distance  float64
+	)
+	if err := rows.Scan(&r.ID, &r.Content, &r.Payload, &pgvec, &meta, &r.CreatedAt, &r.ValidFrom, &validTo, &deletedAt, &r.Supersedes, &source, &r.Version, &distance); err != nil {
+		return semantic.Record{}, 0, fmt.Errorf("semantic/postgres: scan: %w", err)
+	}
+	if validTo != nil {
+		r.ValidTo = *validTo
+	}
+	if deletedAt != nil {
+		r.DeletedAt = *deletedAt
+	}
+	if source != nil {
+		r.Source = *source
+	}
+	if len(meta) > 0 {
+		_ = json.Unmarshal(meta, &r.Metadata)
+	}
+	r.Vector = pgvec.Slice()
+	return r, distance, nil
+}
+
+func applyIncludeFlags(r *semantic.Record, opts semantic.SearchOptions) {
+	if !opts.IncludeVector {
+		r.Vector = nil
+	}
+	if !opts.IncludePayload {
+		r.Payload = nil
+	}
+}
+
+func (d *Driver) searchDense(ctx context.Context, opts semantic.SearchOptions, topK uint32) ([]semantic.Hit, error) {
+	conds, args := d.filterConds(opts)
+	args = append(args, pgvector.NewVector(opts.QueryVector))
+	vecIdx := len(args)
+	args = append(args, int32(topK))
+	limIdx := len(args)
+	where := whereClause(conds)
 
 	if opts.IDsOnly {
-		// Seed-set path (plan Q5): select only id + distance so Postgres never
-		// reads or ships the content/payload/vector/metadata columns.
-		lq := strings.Builder{}
-		fmt.Fprintf(&lq, "SELECT id, (vector <=> $1) AS distance FROM %s", d.tableName)
-		if len(conds) > 0 {
-			fmt.Fprintf(&lq, " WHERE %s", strings.Join(conds, " AND "))
-		}
-		args = append(args, int32(topK))
-		fmt.Fprintf(&lq, " ORDER BY vector <=> $1 LIMIT $%d", len(args))
-
-		rows, err := d.pool.Query(ctx, lq.String(), args...)
+		// Seed-set path (plan Q5): select only id + distance.
+		q := fmt.Sprintf("SELECT id, (vector <=> $%d) AS distance FROM %s%s ORDER BY vector <=> $%d LIMIT $%d",
+			vecIdx, d.tableName, where, vecIdx, limIdx)
+		rows, err := d.pool.Query(ctx, q, args...)
 		if err != nil {
 			return nil, fmt.Errorf("semantic/postgres: search: %w", err)
 		}
 		defer rows.Close()
-
 		hits := make([]semantic.Hit, 0, topK)
 		for rows.Next() {
-			var (
-				id       string
-				distance float64
-			)
+			var id string
+			var distance float64
 			if err := rows.Scan(&id, &distance); err != nil {
 				return nil, fmt.Errorf("semantic/postgres: scan: %w", err)
 			}
-			hits = append(hits, semantic.Hit{
-				Record: semantic.Record{ID: id},
-				Score:  similarityFromDistance(distance),
-			})
+			hits = append(hits, semantic.Hit{Record: semantic.Record{ID: id}, Score: similarityFromDistance(distance)})
 		}
 		return hits, rows.Err()
 	}
 
-	q := strings.Builder{}
-	fmt.Fprintf(&q, `SELECT id, content, payload, vector, metadata, created_at, valid_from, valid_to, deleted_at,
-	                 COALESCE(supersedes, '{}'::text[]) AS supersedes, source, version,
-	                 (vector <=> $1) AS distance
-	            FROM %s`, d.tableName)
-	if len(conds) > 0 {
-		fmt.Fprintf(&q, " WHERE %s", strings.Join(conds, " AND "))
-	}
-	args = append(args, int32(topK))
-	fmt.Fprintf(&q, " ORDER BY vector <=> $1 LIMIT $%d", len(args))
-
-	rows, err := d.pool.Query(ctx, q.String(), args...)
+	q := fmt.Sprintf("SELECT %s, (vector <=> $%d) AS distance FROM %s%s ORDER BY vector <=> $%d LIMIT $%d",
+		fullRecordColumns, vecIdx, d.tableName, where, vecIdx, limIdx)
+	rows, err := d.pool.Query(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("semantic/postgres: search: %w", err)
 	}
 	defer rows.Close()
-
 	hits := make([]semantic.Hit, 0, topK)
 	for rows.Next() {
-		var (
-			r         semantic.Record
-			pgvec     pgvector.Vector
-			meta      []byte
-			validTo   *time.Time
-			deletedAt *time.Time
-			source    *string
-			distance  float64
-		)
-		if err := rows.Scan(&r.ID, &r.Content, &r.Payload, &pgvec, &meta, &r.CreatedAt, &r.ValidFrom, &validTo, &deletedAt, &r.Supersedes, &source, &r.Version, &distance); err != nil {
-			return nil, fmt.Errorf("semantic/postgres: scan: %w", err)
+		r, distance, err := scanFullRecord(rows)
+		if err != nil {
+			return nil, err
 		}
-		if validTo != nil {
-			r.ValidTo = *validTo
-		}
-		if deletedAt != nil {
-			r.DeletedAt = *deletedAt
-		}
-		if source != nil {
-			r.Source = *source
-		}
-		if len(meta) > 0 {
-			_ = json.Unmarshal(meta, &r.Metadata)
-		}
-		if opts.IncludeVector {
-			r.Vector = pgvec.Slice()
-		}
-		if !opts.IncludePayload {
-			r.Payload = nil
-		}
-		hits = append(hits, semantic.Hit{
-			Record: r,
-			Score:  similarityFromDistance(distance),
-		})
+		applyIncludeFlags(&r, opts)
+		hits = append(hits, semantic.Hit{Record: r, Score: similarityFromDistance(distance)})
 	}
 	return hits, rows.Err()
+}
+
+type sparseHit struct {
+	id   string
+	rank float64
+}
+
+// sparseLane ranks content ids by Postgres full-text ts_rank (best-first),
+// limited to n, honouring the shared filter/lifecycle conditions.
+func (d *Driver) sparseLane(ctx context.Context, opts semantic.SearchOptions, n int) ([]sparseHit, error) {
+	conds, args := d.filterConds(opts)
+	args = append(args, opts.QueryText)
+	qIdx := len(args)
+	args = append(args, int32(n))
+	limIdx := len(args)
+	// The text-search config is a validated identifier (safe to inline); the
+	// query text is a bound parameter.
+	fts := fmt.Sprintf("to_tsvector('%s', content)", d.textSearch)
+	tsq := fmt.Sprintf("websearch_to_tsquery('%s', $%d)", d.textSearch, qIdx)
+	conds = append(conds, fmt.Sprintf("%s @@ %s", fts, tsq))
+	q := fmt.Sprintf("SELECT id, ts_rank(%s, %s) AS rank FROM %s%s ORDER BY rank DESC, id LIMIT $%d",
+		fts, tsq, d.tableName, whereClause(conds), limIdx)
+	rows, err := d.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("semantic/postgres: sparse search: %w", err)
+	}
+	defer rows.Close()
+	var out []sparseHit
+	for rows.Next() {
+		var sh sparseHit
+		if err := rows.Scan(&sh.id, &sh.rank); err != nil {
+			return nil, fmt.Errorf("semantic/postgres: scan: %w", err)
+		}
+		out = append(out, sh)
+	}
+	return out, rows.Err()
+}
+
+// denseIDs returns ids ordered by vector distance (best-first), limited to n.
+func (d *Driver) denseIDs(ctx context.Context, opts semantic.SearchOptions, n int) ([]string, error) {
+	conds, args := d.filterConds(opts)
+	args = append(args, pgvector.NewVector(opts.QueryVector))
+	vecIdx := len(args)
+	args = append(args, int32(n))
+	limIdx := len(args)
+	// id tiebreak keeps the fusion input deterministic on equal distances.
+	q := fmt.Sprintf("SELECT id FROM %s%s ORDER BY vector <=> $%d, id LIMIT $%d",
+		d.tableName, whereClause(conds), vecIdx, limIdx)
+	rows, err := d.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("semantic/postgres: dense search: %w", err)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("semantic/postgres: scan: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func (d *Driver) searchSparse(ctx context.Context, opts semantic.SearchOptions, topK int) ([]semantic.Hit, error) {
+	lane, err := d.sparseLane(ctx, opts, topK)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(lane))
+	score := make(map[string]float64, len(lane))
+	for i, sh := range lane {
+		ids[i] = sh.id
+		score[sh.id] = sh.rank
+	}
+	return d.materialize(ctx, opts, ids, score)
+}
+
+func (d *Driver) searchHybrid(ctx context.Context, opts semantic.SearchOptions, topK int) ([]semantic.Hit, error) {
+	rerank := int(opts.RerankCandidateK)
+	if rerank <= 0 {
+		rerank = semantic.DefaultRerankCandidateK
+	}
+	denseIDs, err := d.denseIDs(ctx, opts, rerank)
+	if err != nil {
+		return nil, err
+	}
+	lane, err := d.sparseLane(ctx, opts, rerank)
+	if err != nil {
+		return nil, err
+	}
+	sparseIDs := make([]string, len(lane))
+	for i, sh := range lane {
+		sparseIDs[i] = sh.id
+	}
+	fusedIDs, scores := semantic.RRFFuse([][]string{denseIDs, sparseIDs}, topK)
+	return d.materialize(ctx, opts, fusedIDs, scores)
+}
+
+// materialize fetches the full records for orderedIDs (or just the ids when
+// IDsOnly) and returns hits in that order, scored by score[id].
+func (d *Driver) materialize(ctx context.Context, opts semantic.SearchOptions, orderedIDs []string, score map[string]float64) ([]semantic.Hit, error) {
+	if len(orderedIDs) == 0 {
+		return nil, nil
+	}
+	if opts.IDsOnly {
+		hits := make([]semantic.Hit, len(orderedIDs))
+		for i, id := range orderedIDs {
+			hits[i] = semantic.Hit{Record: semantic.Record{ID: id}, Score: float32(score[id])}
+		}
+		return hits, nil
+	}
+	q := fmt.Sprintf("SELECT %s, 0::float8 AS distance FROM %s WHERE id = ANY($1)", fullRecordColumns, d.tableName)
+	rows, err := d.pool.Query(ctx, q, orderedIDs)
+	if err != nil {
+		return nil, fmt.Errorf("semantic/postgres: materialize: %w", err)
+	}
+	defer rows.Close()
+	recs := make(map[string]semantic.Record, len(orderedIDs))
+	for rows.Next() {
+		r, _, err := scanFullRecord(rows)
+		if err != nil {
+			return nil, err
+		}
+		applyIncludeFlags(&r, opts)
+		recs[r.ID] = r
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	hits := make([]semantic.Hit, 0, len(orderedIDs))
+	for _, id := range orderedIDs {
+		if r, ok := recs[id]; ok {
+			hits = append(hits, semantic.Hit{Record: r, Score: float32(score[id])})
+		}
+	}
+	return hits, nil
 }
 
 func (d *Driver) Delete(ctx context.Context, id string, opts semantic.DeleteOptions) (bool, error) {
@@ -486,7 +662,7 @@ func sqlNumericOp(op semantic.PredicateOp) string {
 	return ""
 }
 
-func ensureSchema(ctx context.Context, pool *pgxpool.Pool, table string, dim int) error {
+func ensureSchema(ctx context.Context, pool *pgxpool.Pool, table string, dim int, textSearch string) error {
 	if _, err := pool.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS vector`); err != nil {
 		return fmt.Errorf("create extension vector: %w", err)
 	}
@@ -532,6 +708,15 @@ func ensureSchema(ctx context.Context, pool *pgxpool.Pool, table string, dim int
 		table, table,
 	)); err != nil {
 		return fmt.Errorf("create created_at index on %s: %w", table, err)
+	}
+	// GIN over the full-text vector of content backs the Q4 sparse lane. The
+	// config is a validated identifier, safe to inline (an index expression
+	// can't be parameterized).
+	if _, err := pool.Exec(ctx, fmt.Sprintf(
+		`CREATE INDEX IF NOT EXISTS %s_content_fts ON %s USING gin (to_tsvector('%s', content))`,
+		table, table, textSearch,
+	)); err != nil {
+		return fmt.Errorf("create fts index on %s: %w", table, err)
 	}
 	// HNSW is the modern choice (pgvector >= 0.5.0). Falls back to no-op on
 	// older pgvector via IF NOT EXISTS — but the CREATE INDEX itself would

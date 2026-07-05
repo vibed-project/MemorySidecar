@@ -124,6 +124,7 @@ policy:
         limit:  0                 # scan/range page size (0 = no bound)
         depth:  0                 # graph traversal depth
         fan_out: 0                # graph traversal fan-out
+        rerank_candidate_k: 0     # semantic hybrid per-lane candidate depth
 ```
 
 `deny` (and `default: deny`) surface as `PermissionDenied`; `rate_limit` and
@@ -180,6 +181,7 @@ namespaces:
   - block: semantic
     name: notes
     backend: pg-main
+    text_search: english           # optional; Postgres FTS config for hybrid's sparse lane (default: simple)
     embedder:
       provider: openai             # fake | ollama | openai
       model: text-embedding-3-small

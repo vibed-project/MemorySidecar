@@ -112,6 +112,23 @@ message SearchRequest {
   // bound (created_at < it). Unset = unbounded on that side.
   google.protobuf.Timestamp created_after = 12;
   google.protobuf.Timestamp created_before = 13;
+  // Retrieval mode (opt-in hybrid). DENSE (default) is vector-only ANN; SPARSE
+  // is lexical only; HYBRID fuses both with Reciprocal Rank Fusion. SPARSE and
+  // HYBRID require query_text. See plan Q4.
+  SearchMode mode = 14;
+  // Per-lane candidate depth for SPARSE/HYBRID: each lane retrieves this many
+  // rows before fusion, then top_k are returned. 0 uses a server default.
+  // Bounded by the policy `max` cap (O4).
+  uint32 rerank_candidate_k = 15;
+}
+
+// SearchMode selects the retrieval lanes. Unspecified is treated as DENSE, so
+// existing callers are unaffected.
+enum SearchMode {
+  SEARCH_MODE_UNSPECIFIED = 0;
+  SEARCH_MODE_DENSE = 1;
+  SEARCH_MODE_SPARSE = 2;
+  SEARCH_MODE_HYBRID = 3;
 }
 
 // PredicateOp is the comparison in a FieldPredicate. EQ/NEQ/IN compare the

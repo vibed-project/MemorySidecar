@@ -47,10 +47,11 @@ type Bucket struct {
 // ADR-0002 §8). A zero field imposes no bound on that dimension; a request
 // exceeding any set bound is rejected with ResourceExhausted.
 type Cap struct {
-	TopK   uint32 `koanf:"top_k"`
-	Limit  uint32 `koanf:"limit"`
-	Depth  uint32 `koanf:"depth"`
-	FanOut uint32 `koanf:"fan_out"`
+	TopK             uint32 `koanf:"top_k"`
+	Limit            uint32 `koanf:"limit"`
+	Depth            uint32 `koanf:"depth"`
+	FanOut           uint32 `koanf:"fan_out"`
+	RerankCandidateK uint32 `koanf:"rerank_candidate_k"`
 }
 
 // Rule is one entry in the policy engine's ordered list.

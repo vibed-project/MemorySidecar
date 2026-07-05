@@ -477,6 +477,7 @@ func buildSemanticRegistry(ctx context.Context, cfg *config.Config) (*semantic.R
 				MaxConns:   int32(intOpt(b.Options, "max_conns", 10)),
 				Namespace:  ns.Name,
 				Dimensions: ns.Embedder.Dimensions,
+				TextSearch: ns.TextSearch,
 			})
 		default:
 			return nil, fmt.Errorf("backend %q: unknown driver %q", b.Name, b.Driver)

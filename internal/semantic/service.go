@@ -143,22 +143,49 @@ func (s *Service) Search(ctx context.Context, req *semanticv1.SearchRequest) (*s
 		return nil, err
 	}
 
+	mode := searchModeFromProto(req.GetMode())
+	queryText := req.GetQueryText()
 	queryVec := req.GetQueryVector()
-	switch {
-	case req.GetQueryText() != "" && len(queryVec) > 0:
-		return nil, status.Error(codes.InvalidArgument, "set query_text OR query_vector, not both")
-	case req.GetQueryText() == "" && len(queryVec) == 0:
-		return nil, status.Error(codes.InvalidArgument, "query_text or query_vector required")
-	case req.GetQueryText() != "":
-		vs, err := b.Embedder.Embed(ctx, []string{req.GetQueryText()})
+
+	// Resolve the dense query vector (needed for DENSE and HYBRID). SPARSE runs
+	// on query_text alone and ignores any vector.
+	switch mode {
+	case ModeSparse:
+		if queryText == "" {
+			return nil, status.Error(codes.InvalidArgument, "query_text is required for sparse search")
+		}
+		queryVec = nil
+	case ModeHybrid:
+		if queryText == "" {
+			return nil, status.Error(codes.InvalidArgument, "query_text is required for hybrid search")
+		}
+		if len(queryVec) > 0 {
+			return nil, status.Error(codes.InvalidArgument, "query_vector is not supported with hybrid search; use query_text")
+		}
+		vs, err := b.Embedder.Embed(ctx, []string{queryText})
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "embed query: %v", err)
 		}
 		queryVec = vs[0]
+	default: // dense
+		switch {
+		case queryText != "" && len(queryVec) > 0:
+			return nil, status.Error(codes.InvalidArgument, "set query_text OR query_vector, not both")
+		case queryText == "" && len(queryVec) == 0:
+			return nil, status.Error(codes.InvalidArgument, "query_text or query_vector required")
+		case queryText != "":
+			vs, err := b.Embedder.Embed(ctx, []string{queryText})
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "embed query: %v", err)
+			}
+			queryVec = vs[0]
+		}
 	}
-	if dim := b.Embedder.Dimensions(); len(queryVec) != dim {
-		return nil, status.Errorf(codes.InvalidArgument,
-			"query vector dim %d != namespace dim %d", len(queryVec), dim)
+	if len(queryVec) > 0 {
+		if dim := b.Embedder.Dimensions(); len(queryVec) != dim {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"query vector dim %d != namespace dim %d", len(queryVec), dim)
+		}
 	}
 
 	topK := req.GetTopK()
@@ -174,6 +201,9 @@ func (s *Service) Search(ctx context.Context, req *semanticv1.SearchRequest) (*s
 	searchStart := time.Now()
 	hits, err := b.Driver.Search(ctx, SearchOptions{
 		QueryVector:        queryVec,
+		QueryText:          queryText,
+		Mode:               mode,
+		RerankCandidateK:   req.GetRerankCandidateK(),
 		TopK:               topK,
 		Filter:             req.GetFilter(),
 		Predicates:         preds,
@@ -316,6 +346,17 @@ func predicatesFromProto(pb []*semanticv1.FieldPredicate) ([]FieldPredicate, err
 		out[i] = fp
 	}
 	return out, nil
+}
+
+func searchModeFromProto(m semanticv1.SearchMode) SearchMode {
+	switch m {
+	case semanticv1.SearchMode_SEARCH_MODE_SPARSE:
+		return ModeSparse
+	case semanticv1.SearchMode_SEARCH_MODE_HYBRID:
+		return ModeHybrid
+	default: // unspecified or dense
+		return ModeDense
+	}
 }
 
 func predicateOpFromProto(op semanticv1.PredicateOp) PredicateOp {

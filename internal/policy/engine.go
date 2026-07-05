@@ -16,10 +16,11 @@ type HookCtx struct {
 
 	// Request magnitude, used by cap rules (O4 / ADR-0002 §8). Zero means the
 	// dimension is not applicable to this request.
-	TopK   uint32 // semantic Search result count
-	Limit  uint32 // scan/range page size
-	Depth  uint32 // graph traversal depth
-	FanOut uint32 // graph traversal fan-out
+	TopK             uint32 // semantic Search result count
+	Limit            uint32 // scan/range page size
+	Depth            uint32 // graph traversal depth
+	FanOut           uint32 // graph traversal fan-out
+	RerankCandidateK uint32 // semantic hybrid per-lane candidate depth (Q4)
 }
 
 // Decision is the result of a policy evaluation.
