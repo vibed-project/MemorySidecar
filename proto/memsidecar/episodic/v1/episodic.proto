@@ -28,6 +28,11 @@ message Event {
   string type = 4;
   bytes payload = 5;
   map<string, string> metadata = 6;
+  // Speaker/actor of the event, e.g. "user", "assistant", "tool". First-class
+  // so conversations can be grouped without a metadata convention.
+  string role = 7;
+  // Conversation/session grouping key. First-class for cross-session assembly.
+  string session_id = 8;
 }
 
 message AppendRequest {
@@ -35,6 +40,8 @@ message AppendRequest {
   string type = 2;
   bytes payload = 3;
   map<string, string> metadata = 4;
+  string role = 5;
+  string session_id = 6;
 }
 
 message AppendResponse {
@@ -51,6 +58,12 @@ message RangeRequest {
   uint32 limit = 4;
   // false = ascending by cursor; true = descending.
   bool reverse = 5;
+  // Optional event-timestamp window, combined (AND) with the cursor bounds.
+  // after_time is an exclusive lower bound (timestamp > after_time); before_time
+  // is an exclusive upper bound (timestamp < before_time). Unset = unbounded on
+  // that side. Backed by a (namespace, timestamp) index.
+  google.protobuf.Timestamp after_time = 6;
+  google.protobuf.Timestamp before_time = 7;
 }
 
 message TailRequest {

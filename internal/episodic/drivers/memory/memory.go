@@ -119,6 +119,8 @@ func (d *Driver) Append(_ context.Context, namespace string, opts episodic.Appen
 		Type:      opts.Type,
 		Payload:   cloneBytes(opts.Payload),
 		Metadata:  cloneMeta(opts.Metadata),
+		Role:      opts.Role,
+		SessionID: opts.SessionID,
 	}
 	s.events = append(s.events, ev)
 
@@ -157,6 +159,12 @@ func (d *Driver) Range(_ context.Context, namespace string, opts episodic.RangeO
 		}
 		if opts.BeforeCursor > 0 && ev.Cursor >= opts.BeforeCursor {
 			continue
+		}
+		if !opts.AfterTime.IsZero() && !ev.Timestamp.After(opts.AfterTime) {
+			continue // timestamp <= AfterTime → excluded (exclusive lower)
+		}
+		if !opts.BeforeTime.IsZero() && !ev.Timestamp.Before(opts.BeforeTime) {
+			continue // timestamp >= BeforeTime → excluded (exclusive upper)
 		}
 		out = append(out, ev)
 	}

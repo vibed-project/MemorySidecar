@@ -37,6 +37,8 @@ func RunConformance(t *testing.T, h Harness) {
 		{"Append_CursorMonotonic", testAppendCursorMonotonic},
 		{"Append_NamespacesIndependent", testAppendNamespacesIndependent},
 		{"Range", testRange},
+		{"RoleSession", testRoleSession},
+		{"Range_TimeWindow", testRangeTimeWindow},
 		{"Tail_LiveOnly", testTailLiveOnly},
 		{"Tail_WithHistorical", testTailWithHistorical},
 		{"Tail_ContextCancel", testTailContextCancel},
@@ -93,6 +95,68 @@ func testRange(t *testing.T, h Harness) {
 	assert.Equal(t, []uint64{2, 3}, collect(episodic.RangeOptions{AfterCursor: 1, BeforeCursor: 4}))
 	assert.Equal(t, []uint64{1, 2}, collect(episodic.RangeOptions{Limit: 2}))
 	assert.Equal(t, []uint64{5, 4, 3, 2, 1}, collect(episodic.RangeOptions{Reverse: true}))
+}
+
+// testRoleSession checks that role/session_id round-trip through Append and
+// Range, and that omitting them yields empty strings (additive, R2).
+func testRoleSession(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+
+	ev, err := d.Append(ctx, "ns", episodic.AppendOptions{
+		Type: "message", Role: "user", SessionID: "sess-1",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "user", ev.Role)
+	assert.Equal(t, "sess-1", ev.SessionID)
+
+	_, err = d.Append(ctx, "ns", episodic.AppendOptions{Type: "tool_call"})
+	require.NoError(t, err)
+
+	var got []episodic.Event
+	require.NoError(t, d.Range(ctx, "ns", episodic.RangeOptions{}, func(e episodic.Event) error {
+		got = append(got, e)
+		return nil
+	}))
+	require.Len(t, got, 2)
+	assert.Equal(t, "user", got[0].Role)
+	assert.Equal(t, "sess-1", got[0].SessionID)
+	assert.Empty(t, got[1].Role)
+	assert.Empty(t, got[1].SessionID)
+}
+
+// testRangeTimeWindow checks the exclusive after_time / before_time bounds and
+// that they combine (AND) with cursor bounds (R2).
+func testRangeTimeWindow(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+
+	// Space appends out so every event gets a distinct timestamp on both the
+	// memory (wall clock) and Postgres (per-tx now()) drivers.
+	var ts []time.Time
+	for i := 0; i < 3; i++ {
+		ev, err := d.Append(ctx, "ns", episodic.AppendOptions{Type: "x"})
+		require.NoError(t, err)
+		ts = append(ts, ev.Timestamp)
+		time.Sleep(3 * time.Millisecond)
+	}
+	collect := func(opts episodic.RangeOptions) []uint64 {
+		var got []uint64
+		require.NoError(t, d.Range(ctx, "ns", opts, func(e episodic.Event) error {
+			got = append(got, e.Cursor)
+			return nil
+		}))
+		return got
+	}
+
+	// after_time is exclusive → drops event 1.
+	assert.Equal(t, []uint64{2, 3}, collect(episodic.RangeOptions{AfterTime: ts[0]}))
+	// before_time is exclusive → drops event 3.
+	assert.Equal(t, []uint64{1, 2}, collect(episodic.RangeOptions{BeforeTime: ts[2]}))
+	// The open window (ts[0], ts[2]) keeps only event 2.
+	assert.Equal(t, []uint64{2}, collect(episodic.RangeOptions{AfterTime: ts[0], BeforeTime: ts[2]}))
+	// Time and cursor bounds AND together.
+	assert.Equal(t, []uint64{2}, collect(episodic.RangeOptions{AfterTime: ts[0], BeforeCursor: 3}))
 }
 
 func testTailLiveOnly(t *testing.T, h Harness) {

@@ -3,6 +3,7 @@ package episodic
 import (
 	"context"
 	"errors"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -52,9 +53,11 @@ func (s *Service) Append(ctx context.Context, req *episodicv1.AppendRequest) (*e
 		return nil, err
 	}
 	ev, err := d.Append(ctx, req.GetNamespace(), AppendOptions{
-		Type:     req.GetType(),
-		Payload:  req.GetPayload(),
-		Metadata: req.GetMetadata(),
+		Type:      req.GetType(),
+		Payload:   req.GetPayload(),
+		Metadata:  req.GetMetadata(),
+		Role:      req.GetRole(),
+		SessionID: req.GetSessionId(),
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "append: %v", err)
@@ -73,6 +76,8 @@ func (s *Service) Range(req *episodicv1.RangeRequest, stream episodicv1.Episodic
 		BeforeCursor: req.GetBeforeCursor(),
 		Limit:        req.GetLimit(),
 		Reverse:      req.GetReverse(),
+		AfterTime:    tsToTime(req.GetAfterTime()),
+		BeforeTime:   tsToTime(req.GetBeforeTime()),
 	}, func(ev Event) error {
 		return stream.Send(eventToProto(ev))
 	})
@@ -108,5 +113,16 @@ func eventToProto(e Event) *episodicv1.Event {
 		Type:      e.Type,
 		Payload:   e.Payload,
 		Metadata:  e.Metadata,
+		Role:      e.Role,
+		SessionId: e.SessionID,
 	}
+}
+
+// tsToTime converts an optional protobuf timestamp to a Go time, returning the
+// zero time when the timestamp is nil.
+func tsToTime(ts *timestamppb.Timestamp) time.Time {
+	if ts == nil {
+		return time.Time{}
+	}
+	return ts.AsTime()
 }
