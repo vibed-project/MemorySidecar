@@ -196,6 +196,10 @@ Semantic namespaces require an `embedder` block. The driver chosen for the
 backend must support the block (e.g. you can't use `driver: fs` for
 `block: kv`).
 
+In-memory `kv` namespaces may add an optional `access` block (cache-tier
+tracking, read-through TTL, and heat-based capacity eviction) — off by default.
+See [KV → cache-tier access policy](../blocks/kv.md#cache-tier-access-policy-in-memory-only).
+
 `embedder.cache_size` bounds a per-namespace **embedding cache**: identical
 content (same `(namespace, model, content)`) is embedded once and served from a
 bounded LRU thereafter, cutting provider calls and cost on repeated or duplicate

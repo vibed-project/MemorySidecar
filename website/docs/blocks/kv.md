@@ -48,6 +48,36 @@ namespaces:
   - { block: kv, name: scratchpad, backend: pg-main }
 ```
 
+### Cache-tier access policy (in-memory only)
+
+An in-memory namespace can opt into cache-tier behaviour. It's **off by
+default** — a namespace without an `access` block never writes on a read:
+
+```yaml
+namespaces:
+  - block: kv
+    name: tool-cache
+    backend: mem-default
+    access:
+      track: true                 # record last_accessed/access_count on Get
+      slide_ttl_seconds: 300      # >0: each Get extends a TTL'd key's expiry to now+300s
+      capacity: 10000             # >0: cap live keys; on Put over cap, evict the coldest
+      heat_half_life_seconds: 3600  # eviction heat = access_count · 2^(−age/half_life)
+```
+
+- **`track`** maintains per-key `access_count` / `last_accessed` (used only for
+  eviction; not returned on the wire).
+- **`slide_ttl_seconds`** gives read-through residency: frequently-read keys
+  keep getting their TTL extended, so hot entries survive while idle ones
+  expire. Keys written without a TTL are unaffected.
+- **`capacity`** + **`heat_half_life_seconds`** bound a namespace's size by
+  evicting the **coldest** keys first (lowest `access_count · 2^(−age/half_life)`),
+  so a burst of one-shot writes can't push out actively-used entries. Capacity
+  evictions increment `memsidecar.eviction.total{cause="capacity"}`.
+
+Durations are expressed in seconds. This policy is honoured by the `memory`
+driver only; on a Postgres-backed namespace it is ignored.
+
 ## gRPC example
 
 ```bash

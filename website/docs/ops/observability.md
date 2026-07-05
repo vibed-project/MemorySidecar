@@ -159,9 +159,11 @@ memsidecar_eviction_total{block="kv",namespace="scratchpad",cause="ttl"}  57
   omitted — a cheap per-namespace count isn't available there; watch those at
   the datastore layer.
 - `memsidecar.eviction.total` — a **counter** of items dropped from a namespace,
-  labelled by `cause`. Today `cause="ttl"` is emitted by the in-memory KV driver
-  at lazy-expiry (on `Get`) and on the background sweep; `consolidation` is
-  reserved. `rate(memsidecar_eviction_total[5m])` is your TTL churn.
+  labelled by `cause`. The in-memory KV driver emits `cause="ttl"` at lazy-expiry
+  (on `Get`) and on the background sweep, and `cause="capacity"` when a
+  cache-tier namespace evicts its coldest keys over capacity (U5);
+  `consolidation` is reserved. `rate(memsidecar_eviction_total[5m])` is your
+  eviction churn.
 
 ## Logs
 

@@ -21,6 +21,33 @@ type Record struct {
 	Version     uint64
 	CreatedAt   time.Time
 	ExpiresAt   time.Time // zero = no expiry
+	// Access instrumentation (U5). Only maintained when the namespace opts in
+	// via AccessPolicy; otherwise both stay zero and reads never write.
+	LastAccessed time.Time
+	AccessCount  uint64
+}
+
+// AccessPolicy is a namespace's opt-in cache-tier behaviour (U5). The zero
+// value is fully disabled, so a namespace that doesn't configure it pays no
+// per-read cost. Supported by the in-memory driver only.
+type AccessPolicy struct {
+	// Track records LastAccessed/AccessCount on each Get.
+	Track bool
+	// SlideTTL, when > 0, extends a TTL'd record's expiry to now+SlideTTL on
+	// each Get (read-through residency). Records without a TTL are unaffected.
+	SlideTTL time.Duration
+	// Capacity, when > 0, caps live keys per namespace; on Put over capacity the
+	// coldest keys are evicted by heat.
+	Capacity int
+	// HeatHalfLife tunes the eviction heat decay (heat = access_count *
+	// 2^(-age/half_life)); 0 uses a default.
+	HeatHalfLife time.Duration
+}
+
+// Enabled reports whether the policy does anything, so callers can skip the
+// write path entirely when it's off.
+func (p AccessPolicy) Enabled() bool {
+	return p.Track || p.SlideTTL > 0 || p.Capacity > 0
 }
 
 // PutOptions carries the writable fields of a Put call.
