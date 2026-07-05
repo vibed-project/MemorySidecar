@@ -211,6 +211,12 @@ func (d *Driver) Search(_ context.Context, opts semantic.SearchOptions) ([]seman
 		if !matchesPredicates(r.Metadata, opts.Predicates) {
 			continue
 		}
+		if !opts.CreatedAfter.IsZero() && !r.CreatedAt.After(opts.CreatedAfter) {
+			continue // created_at <= CreatedAfter → excluded (exclusive lower)
+		}
+		if !opts.CreatedBefore.IsZero() && !r.CreatedAt.Before(opts.CreatedBefore) {
+			continue // created_at >= CreatedBefore → excluded (exclusive upper)
+		}
 		if !opts.IncludeInvalidated && !liveAt(r, asOf) {
 			continue
 		}

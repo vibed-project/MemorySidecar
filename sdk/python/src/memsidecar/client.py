@@ -184,6 +184,8 @@ class _Semantic:
         query_text: str = "", query_vector: Optional[Iterable[float]] = None,
         top_k: int = 10, filter: Optional[Mapping[str, str]] = None,
         predicates: Optional[Iterable[semantic_pb2.FieldPredicate]] = None,
+        created_after: Optional[_dt.datetime] = None,
+        created_before: Optional[_dt.datetime] = None,
         include_payload: bool = False, include_vector: bool = False,
         as_of: Optional[_dt.datetime] = None, include_invalidated: bool = False,
         ids_only: bool = False,
@@ -211,6 +213,12 @@ class _Semantic:
         ts = _to_timestamp(as_of)
         if ts is not None:
             req.as_of.CopyFrom(ts)
+        ca = _to_timestamp(created_after)
+        if ca is not None:
+            req.created_after.CopyFrom(ca)
+        cb = _to_timestamp(created_before)
+        if cb is not None:
+            req.created_before.CopyFrom(cb)
         return list(self._stub.Search(req).hits)
 
     def delete(self, namespace: str, id: str, *, hard: bool = False) -> bool:

@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n%memsidecar/semantic/v1/semantic.proto\x12\x16memsidecar.semantic.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd8\x04\n\x06Record\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n\x07\x63ontent\x18\x02 \x01(\tR\x07\x63ontent\x12\x18\n\x07payload\x18\x03 \x01(\x0cR\x07payload\x12\x16\n\x06vector\x18\x04 \x03(\x02R\x06vector\x12H\n\x08metadata\x18\x05 \x03(\x0b\x32,.memsidecar.semantic.v1.Record.MetadataEntryR\x08metadata\x12\x39\n\ncreated_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x39\n\nvalid_from\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tvalidFrom\x12\x35\n\x08valid_to\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x07validTo\x12\x39\n\ndeleted_at\x18\t \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tdeletedAt\x12\x1e\n\nsupersedes\x18\n \x03(\tR\nsupersedes\x12\x16\n\x06source\x18\x0b \x01(\tR\x06source\x12\x18\n\x07version\x18\x0c \x01(\x04R\x07version\x12\"\n\nif_version\x18\r \x01(\x04H\x00R\tifVersion\x88\x01\x01\x1a;\n\rMetadataEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\r\n\x0b_if_version\"g\n\rUpsertRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x38\n\x07records\x18\x02 \x03(\x0b\x32\x1e.memsidecar.semantic.v1.RecordR\x07records\">\n\x0eUpsertResponse\x12\x10\n\x03ids\x18\x01 \x03(\tR\x03ids\x12\x1a\n\x08versions\x18\x02 \x03(\x04R\x08versions\"\x9f\x04\n\rSearchRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x1d\n\nquery_text\x18\x02 \x01(\tR\tqueryText\x12!\n\x0cquery_vector\x18\x03 \x03(\x02R\x0bqueryVector\x12\x13\n\x05top_k\x18\x04 \x01(\rR\x04topK\x12I\n\x06\x66ilter\x18\x05 \x03(\x0b\x32\x31.memsidecar.semantic.v1.SearchRequest.FilterEntryR\x06\x66ilter\x12\'\n\x0finclude_payload\x18\x06 \x01(\x08R\x0eincludePayload\x12%\n\x0einclude_vector\x18\x07 \x01(\x08R\rincludeVector\x12/\n\x05\x61s_of\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x04\x61sOf\x12/\n\x13include_invalidated\x18\t \x01(\x08R\x12includeInvalidated\x12\x19\n\x08ids_only\x18\n \x01(\x08R\x07idsOnly\x12\x46\n\npredicates\x18\x0b \x03(\x0b\x32&.memsidecar.semantic.v1.FieldPredicateR\npredicates\x1a\x39\n\x0b\x46ilterEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"o\n\x0e\x46ieldPredicate\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x33\n\x02op\x18\x02 \x01(\x0e\x32#.memsidecar.semantic.v1.PredicateOpR\x02op\x12\x16\n\x06values\x18\x03 \x03(\tR\x06values\"A\n\x0eSearchResponse\x12/\n\x04hits\x18\x01 \x03(\x0b\x32\x1b.memsidecar.semantic.v1.HitR\x04hits\"S\n\x03Hit\x12\x36\n\x06record\x18\x01 \x01(\x0b\x32\x1e.memsidecar.semantic.v1.RecordR\x06record\x12\x14\n\x05score\x18\x02 \x01(\x02R\x05score\"Q\n\rDeleteRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x0e\n\x02id\x18\x02 \x01(\tR\x02id\x12\x12\n\x04hard\x18\x03 \x01(\x08R\x04hard\"*\n\x0e\x44\x65leteResponse\x12\x18\n\x07\x65xisted\x18\x01 \x01(\x08R\x07\x65xisted\"\x8c\x02\n\rExpireRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12I\n\x06\x66ilter\x18\x02 \x03(\x0b\x32\x31.memsidecar.semantic.v1.ExpireRequest.FilterEntryR\x06\x66ilter\x12<\n\x06\x61\x63tion\x18\x03 \x01(\x0e\x32$.memsidecar.semantic.v1.ExpireActionR\x06\x61\x63tion\x12\x19\n\x08max_rows\x18\x04 \x01(\rR\x07maxRows\x1a\x39\n\x0b\x46ilterEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\",\n\x0e\x45xpireResponse\x12\x1a\n\x08\x61\x66\x66\x65\x63ted\x18\x01 \x01(\x04R\x08\x61\x66\x66\x65\x63ted*\xc1\x01\n\x0bPredicateOp\x12\x1c\n\x18PREDICATE_OP_UNSPECIFIED\x10\x00\x12\x13\n\x0fPREDICATE_OP_EQ\x10\x01\x12\x14\n\x10PREDICATE_OP_NEQ\x10\x02\x12\x13\n\x0fPREDICATE_OP_GT\x10\x03\x12\x14\n\x10PREDICATE_OP_GTE\x10\x04\x12\x13\n\x0fPREDICATE_OP_LT\x10\x05\x12\x14\n\x10PREDICATE_OP_LTE\x10\x06\x12\x13\n\x0fPREDICATE_OP_IN\x10\x07*\x89\x01\n\x0c\x45xpireAction\x12\x1d\n\x19\x45XPIRE_ACTION_UNSPECIFIED\x10\x00\x12\x1c\n\x18\x45XPIRE_ACTION_INVALIDATE\x10\x01\x12\x1d\n\x19\x45XPIRE_ACTION_SOFT_DELETE\x10\x02\x12\x1d\n\x19\x45XPIRE_ACTION_HARD_DELETE\x10\x03\x32\xee\x02\n\x08Semantic\x12W\n\x06Upsert\x12%.memsidecar.semantic.v1.UpsertRequest\x1a&.memsidecar.semantic.v1.UpsertResponse\x12W\n\x06Search\x12%.memsidecar.semantic.v1.SearchRequest\x1a&.memsidecar.semantic.v1.SearchResponse\x12W\n\x06\x44\x65lete\x12%.memsidecar.semantic.v1.DeleteRequest\x1a&.memsidecar.semantic.v1.DeleteResponse\x12W\n\x06\x45xpire\x12%.memsidecar.semantic.v1.ExpireRequest\x1a&.memsidecar.semantic.v1.ExpireResponseB2Z0memsidecar/gen/memsidecar/semantic/v1;semanticv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n%memsidecar/semantic/v1/semantic.proto\x12\x16memsidecar.semantic.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd8\x04\n\x06Record\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n\x07\x63ontent\x18\x02 \x01(\tR\x07\x63ontent\x12\x18\n\x07payload\x18\x03 \x01(\x0cR\x07payload\x12\x16\n\x06vector\x18\x04 \x03(\x02R\x06vector\x12H\n\x08metadata\x18\x05 \x03(\x0b\x32,.memsidecar.semantic.v1.Record.MetadataEntryR\x08metadata\x12\x39\n\ncreated_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x39\n\nvalid_from\x18\x07 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tvalidFrom\x12\x35\n\x08valid_to\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x07validTo\x12\x39\n\ndeleted_at\x18\t \x01(\x0b\x32\x1a.google.protobuf.TimestampR\tdeletedAt\x12\x1e\n\nsupersedes\x18\n \x03(\tR\nsupersedes\x12\x16\n\x06source\x18\x0b \x01(\tR\x06source\x12\x18\n\x07version\x18\x0c \x01(\x04R\x07version\x12\"\n\nif_version\x18\r \x01(\x04H\x00R\tifVersion\x88\x01\x01\x1a;\n\rMetadataEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\x42\r\n\x0b_if_version\"g\n\rUpsertRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x38\n\x07records\x18\x02 \x03(\x0b\x32\x1e.memsidecar.semantic.v1.RecordR\x07records\">\n\x0eUpsertResponse\x12\x10\n\x03ids\x18\x01 \x03(\tR\x03ids\x12\x1a\n\x08versions\x18\x02 \x03(\x04R\x08versions\"\xa3\x05\n\rSearchRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x1d\n\nquery_text\x18\x02 \x01(\tR\tqueryText\x12!\n\x0cquery_vector\x18\x03 \x03(\x02R\x0bqueryVector\x12\x13\n\x05top_k\x18\x04 \x01(\rR\x04topK\x12I\n\x06\x66ilter\x18\x05 \x03(\x0b\x32\x31.memsidecar.semantic.v1.SearchRequest.FilterEntryR\x06\x66ilter\x12\'\n\x0finclude_payload\x18\x06 \x01(\x08R\x0eincludePayload\x12%\n\x0einclude_vector\x18\x07 \x01(\x08R\rincludeVector\x12/\n\x05\x61s_of\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x04\x61sOf\x12/\n\x13include_invalidated\x18\t \x01(\x08R\x12includeInvalidated\x12\x19\n\x08ids_only\x18\n \x01(\x08R\x07idsOnly\x12\x46\n\npredicates\x18\x0b \x03(\x0b\x32&.memsidecar.semantic.v1.FieldPredicateR\npredicates\x12?\n\rcreated_after\x18\x0c \x01(\x0b\x32\x1a.google.protobuf.TimestampR\x0c\x63reatedAfter\x12\x41\n\x0e\x63reated_before\x18\r \x01(\x0b\x32\x1a.google.protobuf.TimestampR\rcreatedBefore\x1a\x39\n\x0b\x46ilterEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\"o\n\x0e\x46ieldPredicate\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x33\n\x02op\x18\x02 \x01(\x0e\x32#.memsidecar.semantic.v1.PredicateOpR\x02op\x12\x16\n\x06values\x18\x03 \x03(\tR\x06values\"A\n\x0eSearchResponse\x12/\n\x04hits\x18\x01 \x03(\x0b\x32\x1b.memsidecar.semantic.v1.HitR\x04hits\"S\n\x03Hit\x12\x36\n\x06record\x18\x01 \x01(\x0b\x32\x1e.memsidecar.semantic.v1.RecordR\x06record\x12\x14\n\x05score\x18\x02 \x01(\x02R\x05score\"Q\n\rDeleteRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x0e\n\x02id\x18\x02 \x01(\tR\x02id\x12\x12\n\x04hard\x18\x03 \x01(\x08R\x04hard\"*\n\x0e\x44\x65leteResponse\x12\x18\n\x07\x65xisted\x18\x01 \x01(\x08R\x07\x65xisted\"\x8c\x02\n\rExpireRequest\x12\x1c\n\tnamespace\x18\x01 \x01(\tR\tnamespace\x12I\n\x06\x66ilter\x18\x02 \x03(\x0b\x32\x31.memsidecar.semantic.v1.ExpireRequest.FilterEntryR\x06\x66ilter\x12<\n\x06\x61\x63tion\x18\x03 \x01(\x0e\x32$.memsidecar.semantic.v1.ExpireActionR\x06\x61\x63tion\x12\x19\n\x08max_rows\x18\x04 \x01(\rR\x07maxRows\x1a\x39\n\x0b\x46ilterEntry\x12\x10\n\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n\x05value\x18\x02 \x01(\tR\x05value:\x02\x38\x01\",\n\x0e\x45xpireResponse\x12\x1a\n\x08\x61\x66\x66\x65\x63ted\x18\x01 \x01(\x04R\x08\x61\x66\x66\x65\x63ted*\xc1\x01\n\x0bPredicateOp\x12\x1c\n\x18PREDICATE_OP_UNSPECIFIED\x10\x00\x12\x13\n\x0fPREDICATE_OP_EQ\x10\x01\x12\x14\n\x10PREDICATE_OP_NEQ\x10\x02\x12\x13\n\x0fPREDICATE_OP_GT\x10\x03\x12\x14\n\x10PREDICATE_OP_GTE\x10\x04\x12\x13\n\x0fPREDICATE_OP_LT\x10\x05\x12\x14\n\x10PREDICATE_OP_LTE\x10\x06\x12\x13\n\x0fPREDICATE_OP_IN\x10\x07*\x89\x01\n\x0c\x45xpireAction\x12\x1d\n\x19\x45XPIRE_ACTION_UNSPECIFIED\x10\x00\x12\x1c\n\x18\x45XPIRE_ACTION_INVALIDATE\x10\x01\x12\x1d\n\x19\x45XPIRE_ACTION_SOFT_DELETE\x10\x02\x12\x1d\n\x19\x45XPIRE_ACTION_HARD_DELETE\x10\x03\x32\xee\x02\n\x08Semantic\x12W\n\x06Upsert\x12%.memsidecar.semantic.v1.UpsertRequest\x1a&.memsidecar.semantic.v1.UpsertResponse\x12W\n\x06Search\x12%.memsidecar.semantic.v1.SearchRequest\x1a&.memsidecar.semantic.v1.SearchResponse\x12W\n\x06\x44\x65lete\x12%.memsidecar.semantic.v1.DeleteRequest\x1a&.memsidecar.semantic.v1.DeleteResponse\x12W\n\x06\x45xpire\x12%.memsidecar.semantic.v1.ExpireRequest\x1a&.memsidecar.semantic.v1.ExpireResponseB2Z0memsidecar/gen/memsidecar/semantic/v1;semanticv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -39,10 +39,10 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_SEARCHREQUEST_FILTERENTRY']._serialized_options = b'8\001'
   _globals['_EXPIREREQUEST_FILTERENTRY']._loaded_options = None
   _globals['_EXPIREREQUEST_FILTERENTRY']._serialized_options = b'8\001'
-  _globals['_PREDICATEOP']._serialized_start=2126
-  _globals['_PREDICATEOP']._serialized_end=2319
-  _globals['_EXPIREACTION']._serialized_start=2322
-  _globals['_EXPIREACTION']._serialized_end=2459
+  _globals['_PREDICATEOP']._serialized_start=2258
+  _globals['_PREDICATEOP']._serialized_end=2451
+  _globals['_EXPIREACTION']._serialized_start=2454
+  _globals['_EXPIREACTION']._serialized_end=2591
   _globals['_RECORD']._serialized_start=99
   _globals['_RECORD']._serialized_end=699
   _globals['_RECORD_METADATAENTRY']._serialized_start=625
@@ -52,25 +52,25 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_UPSERTRESPONSE']._serialized_start=806
   _globals['_UPSERTRESPONSE']._serialized_end=868
   _globals['_SEARCHREQUEST']._serialized_start=871
-  _globals['_SEARCHREQUEST']._serialized_end=1414
-  _globals['_SEARCHREQUEST_FILTERENTRY']._serialized_start=1357
-  _globals['_SEARCHREQUEST_FILTERENTRY']._serialized_end=1414
-  _globals['_FIELDPREDICATE']._serialized_start=1416
-  _globals['_FIELDPREDICATE']._serialized_end=1527
-  _globals['_SEARCHRESPONSE']._serialized_start=1529
-  _globals['_SEARCHRESPONSE']._serialized_end=1594
-  _globals['_HIT']._serialized_start=1596
-  _globals['_HIT']._serialized_end=1679
-  _globals['_DELETEREQUEST']._serialized_start=1681
-  _globals['_DELETEREQUEST']._serialized_end=1762
-  _globals['_DELETERESPONSE']._serialized_start=1764
-  _globals['_DELETERESPONSE']._serialized_end=1806
-  _globals['_EXPIREREQUEST']._serialized_start=1809
-  _globals['_EXPIREREQUEST']._serialized_end=2077
-  _globals['_EXPIREREQUEST_FILTERENTRY']._serialized_start=1357
-  _globals['_EXPIREREQUEST_FILTERENTRY']._serialized_end=1414
-  _globals['_EXPIRERESPONSE']._serialized_start=2079
-  _globals['_EXPIRERESPONSE']._serialized_end=2123
-  _globals['_SEMANTIC']._serialized_start=2462
-  _globals['_SEMANTIC']._serialized_end=2828
+  _globals['_SEARCHREQUEST']._serialized_end=1546
+  _globals['_SEARCHREQUEST_FILTERENTRY']._serialized_start=1489
+  _globals['_SEARCHREQUEST_FILTERENTRY']._serialized_end=1546
+  _globals['_FIELDPREDICATE']._serialized_start=1548
+  _globals['_FIELDPREDICATE']._serialized_end=1659
+  _globals['_SEARCHRESPONSE']._serialized_start=1661
+  _globals['_SEARCHRESPONSE']._serialized_end=1726
+  _globals['_HIT']._serialized_start=1728
+  _globals['_HIT']._serialized_end=1811
+  _globals['_DELETEREQUEST']._serialized_start=1813
+  _globals['_DELETEREQUEST']._serialized_end=1894
+  _globals['_DELETERESPONSE']._serialized_start=1896
+  _globals['_DELETERESPONSE']._serialized_end=1938
+  _globals['_EXPIREREQUEST']._serialized_start=1941
+  _globals['_EXPIREREQUEST']._serialized_end=2209
+  _globals['_EXPIREREQUEST_FILTERENTRY']._serialized_start=1489
+  _globals['_EXPIREREQUEST_FILTERENTRY']._serialized_end=1546
+  _globals['_EXPIRERESPONSE']._serialized_start=2211
+  _globals['_EXPIRERESPONSE']._serialized_end=2255
+  _globals['_SEMANTIC']._serialized_start=2594
+  _globals['_SEMANTIC']._serialized_end=2960
 # @@protoc_insertion_point(module_scope)

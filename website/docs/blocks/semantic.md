@@ -53,6 +53,8 @@ message SearchRequest {
   bool include_invalidated = 9;          // also return tombstoned/expired/future records
   bool ids_only = 10;                    // return only id + score (cheap seed set)
   repeated FieldPredicate predicates = 11;   // ranges / set membership, ANDed with filter
+  google.protobuf.Timestamp created_after = 12;   // exclusive lower bound on created_at
+  google.protobuf.Timestamp created_before = 13;  // exclusive upper bound on created_at
 }
 
 // EQ/NEQ/IN compare as strings; GT/GTE/LT/LTE compare numerically.
@@ -241,6 +243,11 @@ n = m.semantic.expire("notes", filter={"topic": "food"},
   isn't numeric is simply skipped, never erroring the query. A predicate only
   matches when the key is present. `filter` and all `predicates` AND together
   and run as a pre-filter before the ANN ordering.
+- `created_after` / `created_before` bound the record's `created_at`
+  (exclusive on each side), applied as a pre-filter before ranking — for
+  "recent" recall. **No recency scoring** is added: results are still ordered
+  by similarity, and the agent re-ranks by the `created_at` already returned.
+  Postgres backs the window with a btree index on `created_at`.
 - Lifecycle timestamps and `supersedes`/`source` are **stored, not interpreted**:
   the sidecar never decides what supersedes what or resolves entities — the agent
   supplies the values (consistent with the ADR non-goals).

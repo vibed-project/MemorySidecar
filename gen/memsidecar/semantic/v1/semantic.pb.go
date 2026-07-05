@@ -450,7 +450,13 @@ type SearchRequest struct {
 	IdsOnly bool `protobuf:"varint,10,opt,name=ids_only,json=idsOnly,proto3" json:"ids_only,omitempty"`
 	// Structured metadata predicates — ranges and set membership beyond the
 	// exact-match `filter` map. ANDed with each other and with `filter`.
-	Predicates    []*FieldPredicate `protobuf:"bytes,11,rep,name=predicates,proto3" json:"predicates,omitempty"`
+	Predicates []*FieldPredicate `protobuf:"bytes,11,rep,name=predicates,proto3" json:"predicates,omitempty"`
+	// Optional creation-time window applied before ranking (index-friendly, no
+	// decay scoring — the agent re-ranks by the returned created_at). Exclusive:
+	// created_after is a lower bound (created_at > it), created_before an upper
+	// bound (created_at < it). Unset = unbounded on that side.
+	CreatedAfter  *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_after,json=createdAfter,proto3" json:"created_after,omitempty"`
+	CreatedBefore *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=created_before,json=createdBefore,proto3" json:"created_before,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -558,6 +564,20 @@ func (x *SearchRequest) GetIdsOnly() bool {
 func (x *SearchRequest) GetPredicates() []*FieldPredicate {
 	if x != nil {
 		return x.Predicates
+	}
+	return nil
+}
+
+func (x *SearchRequest) GetCreatedAfter() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAfter
+	}
+	return nil
+}
+
+func (x *SearchRequest) GetCreatedBefore() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedBefore
 	}
 	return nil
 }
@@ -980,7 +1000,7 @@ const file_memsidecar_semantic_v1_semantic_proto_rawDesc = "" +
 	"\arecords\x18\x02 \x03(\v2\x1e.memsidecar.semantic.v1.RecordR\arecords\">\n" +
 	"\x0eUpsertResponse\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\x12\x1a\n" +
-	"\bversions\x18\x02 \x03(\x04R\bversions\"\x9f\x04\n" +
+	"\bversions\x18\x02 \x03(\x04R\bversions\"\xa3\x05\n" +
 	"\rSearchRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x1d\n" +
 	"\n" +
@@ -996,7 +1016,9 @@ const file_memsidecar_semantic_v1_semantic_proto_rawDesc = "" +
 	" \x01(\bR\aidsOnly\x12F\n" +
 	"\n" +
 	"predicates\x18\v \x03(\v2&.memsidecar.semantic.v1.FieldPredicateR\n" +
-	"predicates\x1a9\n" +
+	"predicates\x12?\n" +
+	"\rcreated_after\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\fcreatedAfter\x12A\n" +
+	"\x0ecreated_before\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\rcreatedBefore\x1a9\n" +
 	"\vFilterEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"o\n" +
@@ -1089,24 +1111,26 @@ var file_memsidecar_semantic_v1_semantic_proto_depIdxs = []int32{
 	14, // 6: memsidecar.semantic.v1.SearchRequest.filter:type_name -> memsidecar.semantic.v1.SearchRequest.FilterEntry
 	16, // 7: memsidecar.semantic.v1.SearchRequest.as_of:type_name -> google.protobuf.Timestamp
 	6,  // 8: memsidecar.semantic.v1.SearchRequest.predicates:type_name -> memsidecar.semantic.v1.FieldPredicate
-	0,  // 9: memsidecar.semantic.v1.FieldPredicate.op:type_name -> memsidecar.semantic.v1.PredicateOp
-	8,  // 10: memsidecar.semantic.v1.SearchResponse.hits:type_name -> memsidecar.semantic.v1.Hit
-	2,  // 11: memsidecar.semantic.v1.Hit.record:type_name -> memsidecar.semantic.v1.Record
-	15, // 12: memsidecar.semantic.v1.ExpireRequest.filter:type_name -> memsidecar.semantic.v1.ExpireRequest.FilterEntry
-	1,  // 13: memsidecar.semantic.v1.ExpireRequest.action:type_name -> memsidecar.semantic.v1.ExpireAction
-	3,  // 14: memsidecar.semantic.v1.Semantic.Upsert:input_type -> memsidecar.semantic.v1.UpsertRequest
-	5,  // 15: memsidecar.semantic.v1.Semantic.Search:input_type -> memsidecar.semantic.v1.SearchRequest
-	9,  // 16: memsidecar.semantic.v1.Semantic.Delete:input_type -> memsidecar.semantic.v1.DeleteRequest
-	11, // 17: memsidecar.semantic.v1.Semantic.Expire:input_type -> memsidecar.semantic.v1.ExpireRequest
-	4,  // 18: memsidecar.semantic.v1.Semantic.Upsert:output_type -> memsidecar.semantic.v1.UpsertResponse
-	7,  // 19: memsidecar.semantic.v1.Semantic.Search:output_type -> memsidecar.semantic.v1.SearchResponse
-	10, // 20: memsidecar.semantic.v1.Semantic.Delete:output_type -> memsidecar.semantic.v1.DeleteResponse
-	12, // 21: memsidecar.semantic.v1.Semantic.Expire:output_type -> memsidecar.semantic.v1.ExpireResponse
-	18, // [18:22] is the sub-list for method output_type
-	14, // [14:18] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	16, // 9: memsidecar.semantic.v1.SearchRequest.created_after:type_name -> google.protobuf.Timestamp
+	16, // 10: memsidecar.semantic.v1.SearchRequest.created_before:type_name -> google.protobuf.Timestamp
+	0,  // 11: memsidecar.semantic.v1.FieldPredicate.op:type_name -> memsidecar.semantic.v1.PredicateOp
+	8,  // 12: memsidecar.semantic.v1.SearchResponse.hits:type_name -> memsidecar.semantic.v1.Hit
+	2,  // 13: memsidecar.semantic.v1.Hit.record:type_name -> memsidecar.semantic.v1.Record
+	15, // 14: memsidecar.semantic.v1.ExpireRequest.filter:type_name -> memsidecar.semantic.v1.ExpireRequest.FilterEntry
+	1,  // 15: memsidecar.semantic.v1.ExpireRequest.action:type_name -> memsidecar.semantic.v1.ExpireAction
+	3,  // 16: memsidecar.semantic.v1.Semantic.Upsert:input_type -> memsidecar.semantic.v1.UpsertRequest
+	5,  // 17: memsidecar.semantic.v1.Semantic.Search:input_type -> memsidecar.semantic.v1.SearchRequest
+	9,  // 18: memsidecar.semantic.v1.Semantic.Delete:input_type -> memsidecar.semantic.v1.DeleteRequest
+	11, // 19: memsidecar.semantic.v1.Semantic.Expire:input_type -> memsidecar.semantic.v1.ExpireRequest
+	4,  // 20: memsidecar.semantic.v1.Semantic.Upsert:output_type -> memsidecar.semantic.v1.UpsertResponse
+	7,  // 21: memsidecar.semantic.v1.Semantic.Search:output_type -> memsidecar.semantic.v1.SearchResponse
+	10, // 22: memsidecar.semantic.v1.Semantic.Delete:output_type -> memsidecar.semantic.v1.DeleteResponse
+	12, // 23: memsidecar.semantic.v1.Semantic.Expire:output_type -> memsidecar.semantic.v1.ExpireResponse
+	20, // [20:24] is the sub-list for method output_type
+	16, // [16:20] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_memsidecar_semantic_v1_semantic_proto_init() }

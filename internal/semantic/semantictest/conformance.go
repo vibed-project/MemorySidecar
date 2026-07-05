@@ -41,6 +41,7 @@ func RunConformance(t *testing.T, h Harness) {
 		{"Search_IncludeFlags", testSearchIncludeFlags},
 		{"Search_IDsOnly", testSearchIDsOnly},
 		{"Search_Predicates", testSearchPredicates},
+		{"Search_TimeWindow", testSearchTimeWindow},
 		{"Delete", testDelete},
 		{"Lifecycle_ValidityWindow", testLifecycleValidityWindow},
 		{"Lifecycle_SoftDeleteVisibility", testLifecycleSoftDeleteVisibility},
@@ -214,6 +215,46 @@ func testSearchPredicates(t *testing.T, h Harness) {
 	// Numeric op against a non-numeric stored value ("note":"abc") excludes the
 	// record cleanly; missing-key records are excluded too → empty.
 	assert.Empty(t, ids(semantic.SearchOptions{Predicates: []semantic.FieldPredicate{pred("note", semantic.PredGT, "1")}}))
+}
+
+// testSearchTimeWindow checks the exclusive created_after / created_before
+// bounds (Q2). Upserts are spaced so each record gets a distinct created_at on
+// both drivers (memory honours a provided timestamp, Postgres stamps its own),
+// and the actual timestamps are read back before windowing.
+func testSearchTimeWindow(t *testing.T, h Harness) {
+	d := h.New(t, Dim)
+	ctx := context.Background()
+
+	ids := []string{"a", "b", "c"}
+	for i, id := range ids {
+		require.NoError(t, d.Upsert(ctx, []semantic.Record{{ID: id, Vector: axisVector(i)}}))
+		time.Sleep(3 * time.Millisecond)
+	}
+	// Capture each record's created_at via a targeted (distinct-vector) search.
+	ts := make(map[string]time.Time, len(ids))
+	for i, id := range ids {
+		hits, err := d.Search(ctx, semantic.SearchOptions{QueryVector: axisVector(i), TopK: 1})
+		require.NoError(t, err)
+		require.Len(t, hits, 1)
+		require.Equal(t, id, hits[0].Record.ID)
+		ts[id] = hits[0].Record.CreatedAt
+	}
+
+	inWindow := func(after, before time.Time) []string {
+		opts := semantic.SearchOptions{QueryVector: axisVector(0), TopK: 10, CreatedAfter: after, CreatedBefore: before}
+		hits, err := d.Search(ctx, opts)
+		require.NoError(t, err)
+		got := make([]string, 0, len(hits))
+		for _, hh := range hits {
+			got = append(got, hh.Record.ID)
+		}
+		sort.Strings(got)
+		return got
+	}
+
+	assert.Equal(t, []string{"b", "c"}, inWindow(ts["a"], time.Time{})) // after excludes a
+	assert.Equal(t, []string{"a", "b"}, inWindow(time.Time{}, ts["c"])) // before excludes c
+	assert.Equal(t, []string{"b"}, inWindow(ts["a"], ts["c"]))          // open window → only b
 }
 
 func testDelete(t *testing.T, h Harness) {
