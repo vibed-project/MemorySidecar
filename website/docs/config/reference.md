@@ -61,10 +61,16 @@ observability:
       headers_env:
         x-api-key: MY_API_KEY_ENV  # value comes from env at start
   metrics:
-    exporter: prometheus          # prometheus | none
-    prometheus:
+    exporter: prometheus          # prometheus | otlp | none
+    prometheus:                   # only when exporter=prometheus
       addr: ":9090"
       path: /metrics
+    otlp:                         # only when exporter=otlp (push; no /metrics endpoint)
+      endpoint: localhost:4317    # same shape as tracing.otlp
+      insecure: true
+      compression: gzip
+      headers_env:
+        x-api-key: MY_API_KEY_ENV
   logging:
     level: info                   # debug | info | warn | error (hot-reloadable)
     format: json                  # json | text

@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
+	otlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	otelprom "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/noop"
@@ -44,10 +45,17 @@ func SetupMetrics(cfg config.MetricsConfig) (*MetricsSetup, error) {
 			Shutdown:      func(context.Context) error { return nil },
 		}, nil
 	}
-	if cfg.Exporter != "prometheus" {
-		return nil, fmt.Errorf("unsupported metrics exporter %q (prometheus|none)", cfg.Exporter)
+	switch cfg.Exporter {
+	case "prometheus":
+		return setupPrometheusMetrics(cfg)
+	case "otlp":
+		return setupOTLPMetrics(cfg)
+	default:
+		return nil, fmt.Errorf("unsupported metrics exporter %q (prometheus|otlp|none)", cfg.Exporter)
 	}
+}
 
+func setupPrometheusMetrics(cfg config.MetricsConfig) (*MetricsSetup, error) {
 	res, err := buildResource()
 	if err != nil {
 		return nil, err
@@ -88,4 +96,45 @@ func SetupMetrics(cfg config.MetricsConfig) (*MetricsSetup, error) {
 		Path:          path,
 		Shutdown:      mp.Shutdown,
 	}, nil
+}
+
+// setupOTLPMetrics ships metrics to an OTLP/gRPC collector via a PeriodicReader
+// (push), reusing the same OTLP endpoint/headers config as tracing. There is no
+// /metrics HTTP endpoint in this mode.
+func setupOTLPMetrics(cfg config.MetricsConfig) (*MetricsSetup, error) {
+	res, err := buildResource()
+	if err != nil {
+		return nil, err
+	}
+	exporter, err := newOTLPMetricExporter(context.Background(), cfg.OTLP)
+	if err != nil {
+		return nil, fmt.Errorf("build otlp metric exporter: %w", err)
+	}
+	mp := sdkmetric.NewMeterProvider(
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter)),
+		sdkmetric.WithResource(res),
+	)
+	otel.SetMeterProvider(mp)
+	return &MetricsSetup{MeterProvider: mp, Shutdown: mp.Shutdown}, nil
+}
+
+func newOTLPMetricExporter(ctx context.Context, cfg config.OTLPConfig) (sdkmetric.Exporter, error) {
+	if cfg.Endpoint == "" {
+		return nil, fmt.Errorf("otlp.endpoint required")
+	}
+	opts := []otlpmetricgrpc.Option{otlpmetricgrpc.WithEndpoint(cfg.Endpoint)}
+	if cfg.Insecure {
+		opts = append(opts, otlpmetricgrpc.WithInsecure())
+	}
+	if cfg.Compression == "gzip" {
+		opts = append(opts, otlpmetricgrpc.WithCompressor("gzip"))
+	}
+	headers, err := resolveOTLPHeaders(cfg) // shared with tracing (same package)
+	if err != nil {
+		return nil, err
+	}
+	if len(headers) > 0 {
+		opts = append(opts, otlpmetricgrpc.WithHeaders(headers))
+	}
+	return otlpmetricgrpc.New(ctx, opts...)
 }

@@ -66,6 +66,23 @@ observability:
       path: /metrics
 ```
 
+Prometheus is the default (pull, via the `/metrics` endpoint). Set
+`exporter: otlp` to **push** the same metrics to an OTLP/gRPC collector via a
+periodic reader instead — reusing the identical `otlp` endpoint/headers config
+that tracing uses (so metrics and traces land in one collector). In OTLP mode
+there is no `/metrics` HTTP endpoint:
+
+```yaml
+observability:
+  metrics:
+    exporter: otlp
+    otlp:
+      endpoint: otel-collector.observability.svc.cluster.local:4317
+      insecure: true
+      headers_env:
+        x-api-key: MY_API_KEY_ENV
+```
+
 memsidecar registers Go runtime + process collectors out of the box plus
 the gRPC instrumentation's own histograms:
 
@@ -162,6 +179,18 @@ memsidecar_eviction_total{block="kv",namespace="scratchpad",cause="ttl"}  57
   labelled by `cause`. Today `cause="ttl"` is emitted by the in-memory KV driver
   at lazy-expiry (on `Get`) and on the background sweep; `consolidation` is
   reserved. `rate(memsidecar_eviction_total[5m])` is your TTL churn.
+
+### Benchmarks
+
+Each block's in-memory driver ships Go benchmarks that split the **write/index
+path** from the **query path** — the construction-vs-query distinction the memory
+literature centers on. They're advisory (not a CI gate); run them per backend:
+
+```bash
+go test -run '^$' -bench 'Upsert|Search'  ./internal/semantic/drivers/memory/
+go test -run '^$' -bench 'Put|Get'        ./internal/kv/drivers/memory/
+go test -run '^$' -bench 'UpsertEdges|Traverse' ./internal/graph/drivers/memory/
+```
 
 ## Logs
 

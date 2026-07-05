@@ -110,8 +110,9 @@ type OTLPConfig struct {
 }
 
 type MetricsConfig struct {
-	Exporter   string           `koanf:"exporter"` // "prometheus" | "none"
+	Exporter   string           `koanf:"exporter"` // "prometheus" | "otlp" | "none"
 	Prometheus PrometheusConfig `koanf:"prometheus"`
+	OTLP       OTLPConfig       `koanf:"otlp"` // only when exporter=otlp
 }
 
 type PrometheusConfig struct {
