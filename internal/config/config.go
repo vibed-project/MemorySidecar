@@ -191,6 +191,19 @@ type NamespaceConfig struct {
 	// TextSearch is the Postgres full-text config for the sparse lane of hybrid
 	// search (semantic only; e.g. "simple" or "english"). Empty = "simple".
 	TextSearch string `koanf:"text_search"`
+	// Access is the opt-in KV cache-tier policy (U5). Only honoured by the
+	// in-memory driver. Durations are seconds (koanf here doesn't decode
+	// duration strings).
+	Access AccessConfig `koanf:"access"`
+}
+
+// AccessConfig is the per-namespace KV cache-tier policy (U5). The zero value
+// is fully disabled.
+type AccessConfig struct {
+	Track               bool `koanf:"track"`                  // record access counters on Get
+	SlideTTLSeconds     int  `koanf:"slide_ttl_seconds"`      // >0: extend a TTL'd key's expiry on Get
+	Capacity            int  `koanf:"capacity"`               // >0: cap live keys; evict coldest by heat
+	HeatHalfLifeSeconds int  `koanf:"heat_half_life_seconds"` // heat decay half-life (0 = driver default)
 }
 
 // EmbedderConfig configures the embedder bound to a semantic namespace.

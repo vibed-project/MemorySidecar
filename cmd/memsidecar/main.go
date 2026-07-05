@@ -343,7 +343,8 @@ func buildKVRegistry(cfg *config.Config, evict *obs.EvictionCounter) (*kv.Regist
 		switch b.Driver {
 		case "memory":
 			drivers[b.Name] = memdrv.New(memdrv.Options{
-				OnEvict: func(ns string, n int) { evict.Add("kv", ns, obs.EvictionTTL, int64(n)) },
+				OnEvict:        func(ns, cause string, n int) { evict.Add("kv", ns, cause, int64(n)) },
+				AccessPolicies: kvAccessPolicies(cfg, b.Name),
 			})
 		case "postgres":
 			d, err := newKVPostgresDriver(b)
@@ -373,6 +374,33 @@ func buildKVRegistry(cfg *config.Config, evict *obs.EvictionCounter) (*kv.Regist
 		}
 	}
 	return reg, nil
+}
+
+// kvAccessPolicies gathers the opt-in cache-tier policy (U5) for each kv
+// namespace bound to backend. Only namespaces with an enabled policy appear;
+// the in-memory driver is the only one that honours it.
+func kvAccessPolicies(cfg *config.Config, backend string) map[string]kv.AccessPolicy {
+	var out map[string]kv.AccessPolicy
+	for _, ns := range cfg.Namespaces {
+		if ns.Block != "kv" || ns.Backend != backend {
+			continue
+		}
+		ac := ns.Access
+		pol := kv.AccessPolicy{
+			Track:        ac.Track,
+			SlideTTL:     time.Duration(ac.SlideTTLSeconds) * time.Second,
+			Capacity:     ac.Capacity,
+			HeatHalfLife: time.Duration(ac.HeatHalfLifeSeconds) * time.Second,
+		}
+		if !pol.Enabled() {
+			continue
+		}
+		if out == nil {
+			out = make(map[string]kv.AccessPolicy)
+		}
+		out[ns.Name] = pol
+	}
+	return out
 }
 
 func buildEpisodicRegistry(cfg *config.Config) (*episodic.Registry, error) {
