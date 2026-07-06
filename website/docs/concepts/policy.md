@@ -60,7 +60,7 @@ Each rule has:
   traversal), `rerank_candidate_k` (semantic hybrid per-lane candidate
   depth). At least one bound is required;
   a zero bound imposes no limit on that dimension. This is how bounded
-  traversal is enforced server-side (ADR-0002 §8).
+  traversal is enforced server-side.
 
 ## Evaluation order
 
@@ -96,8 +96,8 @@ See [Hot reload](../config/hot-reload.md) for the full reload contract.
 
 ## What policy is *not*
 
-The walking-skeleton policy engine handles **access and cost decisions** —
-allow / deny / rate-limit / cost-cap. The ADR's larger policy story (PII redaction,
+The policy engine handles **access and cost decisions** —
+allow / deny / rate-limit / cost-cap. A larger policy story (PII redaction,
 post-read transforms, retention enforcement) is intentionally deferred;
 the [HookCtx](https://github.com/m-koerbaecher/memsidecar/blob/main/internal/policy/engine.go)
 type already carries the fields a richer engine would need.

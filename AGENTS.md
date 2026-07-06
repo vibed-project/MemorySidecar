@@ -20,13 +20,11 @@ six kinds of memory agent stacks keep reinventing:
 | `graph` | Typed nodes/edges with bounded, hard-capped traversal (Neighbors/Traverse) | memory |
 
 Agents talk to the sidecar; the sidecar talks to the substrate. The design
-follows Dapr's building-block model, narrowed to memory/state. The rationale
-and roadmap live in **[ADR-0001](docs/decisions/adr-0001-memory-sidecar.md)** —
-read it before making design-level changes. Status is an early **walking
-skeleton**: the full ADR v0.1 surface (plus most of v0.2) works, but nothing is
-released and proto shapes may still change.
+follows Dapr's building-block model, narrowed to memory/state. Status is
+**feature-complete against the roadmap, pre-release**: all six blocks work, but
+nothing is released and proto shapes may still change.
 
-Out of scope (per the ADR): this is **not** an agent framework, an inference
+Out of scope by design: this is **not** an agent framework, an inference
 cache, a context-window compiler, or a vector DB. Don't add those.
 
 ## Layout
@@ -86,7 +84,7 @@ when you touch a postgres/s3 driver.
 
 - **Generated code (`gen/`) is checked in and never hand-edited.** Change
   `proto/*.proto`, then `make proto`. Proto lint waivers live in `buf.yaml`
-  (e.g. service is `KV` not `KVService`, by ADR convention).
+  (e.g. service is `KV` not `KVService`, by project convention).
 - **Every block follows the same shape.** `driver.go` defines a `Driver`
   interface (must be safe for concurrent use) plus `Record`/`*Options` structs
   and sentinel errors (`ErrNotFound`, …). `registry.go` maps namespace → driver

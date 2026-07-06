@@ -174,7 +174,7 @@ Not every driver fits every block — `fs` and `s3` only serve `artifact`;
 `memory` and `postgres` serve everything except artifact-on-`postgres`
 (which isn't implemented). The `graph` block runs on `memory` or `postgres`
 (the Postgres driver stores nodes/edges in shared `graph_*` tables and runs
-bounded traversal in Go — ADR-0002 §6).
+bounded traversal in Go).
 
 ## namespaces
 

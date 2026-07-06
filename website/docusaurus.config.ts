@@ -94,7 +94,6 @@ const config: Config = {
           title: 'More',
           items: [
             {label: 'GitHub', href: 'https://github.com/m-koerbaecher/memsidecar'},
-            {label: 'ADR-0001', to: '/reference/adr-0001'},
           ],
         },
       ],

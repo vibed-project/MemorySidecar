@@ -155,8 +155,10 @@ instrument needed:
     / sum(rate(memsidecar_backend_duration_seconds_count{op="semantic.search",namespace="notes"}[5m]))
 ```
 
-These service-layer metrics currently cover the `semantic` block; extending
-`backend.duration`/`result.size` to the other blocks is a mechanical follow-up.
+These service-layer metrics are scoped to the `semantic` block, where the
+backend/sidecar split matters most (embedding + vector search dominate the RPC).
+The same instruments generalise to the other blocks along the shared
+`block`/`op`/`namespace` labels when a backend there warrants the same scrutiny.
 
 ### Namespace growth & eviction
 
