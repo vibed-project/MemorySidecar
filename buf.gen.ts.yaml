@@ -1,0 +1,16 @@
+# TypeScript stubs for the SDK (sdk/typescript).
+#
+# Uses the buf-native protobuf-es (v2) plugin, which emits messages AND the
+# service descriptors that @connectrpc/connect's createClient consumes — no
+# separate connect plugin needed in v2. Run:
+#
+#   make proto-ts        # buf generate --template buf.gen.ts.yaml
+version: v2
+plugins:
+  - remote: buf.build/bufbuild/es
+    out: sdk/typescript/src/gen
+    opt:
+      - target=ts
+      - import_extension=js
+inputs:
+  - directory: proto
