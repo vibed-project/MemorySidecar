@@ -21,6 +21,11 @@ dependencies = [
 dev = [
     "pytest>=7",
 ]
+# Framework adapters (memsidecar.ext.*). Each is optional and pulls in its
+# framework only when installed, e.g. `pip install memsidecar[crewai]`.
+crewai = [
+    "crewai>=1.0,<2",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/memsidecar"]
