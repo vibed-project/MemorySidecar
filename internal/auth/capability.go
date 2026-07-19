@@ -21,6 +21,7 @@ const (
 	OpEpisodicAppend Op = "episodic.append"
 	OpEpisodicRange  Op = "episodic.range"
 	OpEpisodicTail   Op = "episodic.tail"
+	OpEpisodicExpire Op = "episodic.expire"
 
 	OpSemanticUpsert Op = "semantic.upsert"
 	OpSemanticSearch Op = "semantic.search"

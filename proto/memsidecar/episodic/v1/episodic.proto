@@ -16,6 +16,11 @@ service Episodic {
   rpc Append(AppendRequest) returns (AppendResponse);
   rpc Range(RangeRequest) returns (stream Event);
   rpc Tail(TailRequest) returns (stream Event);
+  // Expire tombstones or physically removes events inside a bounded retention
+  // window (a cursor/time upper bound), in one server-side operation (U3).
+  // max_rows caps the affected set so maintenance stays localized. This is the
+  // log's retention/compaction path; per-event revision uses Append.supersedes.
+  rpc Expire(ExpireRequest) returns (ExpireResponse);
 }
 
 message Event {
@@ -33,6 +38,20 @@ message Event {
   string role = 7;
   // Conversation/session grouping key. First-class for cross-session assembly.
   string session_id = 8;
+  // Provenance & revisability (U2). Both optional.
+  // supersedes: ids of earlier events in the same namespace that this event
+  // revises. On Append the server tombstones each named live event
+  // (deleted_at = now()) in the same transaction; self-references and
+  // already-tombstoned ids are ignored. The server performs no inference — the
+  // caller decides what is superseded.
+  repeated string supersedes = 9;
+  // source: opaque provenance handle for where this event came from (e.g. a
+  // semantic record id or artifact id). Stored and returned; never interpreted.
+  string source = 10;
+  // deleted_at: soft-delete tombstone. Unset = live. The log stays append-only
+  // and immutable; a tombstoned event is retained and only returned when a
+  // Range sets include_deleted. Set by a superseding Append or by Expire.
+  google.protobuf.Timestamp deleted_at = 11;
 }
 
 message AppendRequest {
@@ -42,6 +61,18 @@ message AppendRequest {
   map<string, string> metadata = 4;
   string role = 5;
   string session_id = 6;
+  // dedup_key: optional client-supplied idempotency key. gRPC delivery is
+  // at-least-once and this log has no update/delete on the write path, so a
+  // retried Append would otherwise insert a duplicate event. When set, the
+  // first Append for a (namespace, dedup_key) writes the event; any later
+  // Append with the same key is a no-op that returns the already-stored event
+  // (same id and cursor). Empty = no dedup (every Append writes).
+  string dedup_key = 7;
+  // supersedes: ids of earlier events this one revises; the server tombstones
+  // each named live event in the same transaction (see Event.supersedes).
+  repeated string supersedes = 8;
+  // source: opaque provenance handle stored on the event (see Event.source).
+  string source = 9;
 }
 
 message AppendResponse {
@@ -64,6 +95,9 @@ message RangeRequest {
   // that side. Backed by a (namespace, timestamp) index.
   google.protobuf.Timestamp after_time = 6;
   google.protobuf.Timestamp before_time = 7;
+  // include_deleted: also return tombstoned (superseded or expired) events. By
+  // default Range returns only live events (deleted_at unset).
+  bool include_deleted = 8;
 }
 
 message TailRequest {
@@ -73,4 +107,38 @@ message TailRequest {
   // If true, replay events with cursor > after_cursor before going live.
   // If false (the default), start at the live edge and ignore after_cursor.
   bool include_historical = 3;
+}
+
+// ExpireAction selects what Expire does to each matched event.
+enum ExpireAction {
+  EXPIRE_ACTION_UNSPECIFIED = 0;
+  // Soft delete: set deleted_at = now(), retaining the row. Tombstoned events
+  // stay in the log and are returned only by Range with include_deleted.
+  EXPIRE_ACTION_SOFT_DELETE = 1;
+  // Hard delete: physically remove the row.
+  EXPIRE_ACTION_HARD_DELETE = 2;
+}
+
+message ExpireRequest {
+  string namespace = 1;
+  // Retention window upper bound; Expire matches events strictly below it.
+  // before_cursor is an exclusive cursor bound (cursor < before_cursor); 0 = no
+  // cursor bound.
+  uint64 before_cursor = 2;
+  // before_time is an exclusive timestamp bound (timestamp < before_time),
+  // ANDed with before_cursor; unset = no time bound. At least one of
+  // before_cursor / before_time must be set, so Expire never matches an entire
+  // namespace unbounded.
+  google.protobuf.Timestamp before_time = 3;
+  ExpireAction action = 4;
+  // Upper bound on affected events. Required (> 0) to keep the operation
+  // localized; matches are taken oldest-first (ascending cursor) and exceeding
+  // the cap simply stops — re-issue to continue. Bounded further by the policy
+  // max cap (O4).
+  uint32 max_rows = 5;
+}
+
+message ExpireResponse {
+  // Number of events actually affected by the action.
+  uint64 affected = 1;
 }
