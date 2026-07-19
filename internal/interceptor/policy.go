@@ -25,6 +25,7 @@ var methodToOp = map[string]struct {
 	"/memsidecar.episodic.v1.Episodic/Append": {auth.OpEpisodicAppend, "episodic", true},
 	"/memsidecar.episodic.v1.Episodic/Range":  {auth.OpEpisodicRange, "episodic", false},
 	"/memsidecar.episodic.v1.Episodic/Tail":   {auth.OpEpisodicTail, "episodic", false},
+	"/memsidecar.episodic.v1.Episodic/Expire": {auth.OpEpisodicExpire, "episodic", true},
 	"/memsidecar.semantic.v1.Semantic/Upsert": {auth.OpSemanticUpsert, "semantic", true},
 	"/memsidecar.semantic.v1.Semantic/Search": {auth.OpSemanticSearch, "semantic", false},
 	"/memsidecar.semantic.v1.Semantic/Delete": {auth.OpSemanticDelete, "semantic", true},

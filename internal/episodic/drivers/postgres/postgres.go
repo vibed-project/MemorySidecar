@@ -101,6 +101,32 @@ func (d *Driver) Close() error {
 	return nil
 }
 
+// querier is the subset of pgxpool.Pool / pgx.Tx used for single-row reads, so
+// selectByDedup can run either inside a tx or on the pool.
+type querier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+// eventColumns is the ordered projection scanEvent expects. source/supersedes
+// are coalesced so a NULL on a pre-lifecycle row reads as "" / empty slice;
+// deleted_at stays nullable (NULL = live).
+const eventColumns = `id, cursor, timestamp, type, payload, metadata, role, session_id, ` +
+	`COALESCE(source, ''), COALESCE(supersedes, '{}'), deleted_at`
+
+func (d *Driver) selectByDedup(ctx context.Context, q querier, namespace, dedupKey string) (episodic.Event, bool, error) {
+	row := q.QueryRow(ctx,
+		`SELECT `+eventColumns+` FROM episodic_events WHERE namespace = $1 AND dedup_key = $2`,
+		namespace, dedupKey)
+	ev, err := scanEvent(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return episodic.Event{}, false, nil
+	}
+	if err != nil {
+		return episodic.Event{}, false, err
+	}
+	return ev, true, nil
+}
+
 func (d *Driver) Append(ctx context.Context, namespace string, opts episodic.AppendOptions) (episodic.Event, error) {
 	metaBytes, err := json.Marshal(opts.Metadata)
 	if err != nil {
@@ -115,6 +141,16 @@ func (d *Driver) Append(ctx context.Context, namespace string, opts episodic.App
 		return episodic.Event{}, fmt.Errorf("episodic/postgres: begin: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Idempotent replay fast path: if this dedup key already claimed an event,
+	// return it without burning a cursor.
+	if opts.DedupKey != "" {
+		if ev, found, derr := d.selectByDedup(ctx, tx, namespace, opts.DedupKey); derr != nil {
+			return episodic.Event{}, fmt.Errorf("episodic/postgres: dedup lookup: %w", derr)
+		} else if found {
+			return ev, nil
+		}
+	}
 
 	// Atomically allocate the next cursor for this namespace. INSERT ... ON
 	// CONFLICT DO UPDATE locks the counter row, so concurrent appenders to the
@@ -141,40 +177,50 @@ func (d *Driver) Append(ctx context.Context, namespace string, opts episodic.App
 		payload = []byte{}
 	}
 
-	var (
-		outID        string
-		outCursor    int64
-		outTimestamp time.Time
-		outType      string
-		outPayload   []byte
-		outMeta      []byte
-		outRole      string
-		outSession   string
-	)
-	err = tx.QueryRow(ctx, `
-		INSERT INTO episodic_events (namespace, cursor, type, payload, metadata, role, session_id)
-		     VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, cursor, timestamp, type, payload, metadata, role, session_id`,
+	// ON CONFLICT DO NOTHING guards the dedup-race window: if a concurrent append
+	// committed the same (namespace, dedup_key) after our fast-path read, the
+	// insert returns no row — we roll back (releasing the cursor) and read the
+	// winner. Rows with no dedup_key aren't in the partial index and never
+	// conflict.
+	row := tx.QueryRow(ctx, `
+		INSERT INTO episodic_events (namespace, cursor, type, payload, metadata, role, session_id, source, supersedes, dedup_key)
+		     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		ON CONFLICT (namespace, dedup_key) WHERE dedup_key IS NOT NULL DO NOTHING
+		RETURNING `+eventColumns,
 		namespace, next, opts.Type, payload, metaBytes, opts.Role, opts.SessionID,
-	).Scan(&outID, &outCursor, &outTimestamp, &outType, &outPayload, &outMeta, &outRole, &outSession)
+		nullString(opts.Source), opts.Supersedes, nullString(opts.DedupKey))
+	ev, err := scanEvent(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		_ = tx.Rollback(ctx)
+		existing, found, derr := d.selectByDedup(ctx, d.pool, namespace, opts.DedupKey)
+		if derr != nil {
+			return episodic.Event{}, fmt.Errorf("episodic/postgres: dedup lookup: %w", derr)
+		}
+		if !found {
+			return episodic.Event{}, fmt.Errorf("episodic/postgres: insert conflicted but no existing event for dedup key")
+		}
+		return existing, nil
+	}
 	if err != nil {
 		return episodic.Event{}, fmt.Errorf("episodic/postgres: insert: %w", err)
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return episodic.Event{}, fmt.Errorf("episodic/postgres: commit: %w", err)
+
+	// Tombstone superseded live events in the same tx, so the revision and the
+	// invalidation commit atomically. id::text comparison sidesteps uuid casts
+	// and silently ignores non-matching / malformed ids; the self-reference and
+	// already-tombstoned guards mirror the memory driver.
+	if len(opts.Supersedes) > 0 {
+		if _, err := tx.Exec(ctx, `
+			UPDATE episodic_events
+			   SET deleted_at = $1
+			 WHERE namespace = $2 AND id::text = ANY($3) AND id::text <> $4 AND deleted_at IS NULL`,
+			ev.Timestamp, namespace, opts.Supersedes, ev.ID); err != nil {
+			return episodic.Event{}, fmt.Errorf("episodic/postgres: supersede: %w", err)
+		}
 	}
 
-	ev := episodic.Event{
-		ID:        outID,
-		Cursor:    uint64(outCursor),
-		Timestamp: outTimestamp,
-		Type:      outType,
-		Payload:   outPayload,
-		Role:      outRole,
-		SessionID: outSession,
-	}
-	if len(outMeta) > 0 {
-		_ = json.Unmarshal(outMeta, &ev.Metadata)
+	if err := tx.Commit(ctx); err != nil {
+		return episodic.Event{}, fmt.Errorf("episodic/postgres: commit: %w", err)
 	}
 	return ev, nil
 }
@@ -182,9 +228,12 @@ func (d *Driver) Append(ctx context.Context, namespace string, opts episodic.App
 func (d *Driver) Range(ctx context.Context, namespace string, opts episodic.RangeOptions, yield func(episodic.Event) error) error {
 	args := []any{namespace}
 	q := strings.Builder{}
-	q.WriteString(`SELECT id, cursor, timestamp, type, payload, metadata, role, session_id
+	q.WriteString(`SELECT ` + eventColumns + `
 	                 FROM episodic_events
 	                WHERE namespace = $1`)
+	if !opts.IncludeDeleted {
+		q.WriteString(" AND deleted_at IS NULL")
+	}
 	if opts.AfterCursor > 0 {
 		args = append(args, int64(opts.AfterCursor))
 		fmt.Fprintf(&q, " AND cursor > $%d", len(args))
@@ -275,13 +324,20 @@ func (d *Driver) Tail(ctx context.Context, namespace string, opts episodic.TailO
 	}
 }
 
-func scanEvent(rows pgx.Rows) (episodic.Event, error) {
+// scannable is satisfied by both pgx.Row (single-row QueryRow) and pgx.Rows.
+type scannable interface {
+	Scan(dest ...any) error
+}
+
+func scanEvent(row scannable) (episodic.Event, error) {
 	var (
 		ev        episodic.Event
 		cursor    int64
 		metaBytes []byte
+		deletedAt *time.Time
 	)
-	err := rows.Scan(&ev.ID, &cursor, &ev.Timestamp, &ev.Type, &ev.Payload, &metaBytes, &ev.Role, &ev.SessionID)
+	err := row.Scan(&ev.ID, &cursor, &ev.Timestamp, &ev.Type, &ev.Payload, &metaBytes,
+		&ev.Role, &ev.SessionID, &ev.Source, &ev.Supersedes, &deletedAt)
 	if err != nil {
 		return episodic.Event{}, fmt.Errorf("episodic/postgres: scan: %w", err)
 	}
@@ -289,7 +345,70 @@ func scanEvent(rows pgx.Rows) (episodic.Event, error) {
 	if len(metaBytes) > 0 {
 		_ = json.Unmarshal(metaBytes, &ev.Metadata)
 	}
+	if deletedAt != nil {
+		ev.DeletedAt = *deletedAt
+	}
 	return ev, nil
+}
+
+func (d *Driver) Expire(ctx context.Context, namespace string, opts episodic.ExpireOptions) (uint64, error) {
+	if opts.Action != episodic.ExpireSoftDelete && opts.Action != episodic.ExpireHardDelete {
+		return 0, fmt.Errorf("episodic/postgres: unknown expire action %d", opts.Action)
+	}
+	if opts.BeforeCursor == 0 && opts.BeforeTime.IsZero() {
+		return 0, episodic.ErrExpireWindowRequired
+	}
+
+	// Retention window predicate, oldest-first and capped by max_rows via a
+	// LIMIT subselect so the whole sweep stays one localized statement.
+	where := strings.Builder{}
+	where.WriteString("namespace = $1")
+	args := []any{namespace}
+	if opts.BeforeCursor > 0 {
+		args = append(args, int64(opts.BeforeCursor))
+		fmt.Fprintf(&where, " AND cursor < $%d", len(args))
+	}
+	if !opts.BeforeTime.IsZero() {
+		args = append(args, opts.BeforeTime)
+		fmt.Fprintf(&where, " AND timestamp < $%d", len(args))
+	}
+
+	var stmt string
+	if opts.Action == episodic.ExpireSoftDelete {
+		// Only tombstone currently-live rows so affected counts stay idempotent.
+		args = append(args, int32(opts.MaxRows))
+		stmt = fmt.Sprintf(`
+			UPDATE episodic_events SET deleted_at = now()
+			 WHERE id IN (
+			     SELECT id FROM episodic_events
+			      WHERE %s AND deleted_at IS NULL
+			      ORDER BY cursor ASC
+			      LIMIT $%d)`, where.String(), len(args))
+	} else {
+		args = append(args, int32(opts.MaxRows))
+		stmt = fmt.Sprintf(`
+			DELETE FROM episodic_events
+			 WHERE id IN (
+			     SELECT id FROM episodic_events
+			      WHERE %s
+			      ORDER BY cursor ASC
+			      LIMIT $%d)`, where.String(), len(args))
+	}
+
+	ct, err := d.pool.Exec(ctx, stmt, args...)
+	if err != nil {
+		return 0, fmt.Errorf("episodic/postgres: expire: %w", err)
+	}
+	return uint64(ct.RowsAffected()), nil
+}
+
+// nullString maps "" to a SQL NULL so optional text columns store "unset" as
+// NULL rather than an empty string.
+func nullString(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
 }
 
 func runMigrations(ctx context.Context, pool *pgxpool.Pool) error {

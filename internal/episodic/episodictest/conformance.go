@@ -43,6 +43,12 @@ func RunConformance(t *testing.T, h Harness) {
 		{"Tail_WithHistorical", testTailWithHistorical},
 		{"Tail_ContextCancel", testTailContextCancel},
 		{"ConcurrentAppend", testConcurrentAppend},
+		{"Dedup_Idempotent", testDedupIdempotent},
+		{"Supersedes_Tombstones", testSupersedesTombstones},
+		{"Expire_SoftDelete", testExpireSoftDelete},
+		{"Expire_HardDelete", testExpireHardDelete},
+		{"Expire_MaxRowsBound", testExpireMaxRowsBound},
+		{"Expire_Validation", testExpireValidation},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) { tc.fn(t, h) })
@@ -267,6 +273,181 @@ func testConcurrentAppend(t *testing.T, h Harness) {
 	})
 	require.NoError(t, err)
 	assert.Len(t, seen, total)
+}
+
+// cursorsOf collects the cursors a Range yields, in order.
+func cursorsOf(t *testing.T, d episodic.Driver, opts episodic.RangeOptions) []uint64 {
+	t.Helper()
+	var got []uint64
+	require.NoError(t, d.Range(context.Background(), "ns", opts, func(e episodic.Event) error {
+		got = append(got, e.Cursor)
+		return nil
+	}))
+	return got
+}
+
+// eventsOf collects the events a Range yields, in order.
+func eventsOf(t *testing.T, d episodic.Driver, opts episodic.RangeOptions) []episodic.Event {
+	t.Helper()
+	var got []episodic.Event
+	require.NoError(t, d.Range(context.Background(), "ns", opts, func(e episodic.Event) error {
+		got = append(got, e)
+		return nil
+	}))
+	return got
+}
+
+// testDedupIdempotent checks that a repeated Append with the same dedup_key
+// returns the already-stored event (same id/cursor/payload) without writing a
+// second event or advancing the cursor, and that keys are scoped per namespace.
+func testDedupIdempotent(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+
+	ev1, err := d.Append(ctx, "ns", episodic.AppendOptions{Type: "x", Payload: []byte("first"), DedupKey: "k1"})
+	require.NoError(t, err)
+	assert.Equal(t, uint64(1), ev1.Cursor)
+
+	// Replay: same key, different payload → returns the original unchanged.
+	ev2, err := d.Append(ctx, "ns", episodic.AppendOptions{Type: "x", Payload: []byte("second"), DedupKey: "k1"})
+	require.NoError(t, err)
+	assert.Equal(t, ev1.ID, ev2.ID)
+	assert.Equal(t, ev1.Cursor, ev2.Cursor)
+	assert.Equal(t, []byte("first"), ev2.Payload)
+
+	// A fresh key writes and takes the NEXT cursor — the replay burned none.
+	ev3, err := d.Append(ctx, "ns", episodic.AppendOptions{Type: "x", DedupKey: "k2"})
+	require.NoError(t, err)
+	assert.Equal(t, uint64(2), ev3.Cursor)
+	assert.Equal(t, []uint64{1, 2}, cursorsOf(t, d, episodic.RangeOptions{}))
+
+	// Empty dedup_key never dedups.
+	_, err = d.Append(ctx, "ns", episodic.AppendOptions{Type: "x"})
+	require.NoError(t, err)
+	_, err = d.Append(ctx, "ns", episodic.AppendOptions{Type: "x"})
+	require.NoError(t, err)
+	assert.Len(t, cursorsOf(t, d, episodic.RangeOptions{}), 4)
+}
+
+// testSupersedesTombstones checks that appending an event with supersedes
+// tombstones the named live events (hidden from a default Range, visible with
+// IncludeDeleted), round-trips supersedes/source, and ignores unknown ids.
+func testSupersedesTombstones(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+
+	a, err := d.Append(ctx, "ns", episodic.AppendOptions{Type: "fact", Payload: []byte("v1")})
+	require.NoError(t, err)
+	b, err := d.Append(ctx, "ns", episodic.AppendOptions{
+		Type: "fact", Payload: []byte("v2"), Supersedes: []string{a.ID}, Source: "corr-1",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []string{a.ID}, b.Supersedes)
+	assert.Equal(t, "corr-1", b.Source)
+
+	// Default Range hides the tombstoned event a.
+	assert.Equal(t, []uint64{b.Cursor}, cursorsOf(t, d, episodic.RangeOptions{}))
+
+	// IncludeDeleted returns both; a carries a tombstone, b stays live and keeps
+	// its provenance on the read path.
+	all := eventsOf(t, d, episodic.RangeOptions{IncludeDeleted: true})
+	require.Len(t, all, 2)
+	assert.Equal(t, a.ID, all[0].ID)
+	assert.False(t, all[0].DeletedAt.IsZero(), "superseded event should be tombstoned")
+	assert.True(t, all[1].DeletedAt.IsZero(), "superseding event should be live")
+	assert.Equal(t, "corr-1", all[1].Source)
+
+	// Superseding an unknown id is a no-op, not an error.
+	_, err = d.Append(ctx, "ns", episodic.AppendOptions{Type: "x", Supersedes: []string{"00000000-0000-4000-8000-000000000000"}})
+	require.NoError(t, err)
+}
+
+// testExpireSoftDelete checks the cursor-windowed soft-delete retention sweep:
+// affected count, visibility, and idempotency on re-run.
+func testExpireSoftDelete(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+	for i := 0; i < 5; i++ {
+		_, err := d.Append(ctx, "ns", episodic.AppendOptions{Type: "x"})
+		require.NoError(t, err)
+	}
+
+	// Tombstone everything with cursor < 3 (i.e. cursors 1 and 2).
+	n, err := d.Expire(ctx, "ns", episodic.ExpireOptions{
+		BeforeCursor: 3, Action: episodic.ExpireSoftDelete, MaxRows: 100,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, uint64(2), n)
+	assert.Equal(t, []uint64{3, 4, 5}, cursorsOf(t, d, episodic.RangeOptions{}))
+	assert.Equal(t, []uint64{1, 2, 3, 4, 5}, cursorsOf(t, d, episodic.RangeOptions{IncludeDeleted: true}))
+
+	// Re-running over the same window affects nothing (already tombstoned).
+	n, err = d.Expire(ctx, "ns", episodic.ExpireOptions{
+		BeforeCursor: 3, Action: episodic.ExpireSoftDelete, MaxRows: 100,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, uint64(0), n)
+}
+
+// testExpireHardDelete checks physical removal and — critically — that cursors
+// stay monotonic afterward: a hard delete must not let a later Append reuse a
+// cursor value.
+func testExpireHardDelete(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+	for i := 0; i < 5; i++ {
+		_, err := d.Append(ctx, "ns", episodic.AppendOptions{Type: "x"})
+		require.NoError(t, err)
+	}
+
+	n, err := d.Expire(ctx, "ns", episodic.ExpireOptions{
+		BeforeCursor: 4, Action: episodic.ExpireHardDelete, MaxRows: 100,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, uint64(3), n)
+	// Gone even under IncludeDeleted.
+	assert.Equal(t, []uint64{4, 5}, cursorsOf(t, d, episodic.RangeOptions{IncludeDeleted: true}))
+
+	// The next append continues from the high-water mark, never reusing 1..3.
+	ev, err := d.Append(ctx, "ns", episodic.AppendOptions{Type: "x"})
+	require.NoError(t, err)
+	assert.Equal(t, uint64(6), ev.Cursor)
+}
+
+// testExpireMaxRowsBound checks that max_rows caps the affected set to the
+// oldest matches.
+func testExpireMaxRowsBound(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+	for i := 0; i < 5; i++ {
+		_, err := d.Append(ctx, "ns", episodic.AppendOptions{Type: "x"})
+		require.NoError(t, err)
+	}
+
+	n, err := d.Expire(ctx, "ns", episodic.ExpireOptions{
+		BeforeCursor: 6, Action: episodic.ExpireSoftDelete, MaxRows: 2,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, uint64(2), n)
+	// Only the two oldest (1, 2) were tombstoned.
+	assert.Equal(t, []uint64{3, 4, 5}, cursorsOf(t, d, episodic.RangeOptions{}))
+}
+
+// testExpireValidation checks that Expire rejects an unbounded window and an
+// unspecified action at the driver boundary.
+func testExpireValidation(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+	_, err := d.Append(ctx, "ns", episodic.AppendOptions{Type: "x"})
+	require.NoError(t, err)
+
+	_, err = d.Expire(ctx, "ns", episodic.ExpireOptions{Action: episodic.ExpireSoftDelete, MaxRows: 1})
+	require.ErrorIs(t, err, episodic.ErrExpireWindowRequired)
+
+	_, err = d.Expire(ctx, "ns", episodic.ExpireOptions{
+		BeforeCursor: 5, Action: episodic.ExpireActionUnspecified, MaxRows: 1,
+	})
+	require.Error(t, err)
 }
 
 func receive(t *testing.T, ch <-chan uint64, h Harness) uint64 {
