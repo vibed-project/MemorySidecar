@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"memsidecar/internal/admin"
 	"memsidecar/internal/artifact"
 	artfsdrv "memsidecar/internal/artifact/drivers/fs"
 	artmemdrv "memsidecar/internal/artifact/drivers/memory"
@@ -180,18 +181,24 @@ func run() error {
 	}
 	defer func() { _ = graphReg.Close() }()
 
-	// Namespace-growth gauge (memsidecar.namespace.items) over every block's
-	// registry. Best-effort: a registration error must not stop startup.
-	if err := obs.RegisterNamespaceItemsGauge([]obs.NamespaceItemSource{
+	// Per-block namespace-count sources, shared by the growth gauge and the
+	// Admin introspection service.
+	nsItemSources := []obs.NamespaceItemSource{
 		{Block: "kv", Items: kvReg.NamespaceItems},
 		{Block: "episodic", Items: epReg.NamespaceItems},
 		{Block: "semantic", Items: semReg.NamespaceItems},
 		{Block: "artifact", Items: artReg.NamespaceItems},
 		{Block: "lease", Items: leaseReg.NamespaceItems},
 		{Block: "graph", Items: graphReg.NamespaceItems},
-	}); err != nil {
+	}
+
+	// Namespace-growth gauge (memsidecar.namespace.items) over every block's
+	// registry. Best-effort: a registration error must not stop startup.
+	if err := obs.RegisterNamespaceItemsGauge(nsItemSources); err != nil {
 		log.Warn("register namespace.items gauge", slog.String("error", err.Error()))
 	}
+
+	adminSvc := admin.NewService(cfg, nsItemSources, version.Version, version.Commit)
 
 	polEngine, err := buildPolicyEngine(cfg.Policy)
 	if err != nil {
@@ -213,6 +220,7 @@ func run() error {
 		Artifact:      artReg,
 		Lease:         leaseReg,
 		Graph:         graphReg,
+		Admin:         adminSvc,
 	})
 	if err != nil {
 		return err

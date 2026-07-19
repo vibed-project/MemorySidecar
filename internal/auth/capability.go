@@ -44,6 +44,10 @@ const (
 	OpGraphGet    Op = "graph.get"
 	OpGraphQuery  Op = "graph.query" // neighbors + traverse
 	OpGraphDelete Op = "graph.delete"
+
+	// OpAdminInspect gates the cross-namespace Admin introspection RPCs. It is
+	// not tied to a namespace, so a token grants it via AllowedOps only.
+	OpAdminInspect Op = "admin.inspect"
 )
 
 // Scope describes what a capability is permitted to do.

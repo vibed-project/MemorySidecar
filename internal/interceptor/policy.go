@@ -48,6 +48,7 @@ var methodToOp = map[string]struct {
 	"/memsidecar.graph.v1.Graph/Traverse":     {auth.OpGraphQuery, "graph", false},
 	"/memsidecar.graph.v1.Graph/DeleteNode":   {auth.OpGraphDelete, "graph", true},
 	"/memsidecar.graph.v1.Graph/DeleteEdge":   {auth.OpGraphDelete, "graph", true},
+	"/memsidecar.admin.v1.Admin/ListNamespaces": {auth.OpAdminInspect, "admin", false},
 }
 
 // PolicyUnary invokes the configured policy engine for every recognized method.
