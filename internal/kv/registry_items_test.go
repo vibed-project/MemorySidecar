@@ -15,6 +15,9 @@ type noSizeDriver struct{}
 func (noSizeDriver) Get(context.Context, string, string) (kv.Record, error) {
 	return kv.Record{}, kv.ErrNotFound
 }
+func (noSizeDriver) MultiGet(context.Context, string, []string) ([]kv.Record, error) {
+	return nil, nil
+}
 func (noSizeDriver) Put(context.Context, string, string, kv.PutOptions) (kv.Record, error) {
 	return kv.Record{}, nil
 }

@@ -167,6 +167,104 @@ func (x *GetResponse) GetMetadata() map[string]string {
 	return nil
 }
 
+type MultiGetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Namespace     string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Keys          []string               `protobuf:"bytes,2,rep,name=keys,proto3" json:"keys,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MultiGetRequest) Reset() {
+	*x = MultiGetRequest{}
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MultiGetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MultiGetRequest) ProtoMessage() {}
+
+func (x *MultiGetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MultiGetRequest.ProtoReflect.Descriptor instead.
+func (*MultiGetRequest) Descriptor() ([]byte, []int) {
+	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *MultiGetRequest) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *MultiGetRequest) GetKeys() []string {
+	if x != nil {
+		return x.Keys
+	}
+	return nil
+}
+
+type MultiGetResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Found items only; missing or expired keys are omitted. Ordered by key, and
+	// deduplicated when the request repeats a key.
+	Items         []*KVItem `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MultiGetResponse) Reset() {
+	*x = MultiGetResponse{}
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MultiGetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MultiGetResponse) ProtoMessage() {}
+
+func (x *MultiGetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MultiGetResponse.ProtoReflect.Descriptor instead.
+func (*MultiGetResponse) Descriptor() ([]byte, []int) {
+	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *MultiGetResponse) GetItems() []*KVItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 type PutRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Namespace   string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
@@ -185,7 +283,7 @@ type PutRequest struct {
 
 func (x *PutRequest) Reset() {
 	*x = PutRequest{}
-	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[2]
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -197,7 +295,7 @@ func (x *PutRequest) String() string {
 func (*PutRequest) ProtoMessage() {}
 
 func (x *PutRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[2]
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -210,7 +308,7 @@ func (x *PutRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutRequest.ProtoReflect.Descriptor instead.
 func (*PutRequest) Descriptor() ([]byte, []int) {
-	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{2}
+	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PutRequest) GetNamespace() string {
@@ -273,7 +371,7 @@ type PutResponse struct {
 
 func (x *PutResponse) Reset() {
 	*x = PutResponse{}
-	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[3]
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -285,7 +383,7 @@ func (x *PutResponse) String() string {
 func (*PutResponse) ProtoMessage() {}
 
 func (x *PutResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[3]
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -298,7 +396,7 @@ func (x *PutResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PutResponse.ProtoReflect.Descriptor instead.
 func (*PutResponse) Descriptor() ([]byte, []int) {
-	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{3}
+	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *PutResponse) GetVersion() uint64 {
@@ -333,7 +431,7 @@ type DeleteRequest struct {
 
 func (x *DeleteRequest) Reset() {
 	*x = DeleteRequest{}
-	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[4]
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -345,7 +443,7 @@ func (x *DeleteRequest) String() string {
 func (*DeleteRequest) ProtoMessage() {}
 
 func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[4]
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -358,7 +456,7 @@ func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRequest) Descriptor() ([]byte, []int) {
-	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{4}
+	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DeleteRequest) GetNamespace() string {
@@ -391,7 +489,7 @@ type DeleteResponse struct {
 
 func (x *DeleteResponse) Reset() {
 	*x = DeleteResponse{}
-	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[5]
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -403,7 +501,7 @@ func (x *DeleteResponse) String() string {
 func (*DeleteResponse) ProtoMessage() {}
 
 func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[5]
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -416,7 +514,7 @@ func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteResponse.ProtoReflect.Descriptor instead.
 func (*DeleteResponse) Descriptor() ([]byte, []int) {
-	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{5}
+	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *DeleteResponse) GetExisted() bool {
@@ -433,13 +531,18 @@ type ScanRequest struct {
 	// 0 = unbounded.
 	Limit         uint32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	IncludeValues bool   `protobuf:"varint,4,opt,name=include_values,json=includeValues,proto3" json:"include_values,omitempty"`
+	// Resume cursor: an exclusive lower bound on key (byte order). Pass the last
+	// key from the previous page to continue; empty starts from the beginning.
+	// Scan streams keys in ascending byte order, so the last key received is the
+	// next token.
+	StartAfter    string `protobuf:"bytes,5,opt,name=start_after,json=startAfter,proto3" json:"start_after,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ScanRequest) Reset() {
 	*x = ScanRequest{}
-	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[6]
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -451,7 +554,7 @@ func (x *ScanRequest) String() string {
 func (*ScanRequest) ProtoMessage() {}
 
 func (x *ScanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[6]
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -464,7 +567,7 @@ func (x *ScanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScanRequest.ProtoReflect.Descriptor instead.
 func (*ScanRequest) Descriptor() ([]byte, []int) {
-	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{6}
+	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ScanRequest) GetNamespace() string {
@@ -495,6 +598,13 @@ func (x *ScanRequest) GetIncludeValues() bool {
 	return false
 }
 
+func (x *ScanRequest) GetStartAfter() string {
+	if x != nil {
+		return x.StartAfter
+	}
+	return ""
+}
+
 type KVItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -503,13 +613,14 @@ type KVItem struct {
 	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	Version       uint64                 `protobuf:"varint,5,opt,name=version,proto3" json:"version,omitempty"`
 	Metadata      map[string]string      `protobuf:"bytes,6,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	ContentType   string                 `protobuf:"bytes,7,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KVItem) Reset() {
 	*x = KVItem{}
-	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[7]
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -521,7 +632,7 @@ func (x *KVItem) String() string {
 func (*KVItem) ProtoMessage() {}
 
 func (x *KVItem) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[7]
+	mi := &file_memsidecar_kv_v1_kv_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -534,7 +645,7 @@ func (x *KVItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KVItem.ProtoReflect.Descriptor instead.
 func (*KVItem) Descriptor() ([]byte, []int) {
-	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{7}
+	return file_memsidecar_kv_v1_kv_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *KVItem) GetKey() string {
@@ -579,6 +690,13 @@ func (x *KVItem) GetMetadata() map[string]string {
 	return nil
 }
 
+func (x *KVItem) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
 var File_memsidecar_kv_v1_kv_proto protoreflect.FileDescriptor
 
 const file_memsidecar_kv_v1_kv_proto_rawDesc = "" +
@@ -600,7 +718,12 @@ const file_memsidecar_kv_v1_kv_proto_rawDesc = "" +
 	"\bmetadata\x18\a \x03(\v2+.memsidecar.kv.v1.GetResponse.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xda\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"C\n" +
+	"\x0fMultiGetRequest\x12\x1c\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x12\n" +
+	"\x04keys\x18\x02 \x03(\tR\x04keys\"B\n" +
+	"\x10MultiGetResponse\x12.\n" +
+	"\x05items\x18\x01 \x03(\v2\x18.memsidecar.kv.v1.KVItemR\x05items\"\xda\x02\n" +
 	"\n" +
 	"PutRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x10\n" +
@@ -628,13 +751,15 @@ const file_memsidecar_kv_v1_kv_proto_rawDesc = "" +
 	"if_version\x18\x03 \x01(\x04H\x00R\tifVersion\x88\x01\x01B\r\n" +
 	"\v_if_version\"*\n" +
 	"\x0eDeleteResponse\x12\x18\n" +
-	"\aexisted\x18\x01 \x01(\bR\aexisted\"\x87\x01\n" +
+	"\aexisted\x18\x01 \x01(\bR\aexisted\"\xa8\x01\n" +
 	"\vScanRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x1d\n" +
 	"\n" +
 	"key_prefix\x18\x02 \x01(\tR\tkeyPrefix\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\rR\x05limit\x12%\n" +
-	"\x0einclude_values\x18\x04 \x01(\bR\rincludeValues\"\xc1\x02\n" +
+	"\x0einclude_values\x18\x04 \x01(\bR\rincludeValues\x12\x1f\n" +
+	"\vstart_after\x18\x05 \x01(\tR\n" +
+	"startAfter\"\xe4\x02\n" +
 	"\x06KVItem\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value\x129\n" +
@@ -643,12 +768,14 @@ const file_memsidecar_kv_v1_kv_proto_rawDesc = "" +
 	"\n" +
 	"expires_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12\x18\n" +
 	"\aversion\x18\x05 \x01(\x04R\aversion\x12B\n" +
-	"\bmetadata\x18\x06 \x03(\v2&.memsidecar.kv.v1.KVItem.MetadataEntryR\bmetadata\x1a;\n" +
+	"\bmetadata\x18\x06 \x03(\v2&.memsidecar.kv.v1.KVItem.MetadataEntryR\bmetadata\x12!\n" +
+	"\fcontent_type\x18\a \x01(\tR\vcontentType\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\x9c\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\xef\x02\n" +
 	"\x02KV\x12B\n" +
-	"\x03Get\x12\x1c.memsidecar.kv.v1.GetRequest\x1a\x1d.memsidecar.kv.v1.GetResponse\x12B\n" +
+	"\x03Get\x12\x1c.memsidecar.kv.v1.GetRequest\x1a\x1d.memsidecar.kv.v1.GetResponse\x12Q\n" +
+	"\bMultiGet\x12!.memsidecar.kv.v1.MultiGetRequest\x1a\".memsidecar.kv.v1.MultiGetResponse\x12B\n" +
 	"\x03Put\x12\x1c.memsidecar.kv.v1.PutRequest\x1a\x1d.memsidecar.kv.v1.PutResponse\x12K\n" +
 	"\x06Delete\x12\x1f.memsidecar.kv.v1.DeleteRequest\x1a .memsidecar.kv.v1.DeleteResponse\x12A\n" +
 	"\x04Scan\x12\x1d.memsidecar.kv.v1.ScanRequest\x1a\x18.memsidecar.kv.v1.KVItem0\x01B\xa7\x01\n" +
@@ -666,46 +793,51 @@ func file_memsidecar_kv_v1_kv_proto_rawDescGZIP() []byte {
 	return file_memsidecar_kv_v1_kv_proto_rawDescData
 }
 
-var file_memsidecar_kv_v1_kv_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_memsidecar_kv_v1_kv_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_memsidecar_kv_v1_kv_proto_goTypes = []any{
 	(*GetRequest)(nil),            // 0: memsidecar.kv.v1.GetRequest
 	(*GetResponse)(nil),           // 1: memsidecar.kv.v1.GetResponse
-	(*PutRequest)(nil),            // 2: memsidecar.kv.v1.PutRequest
-	(*PutResponse)(nil),           // 3: memsidecar.kv.v1.PutResponse
-	(*DeleteRequest)(nil),         // 4: memsidecar.kv.v1.DeleteRequest
-	(*DeleteResponse)(nil),        // 5: memsidecar.kv.v1.DeleteResponse
-	(*ScanRequest)(nil),           // 6: memsidecar.kv.v1.ScanRequest
-	(*KVItem)(nil),                // 7: memsidecar.kv.v1.KVItem
-	nil,                           // 8: memsidecar.kv.v1.GetResponse.MetadataEntry
-	nil,                           // 9: memsidecar.kv.v1.PutRequest.MetadataEntry
-	nil,                           // 10: memsidecar.kv.v1.KVItem.MetadataEntry
-	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 12: google.protobuf.Duration
+	(*MultiGetRequest)(nil),       // 2: memsidecar.kv.v1.MultiGetRequest
+	(*MultiGetResponse)(nil),      // 3: memsidecar.kv.v1.MultiGetResponse
+	(*PutRequest)(nil),            // 4: memsidecar.kv.v1.PutRequest
+	(*PutResponse)(nil),           // 5: memsidecar.kv.v1.PutResponse
+	(*DeleteRequest)(nil),         // 6: memsidecar.kv.v1.DeleteRequest
+	(*DeleteResponse)(nil),        // 7: memsidecar.kv.v1.DeleteResponse
+	(*ScanRequest)(nil),           // 8: memsidecar.kv.v1.ScanRequest
+	(*KVItem)(nil),                // 9: memsidecar.kv.v1.KVItem
+	nil,                           // 10: memsidecar.kv.v1.GetResponse.MetadataEntry
+	nil,                           // 11: memsidecar.kv.v1.PutRequest.MetadataEntry
+	nil,                           // 12: memsidecar.kv.v1.KVItem.MetadataEntry
+	(*timestamppb.Timestamp)(nil), // 13: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 14: google.protobuf.Duration
 }
 var file_memsidecar_kv_v1_kv_proto_depIdxs = []int32{
-	11, // 0: memsidecar.kv.v1.GetResponse.created_at:type_name -> google.protobuf.Timestamp
-	11, // 1: memsidecar.kv.v1.GetResponse.expires_at:type_name -> google.protobuf.Timestamp
-	8,  // 2: memsidecar.kv.v1.GetResponse.metadata:type_name -> memsidecar.kv.v1.GetResponse.MetadataEntry
-	12, // 3: memsidecar.kv.v1.PutRequest.ttl:type_name -> google.protobuf.Duration
-	9,  // 4: memsidecar.kv.v1.PutRequest.metadata:type_name -> memsidecar.kv.v1.PutRequest.MetadataEntry
-	11, // 5: memsidecar.kv.v1.PutResponse.created_at:type_name -> google.protobuf.Timestamp
-	11, // 6: memsidecar.kv.v1.PutResponse.expires_at:type_name -> google.protobuf.Timestamp
-	11, // 7: memsidecar.kv.v1.KVItem.created_at:type_name -> google.protobuf.Timestamp
-	11, // 8: memsidecar.kv.v1.KVItem.expires_at:type_name -> google.protobuf.Timestamp
-	10, // 9: memsidecar.kv.v1.KVItem.metadata:type_name -> memsidecar.kv.v1.KVItem.MetadataEntry
-	0,  // 10: memsidecar.kv.v1.KV.Get:input_type -> memsidecar.kv.v1.GetRequest
-	2,  // 11: memsidecar.kv.v1.KV.Put:input_type -> memsidecar.kv.v1.PutRequest
-	4,  // 12: memsidecar.kv.v1.KV.Delete:input_type -> memsidecar.kv.v1.DeleteRequest
-	6,  // 13: memsidecar.kv.v1.KV.Scan:input_type -> memsidecar.kv.v1.ScanRequest
-	1,  // 14: memsidecar.kv.v1.KV.Get:output_type -> memsidecar.kv.v1.GetResponse
-	3,  // 15: memsidecar.kv.v1.KV.Put:output_type -> memsidecar.kv.v1.PutResponse
-	5,  // 16: memsidecar.kv.v1.KV.Delete:output_type -> memsidecar.kv.v1.DeleteResponse
-	7,  // 17: memsidecar.kv.v1.KV.Scan:output_type -> memsidecar.kv.v1.KVItem
-	14, // [14:18] is the sub-list for method output_type
-	10, // [10:14] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	13, // 0: memsidecar.kv.v1.GetResponse.created_at:type_name -> google.protobuf.Timestamp
+	13, // 1: memsidecar.kv.v1.GetResponse.expires_at:type_name -> google.protobuf.Timestamp
+	10, // 2: memsidecar.kv.v1.GetResponse.metadata:type_name -> memsidecar.kv.v1.GetResponse.MetadataEntry
+	9,  // 3: memsidecar.kv.v1.MultiGetResponse.items:type_name -> memsidecar.kv.v1.KVItem
+	14, // 4: memsidecar.kv.v1.PutRequest.ttl:type_name -> google.protobuf.Duration
+	11, // 5: memsidecar.kv.v1.PutRequest.metadata:type_name -> memsidecar.kv.v1.PutRequest.MetadataEntry
+	13, // 6: memsidecar.kv.v1.PutResponse.created_at:type_name -> google.protobuf.Timestamp
+	13, // 7: memsidecar.kv.v1.PutResponse.expires_at:type_name -> google.protobuf.Timestamp
+	13, // 8: memsidecar.kv.v1.KVItem.created_at:type_name -> google.protobuf.Timestamp
+	13, // 9: memsidecar.kv.v1.KVItem.expires_at:type_name -> google.protobuf.Timestamp
+	12, // 10: memsidecar.kv.v1.KVItem.metadata:type_name -> memsidecar.kv.v1.KVItem.MetadataEntry
+	0,  // 11: memsidecar.kv.v1.KV.Get:input_type -> memsidecar.kv.v1.GetRequest
+	2,  // 12: memsidecar.kv.v1.KV.MultiGet:input_type -> memsidecar.kv.v1.MultiGetRequest
+	4,  // 13: memsidecar.kv.v1.KV.Put:input_type -> memsidecar.kv.v1.PutRequest
+	6,  // 14: memsidecar.kv.v1.KV.Delete:input_type -> memsidecar.kv.v1.DeleteRequest
+	8,  // 15: memsidecar.kv.v1.KV.Scan:input_type -> memsidecar.kv.v1.ScanRequest
+	1,  // 16: memsidecar.kv.v1.KV.Get:output_type -> memsidecar.kv.v1.GetResponse
+	3,  // 17: memsidecar.kv.v1.KV.MultiGet:output_type -> memsidecar.kv.v1.MultiGetResponse
+	5,  // 18: memsidecar.kv.v1.KV.Put:output_type -> memsidecar.kv.v1.PutResponse
+	7,  // 19: memsidecar.kv.v1.KV.Delete:output_type -> memsidecar.kv.v1.DeleteResponse
+	9,  // 20: memsidecar.kv.v1.KV.Scan:output_type -> memsidecar.kv.v1.KVItem
+	16, // [16:21] is the sub-list for method output_type
+	11, // [11:16] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_memsidecar_kv_v1_kv_proto_init() }
@@ -713,15 +845,15 @@ func file_memsidecar_kv_v1_kv_proto_init() {
 	if File_memsidecar_kv_v1_kv_proto != nil {
 		return
 	}
-	file_memsidecar_kv_v1_kv_proto_msgTypes[2].OneofWrappers = []any{}
 	file_memsidecar_kv_v1_kv_proto_msgTypes[4].OneofWrappers = []any{}
+	file_memsidecar_kv_v1_kv_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_memsidecar_kv_v1_kv_proto_rawDesc), len(file_memsidecar_kv_v1_kv_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

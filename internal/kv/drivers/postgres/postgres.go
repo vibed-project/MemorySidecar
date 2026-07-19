@@ -279,6 +279,45 @@ func (d *Driver) Delete(ctx context.Context, namespace, key string, opts kv.Dele
 	return true, nil
 }
 
+func (d *Driver) MultiGet(ctx context.Context, namespace string, keys []string) ([]kv.Record, error) {
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	// key = ANY($2) fetches every requested key in one query and naturally
+	// deduplicates repeats. ORDER BY key gives the caller a deterministic order.
+	rows, err := d.pool.Query(ctx, `
+		SELECT key, value, content_type, metadata, version, created_at, expires_at
+		  FROM kv_items
+		 WHERE namespace = $1 AND key = ANY($2)
+		   AND (expires_at IS NULL OR expires_at > now())
+		 ORDER BY key COLLATE "C"`,
+		namespace, keys)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: multiget: %w", err)
+	}
+	defer rows.Close()
+
+	var out []kv.Record
+	for rows.Next() {
+		var (
+			r         kv.Record
+			metaBytes []byte
+			expires   *time.Time
+		)
+		if err := rows.Scan(&r.Key, &r.Value, &r.ContentType, &metaBytes, &r.Version, &r.CreatedAt, &expires); err != nil {
+			return nil, fmt.Errorf("postgres: multiget row: %w", err)
+		}
+		if expires != nil {
+			r.ExpiresAt = *expires
+		}
+		if len(metaBytes) > 0 {
+			_ = json.Unmarshal(metaBytes, &r.Metadata)
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
 func (d *Driver) Scan(ctx context.Context, namespace string, opts kv.ScanOptions, yield func(kv.Record) error) error {
 	args := []any{namespace}
 	q := strings.Builder{}
@@ -290,7 +329,13 @@ func (d *Driver) Scan(ctx context.Context, namespace string, opts kv.ScanOptions
 		args = append(args, opts.KeyPrefix+"%")
 		fmt.Fprintf(&q, " AND key LIKE $%d", len(args))
 	}
-	q.WriteString(" ORDER BY key")
+	if opts.StartAfter != "" {
+		// COLLATE "C" forces byte ordering so the keyset cursor is consistent
+		// with the memory driver's sort.Strings regardless of the DB locale.
+		args = append(args, opts.StartAfter)
+		fmt.Fprintf(&q, ` AND key COLLATE "C" > $%d`, len(args))
+	}
+	q.WriteString(` ORDER BY key COLLATE "C"`)
 	if opts.Limit > 0 {
 		args = append(args, opts.Limit)
 		fmt.Fprintf(&q, " LIMIT $%d", len(args))
