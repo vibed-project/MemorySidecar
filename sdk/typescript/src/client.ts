@@ -10,8 +10,9 @@
 //   console.log(new TextDecoder().decode(rec.value));
 //
 // The block clients (`m.kv`, `m.episodic`, `m.semantic`, `m.artifact`,
-// `m.lease`, `m.graph`) wrap the generated stubs with idiomatic types and
-// inject the capability token on every call.
+// `m.lease`, `m.graph`) plus `m.admin` (cross-namespace introspection) wrap the
+// generated stubs with idiomatic types and inject the capability token on every
+// call.
 import { create } from "@bufbuild/protobuf";
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import type { Client, Interceptor, Transport } from "@connectrpc/connect";
@@ -29,7 +30,10 @@ import type {
   PutResponse as KVPutResponse,
 } from "./gen/memsidecar/kv/v1/kv_pb.js";
 import { Episodic } from "./gen/memsidecar/episodic/v1/episodic_pb.js";
-import type { Event } from "./gen/memsidecar/episodic/v1/episodic_pb.js";
+import type {
+  Event,
+  ExpireAction as EpisodicExpireAction,
+} from "./gen/memsidecar/episodic/v1/episodic_pb.js";
 import { Semantic } from "./gen/memsidecar/semantic/v1/semantic_pb.js";
 import type {
   FieldPredicateSchema,
@@ -41,6 +45,7 @@ import type {
 } from "./gen/memsidecar/semantic/v1/semantic_pb.js";
 import { Artifact } from "./gen/memsidecar/artifact/v1/artifact_pb.js";
 import type {
+  ArtifactMeta,
   ArtifactRef,
   PutRequest as ArtifactPutRequest,
   StatResponse as ArtifactStatResponse,
@@ -60,6 +65,8 @@ import type {
   NodeSchema,
   Subgraph,
 } from "./gen/memsidecar/graph/v1/graph_pb.js";
+import { Admin } from "./gen/memsidecar/admin/v1/admin_pb.js";
+import type { ListNamespacesResponse } from "./gen/memsidecar/admin/v1/admin_pb.js";
 
 /** A caller-supplied record for `semantic.upsert`. */
 export type SemanticRecordInput = MessageInitShape<typeof RecordSchema>;
@@ -88,6 +95,12 @@ export interface KVScanOptions {
   keyPrefix?: string;
   limit?: number;
   includeValues?: boolean;
+  /**
+   * Resume cursor: an exclusive lower bound on key (byte order). Pass the last
+   * key from the previous page to continue. Scan streams keys ascending, so the
+   * last key received is the next token.
+   */
+  startAfter?: string;
 }
 
 class KVClient {
@@ -114,6 +127,14 @@ class KVClient {
     return this.stub.get({ namespace, key });
   }
 
+  /**
+   * Fetch many keys in one round-trip. Missing or expired keys are omitted and
+   * repeats are deduplicated; results are ordered by key.
+   */
+  async multiGet(namespace: string, keys: string[]): Promise<KVItem[]> {
+    return (await this.stub.multiGet({ namespace, keys })).items;
+  }
+
   delete(
     namespace: string,
     key: string,
@@ -129,6 +150,7 @@ class KVClient {
       keyPrefix: opts.keyPrefix ?? "",
       limit: opts.limit ?? 0,
       includeValues: opts.includeValues ?? false,
+      startAfter: opts.startAfter ?? "",
     });
   }
 }
@@ -141,6 +163,15 @@ export interface EpisodicAppendOptions {
   metadata?: Record<string, string>;
   role?: string;
   sessionId?: string;
+  /**
+   * Idempotency key. The first append for a (namespace, dedupKey) writes; a
+   * retry with the same key returns the stored event unchanged.
+   */
+  dedupKey?: string;
+  /** Ids of earlier events this one revises; the server tombstones them. */
+  supersedes?: string[];
+  /** Opaque provenance handle stored on the event. */
+  source?: string;
 }
 
 export interface EpisodicRangeOptions {
@@ -152,11 +183,26 @@ export interface EpisodicRangeOptions {
   afterTime?: Date;
   /** Exclusive upper bound on event timestamp. */
   beforeTime?: Date;
+  /** Also return tombstoned (superseded or expired) events. */
+  includeDeleted?: boolean;
+  /** Equality predicates (empty = no filter), ANDed with the window. */
+  sessionId?: string;
+  role?: string;
+  type?: string;
 }
 
 export interface EpisodicTailOptions {
   afterCursor?: number | bigint;
   includeHistorical?: boolean;
+}
+
+export interface EpisodicExpireOptions {
+  action: EpisodicExpireAction;
+  /** Required upper bound on affected events (oldest-first). */
+  maxRows: number;
+  /** Retention window upper bound; at least one of these is required. */
+  beforeCursor?: number | bigint;
+  beforeTime?: Date;
 }
 
 class EpisodicClient {
@@ -174,11 +220,17 @@ class EpisodicClient {
       metadata: opts.metadata,
       role: opts.role ?? "",
       sessionId: opts.sessionId ?? "",
+      dedupKey: opts.dedupKey ?? "",
+      supersedes: opts.supersedes ?? [],
+      source: opts.source ?? "",
     });
     return resp.event!;
   }
 
-  /** Replay historical events by cursor and/or timestamp window. */
+  /**
+   * Replay historical events by cursor and/or timestamp window, optionally
+   * filtered by sessionId/role/type (e.g. reconstruct one conversation).
+   */
   range(namespace: string, opts: EpisodicRangeOptions = {}): AsyncIterable<Event> {
     return this.stub.range({
       namespace,
@@ -188,6 +240,10 @@ class EpisodicClient {
       reverse: opts.reverse ?? false,
       afterTime: toTimestamp(opts.afterTime),
       beforeTime: toTimestamp(opts.beforeTime),
+      includeDeleted: opts.includeDeleted ?? false,
+      sessionId: opts.sessionId ?? "",
+      role: opts.role ?? "",
+      type: opts.type ?? "",
     });
   }
 
@@ -198,6 +254,22 @@ class EpisodicClient {
       afterCursor: toU64(opts.afterCursor) ?? 0n,
       includeHistorical: opts.includeHistorical ?? false,
     });
+  }
+
+  /**
+   * Tombstone or remove events in a bounded retention window (a cursor/time
+   * upper bound — at least one required), capped at maxRows (oldest-first).
+   * Returns the number of events affected.
+   */
+  async expire(namespace: string, opts: EpisodicExpireOptions): Promise<bigint> {
+    const resp = await this.stub.expire({
+      namespace,
+      beforeCursor: toU64(opts.beforeCursor) ?? 0n,
+      beforeTime: toTimestamp(opts.beforeTime),
+      action: opts.action,
+      maxRows: opts.maxRows,
+    });
+    return resp.affected;
   }
 }
 
@@ -292,6 +364,14 @@ export interface ArtifactGetOptions {
   length?: number | bigint;
 }
 
+export interface ArtifactListOptions {
+  /** Exact-match metadata filter. */
+  filter?: Record<string, string>;
+  /** Exclusive resume cursor on id (pass the last id from the previous page). */
+  startAfter?: string;
+  limit?: number;
+}
+
 class ArtifactClient {
   constructor(private readonly stub: Client<typeof Artifact>) {}
 
@@ -354,6 +434,19 @@ class ArtifactClient {
   async delete(namespace: string, id: string): Promise<boolean> {
     return (await this.stub.delete({ namespace, id })).existed;
   }
+
+  /**
+   * Enumerate a namespace's artifacts (metadata only, no bytes) in ascending id
+   * order, optionally filtered by metadata and paged with `startAfter`/`limit`.
+   */
+  list(namespace: string, opts: ArtifactListOptions = {}): AsyncIterable<ArtifactMeta> {
+    return this.stub.list({
+      namespace,
+      filter: opts.filter,
+      startAfter: opts.startAfter ?? "",
+      limit: opts.limit ?? 0,
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -404,6 +497,14 @@ class LeaseClient {
 
   inspect(namespace: string, key: string): Promise<LeaseInspectResponse> {
     return this.stub.inspect({ namespace, key });
+  }
+
+  /**
+   * Every currently-held (unexpired) lease in the namespace, ordered by key —
+   * for deadlock/orphan discovery and cleanup.
+   */
+  async list(namespace: string): Promise<LeaseHandle[]> {
+    return (await this.stub.list({ namespace })).leases;
   }
 }
 
@@ -483,6 +584,23 @@ class GraphClient {
 }
 
 // ---------------------------------------------------------------------------
+// Admin
+
+class AdminClient {
+  constructor(private readonly stub: Client<typeof Admin>) {}
+
+  /**
+   * List every configured namespace with its block, backend, driver, live item
+   * count (when the driver reports one cheaply — see `hasCount`), and embedder
+   * (semantic only), plus the server version/commit. Requires the
+   * `admin.inspect` op.
+   */
+  listNamespaces(): Promise<ListNamespacesResponse> {
+    return this.stub.listNamespaces({});
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Top-level client
 
 export interface MemSidecarOptions {
@@ -516,6 +634,7 @@ export class MemSidecar {
   readonly artifact: ArtifactClient;
   readonly lease: LeaseClient;
   readonly graph: GraphClient;
+  readonly admin: AdminClient;
 
   constructor(address: string, options: MemSidecarOptions) {
     this.transport = createGrpcTransport({
@@ -528,5 +647,6 @@ export class MemSidecar {
     this.artifact = new ArtifactClient(createClient(Artifact, this.transport));
     this.lease = new LeaseClient(createClient(Lease, this.transport));
     this.graph = new GraphClient(createClient(Graph, this.transport));
+    this.admin = new AdminClient(createClient(Admin, this.transport));
   }
 }
