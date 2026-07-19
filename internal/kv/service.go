@@ -62,6 +62,22 @@ func (s *Service) Get(ctx context.Context, req *kvv1.GetRequest) (*kvv1.GetRespo
 	return recordToGetResponse(rec), nil
 }
 
+func (s *Service) MultiGet(ctx context.Context, req *kvv1.MultiGetRequest) (*kvv1.MultiGetResponse, error) {
+	d, err := s.namespaceDriver(ctx, req.GetNamespace(), auth.OpKVGet)
+	if err != nil {
+		return nil, err
+	}
+	recs, err := d.MultiGet(ctx, req.GetNamespace(), req.GetKeys())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "multiget: %v", err)
+	}
+	resp := &kvv1.MultiGetResponse{Items: make([]*kvv1.KVItem, 0, len(recs))}
+	for _, r := range recs {
+		resp.Items = append(resp.Items, recordToItem(r))
+	}
+	return resp, nil
+}
+
 func (s *Service) Put(ctx context.Context, req *kvv1.PutRequest) (*kvv1.PutResponse, error) {
 	if req.GetKey() == "" {
 		return nil, status.Error(codes.InvalidArgument, "key required")
@@ -129,6 +145,7 @@ func (s *Service) Scan(req *kvv1.ScanRequest, stream kvv1.KV_ScanServer) error {
 		KeyPrefix:     req.GetKeyPrefix(),
 		Limit:         req.GetLimit(),
 		IncludeValues: req.GetIncludeValues(),
+		StartAfter:    req.GetStartAfter(),
 	}
 	err = d.Scan(ctx, req.GetNamespace(), opts, func(r Record) error {
 		return stream.Send(recordToItem(r))
@@ -153,12 +170,13 @@ func recordToGetResponse(r Record) *kvv1.GetResponse {
 
 func recordToItem(r Record) *kvv1.KVItem {
 	return &kvv1.KVItem{
-		Key:        r.Key,
-		Value:      r.Value,
-		CreatedAt:  tsOrNil(r.CreatedAt),
-		ExpiresAt:  tsOrNil(r.ExpiresAt),
-		Version:    r.Version,
-		Metadata:   r.Metadata,
+		Key:         r.Key,
+		Value:       r.Value,
+		CreatedAt:   tsOrNil(r.CreatedAt),
+		ExpiresAt:   tsOrNil(r.ExpiresAt),
+		Version:     r.Version,
+		Metadata:    r.Metadata,
+		ContentType: r.ContentType,
 	}
 }
 

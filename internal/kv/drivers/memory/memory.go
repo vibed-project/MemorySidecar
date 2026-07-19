@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"errors"
 	"math"
 	"sort"
 	"strings"
@@ -327,6 +328,28 @@ func (d *Driver) Delete(_ context.Context, namespace, key string, opts kv.Delete
 	return true, nil
 }
 
+func (d *Driver) MultiGet(ctx context.Context, namespace string, keys []string) ([]kv.Record, error) {
+	// Reuse Get so TTL expiry and access instrumentation behave as N Gets.
+	seen := make(map[string]struct{}, len(keys))
+	found := make([]kv.Record, 0, len(keys))
+	for _, k := range keys {
+		if _, dup := seen[k]; dup {
+			continue
+		}
+		seen[k] = struct{}{}
+		r, err := d.Get(ctx, namespace, k)
+		if errors.Is(err, kv.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		found = append(found, r)
+	}
+	sort.Slice(found, func(i, j int) bool { return found[i].Key < found[j].Key })
+	return found, nil
+}
+
 func (d *Driver) Scan(_ context.Context, namespace string, opts kv.ScanOptions, yield func(kv.Record) error) error {
 	now := d.now()
 	d.mu.RLock()
@@ -337,6 +360,9 @@ func (d *Driver) Scan(_ context.Context, namespace string, opts kv.ScanOptions, 
 			continue
 		}
 		if opts.KeyPrefix != "" && !strings.HasPrefix(k, opts.KeyPrefix) {
+			continue
+		}
+		if opts.StartAfter != "" && k <= opts.StartAfter {
 			continue
 		}
 		keys = append(keys, k)

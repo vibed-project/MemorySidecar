@@ -19,6 +19,7 @@ var methodToOp = map[string]struct {
 	write bool
 }{
 	"/memsidecar.kv.v1.KV/Get":                {auth.OpKVGet, "kv", false},
+	"/memsidecar.kv.v1.KV/MultiGet":           {auth.OpKVGet, "kv", false},
 	"/memsidecar.kv.v1.KV/Put":                {auth.OpKVPut, "kv", true},
 	"/memsidecar.kv.v1.KV/Delete":             {auth.OpKVDelete, "kv", true},
 	"/memsidecar.kv.v1.KV/Scan":               {auth.OpKVScan, "kv", false},

@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	KV_Get_FullMethodName    = "/memsidecar.kv.v1.KV/Get"
-	KV_Put_FullMethodName    = "/memsidecar.kv.v1.KV/Put"
-	KV_Delete_FullMethodName = "/memsidecar.kv.v1.KV/Delete"
-	KV_Scan_FullMethodName   = "/memsidecar.kv.v1.KV/Scan"
+	KV_Get_FullMethodName      = "/memsidecar.kv.v1.KV/Get"
+	KV_MultiGet_FullMethodName = "/memsidecar.kv.v1.KV/MultiGet"
+	KV_Put_FullMethodName      = "/memsidecar.kv.v1.KV/Put"
+	KV_Delete_FullMethodName   = "/memsidecar.kv.v1.KV/Delete"
+	KV_Scan_FullMethodName     = "/memsidecar.kv.v1.KV/Scan"
 )
 
 // KVClient is the client API for KV service.
@@ -34,6 +35,10 @@ const (
 // key "x-memsidecar-capability" with value "Bearer <token>".
 type KVClient interface {
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
+	// MultiGet fetches many keys in one round-trip. Missing/expired keys are
+	// omitted from the response, so semantic/graph-style batch reads no longer
+	// cost one RPC per key.
+	MultiGet(ctx context.Context, in *MultiGetRequest, opts ...grpc.CallOption) (*MultiGetResponse, error)
 	Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error)
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
 	Scan(ctx context.Context, in *ScanRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[KVItem], error)
@@ -51,6 +56,16 @@ func (c *kVClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOpt
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetResponse)
 	err := c.cc.Invoke(ctx, KV_Get_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kVClient) MultiGet(ctx context.Context, in *MultiGetRequest, opts ...grpc.CallOption) (*MultiGetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MultiGetResponse)
+	err := c.cc.Invoke(ctx, KV_MultiGet_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +120,10 @@ type KV_ScanClient = grpc.ServerStreamingClient[KVItem]
 // key "x-memsidecar-capability" with value "Bearer <token>".
 type KVServer interface {
 	Get(context.Context, *GetRequest) (*GetResponse, error)
+	// MultiGet fetches many keys in one round-trip. Missing/expired keys are
+	// omitted from the response, so semantic/graph-style batch reads no longer
+	// cost one RPC per key.
+	MultiGet(context.Context, *MultiGetRequest) (*MultiGetResponse, error)
 	Put(context.Context, *PutRequest) (*PutResponse, error)
 	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
 	Scan(*ScanRequest, grpc.ServerStreamingServer[KVItem]) error
@@ -120,6 +139,9 @@ type UnimplementedKVServer struct{}
 
 func (UnimplementedKVServer) Get(context.Context, *GetRequest) (*GetResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Get not implemented")
+}
+func (UnimplementedKVServer) MultiGet(context.Context, *MultiGetRequest) (*MultiGetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MultiGet not implemented")
 }
 func (UnimplementedKVServer) Put(context.Context, *PutRequest) (*PutResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Put not implemented")
@@ -165,6 +187,24 @@ func _KV_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{})
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KVServer).Get(ctx, req.(*GetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KV_MultiGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MultiGetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KVServer).MultiGet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KV_MultiGet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KVServer).MultiGet(ctx, req.(*MultiGetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -226,6 +266,10 @@ var KV_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Get",
 			Handler:    _KV_Get_Handler,
+		},
+		{
+			MethodName: "MultiGet",
+			Handler:    _KV_MultiGet_Handler,
 		},
 		{
 			MethodName: "Put",

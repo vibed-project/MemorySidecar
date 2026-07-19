@@ -65,6 +65,8 @@ func RunConformance(t *testing.T, h Harness) {
 		{"Scan_PrefixAndLimit", testScanPrefixAndLimit},
 		{"Scan_ExpiredFiltered", testScanExpiredFiltered},
 		{"Scan_YieldError", testScanYieldError},
+		{"Scan_StartAfterCursor", testScanStartAfterCursor},
+		{"MultiGet", testMultiGet},
 		{"ConcurrentPut", testConcurrentPut},
 	}
 	for _, tc := range cases {
@@ -184,6 +186,62 @@ func testScanPrefixAndLimit(t *testing.T, h Harness) {
 		func(r kv.Record) error { got = append(got, r.Key); return nil })
 	require.NoError(t, err)
 	assert.Equal(t, []string{"a/1", "a/2"}, got)
+}
+
+func testScanStartAfterCursor(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+	for _, k := range []string{"a/1", "a/2", "a/3", "a/4"} {
+		_, err := d.Put(ctx, "ns", k, kv.PutOptions{Value: []byte(k)})
+		require.NoError(t, err)
+	}
+
+	page := func(opts kv.ScanOptions) []string {
+		var got []string
+		require.NoError(t, d.Scan(ctx, "ns", opts, func(r kv.Record) error {
+			got = append(got, r.Key)
+			return nil
+		}))
+		return got
+	}
+
+	// StartAfter is an exclusive lower bound; paging with the last key resumes.
+	first := page(kv.ScanOptions{KeyPrefix: "a/", Limit: 2})
+	assert.Equal(t, []string{"a/1", "a/2"}, first)
+	second := page(kv.ScanOptions{KeyPrefix: "a/", Limit: 2, StartAfter: first[len(first)-1]})
+	assert.Equal(t, []string{"a/3", "a/4"}, second)
+	// The last page's cursor yields nothing further.
+	assert.Empty(t, page(kv.ScanOptions{KeyPrefix: "a/", Limit: 2, StartAfter: second[len(second)-1]}))
+}
+
+func testMultiGet(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+	for _, k := range []string{"a", "b", "c"} {
+		_, err := d.Put(ctx, "ns", k, kv.PutOptions{Value: []byte(k), ContentType: "text/plain"})
+		require.NoError(t, err)
+	}
+
+	// Found keys returned (ordered by key); missing keys omitted; repeats deduped.
+	recs, err := d.MultiGet(ctx, "ns", []string{"c", "missing", "a", "a"})
+	require.NoError(t, err)
+	keys := make([]string, len(recs))
+	for i, r := range recs {
+		keys[i] = r.Key
+	}
+	assert.Equal(t, []string{"a", "c"}, keys)
+	assert.Equal(t, []byte("a"), recs[0].Value)
+	assert.Equal(t, "text/plain", recs[0].ContentType)
+
+	// Empty request → empty result.
+	empty, err := d.MultiGet(ctx, "ns", nil)
+	require.NoError(t, err)
+	assert.Empty(t, empty)
+
+	// All-missing → empty.
+	none, err := d.MultiGet(ctx, "ns", []string{"x", "y"})
+	require.NoError(t, err)
+	assert.Empty(t, none)
 }
 
 func testScanExpiredFiltered(t *testing.T, h Harness) {
