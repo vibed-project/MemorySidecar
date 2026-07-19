@@ -23,6 +23,7 @@ const (
 	Artifact_Get_FullMethodName    = "/memsidecar.artifact.v1.Artifact/Get"
 	Artifact_Stat_FullMethodName   = "/memsidecar.artifact.v1.Artifact/Stat"
 	Artifact_Delete_FullMethodName = "/memsidecar.artifact.v1.Artifact/Delete"
+	Artifact_List_FullMethodName   = "/memsidecar.artifact.v1.Artifact/List"
 )
 
 // ArtifactClient is the client API for Artifact service.
@@ -42,6 +43,10 @@ type ArtifactClient interface {
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetResponse], error)
 	Stat(ctx context.Context, in *StatRequest, opts ...grpc.CallOption) (*StatResponse, error)
 	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
+	// List enumerates a namespace's artifacts as a stream of ArtifactMeta in
+	// ascending id order. Artifact is otherwise addressable only by known id;
+	// List lets an agent discover contents without an external index.
+	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ArtifactMeta], error)
 }
 
 type artifactClient struct {
@@ -104,6 +109,25 @@ func (c *artifactClient) Delete(ctx context.Context, in *DeleteRequest, opts ...
 	return out, nil
 }
 
+func (c *artifactClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ArtifactMeta], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Artifact_ServiceDesc.Streams[2], Artifact_List_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ListRequest, ArtifactMeta]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Artifact_ListClient = grpc.ServerStreamingClient[ArtifactMeta]
+
 // ArtifactServer is the server API for Artifact service.
 // All implementations must embed UnimplementedArtifactServer
 // for forward compatibility.
@@ -121,6 +145,10 @@ type ArtifactServer interface {
 	Get(*GetRequest, grpc.ServerStreamingServer[GetResponse]) error
 	Stat(context.Context, *StatRequest) (*StatResponse, error)
 	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
+	// List enumerates a namespace's artifacts as a stream of ArtifactMeta in
+	// ascending id order. Artifact is otherwise addressable only by known id;
+	// List lets an agent discover contents without an external index.
+	List(*ListRequest, grpc.ServerStreamingServer[ArtifactMeta]) error
 	mustEmbedUnimplementedArtifactServer()
 }
 
@@ -142,6 +170,9 @@ func (UnimplementedArtifactServer) Stat(context.Context, *StatRequest) (*StatRes
 }
 func (UnimplementedArtifactServer) Delete(context.Context, *DeleteRequest) (*DeleteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Delete not implemented")
+}
+func (UnimplementedArtifactServer) List(*ListRequest, grpc.ServerStreamingServer[ArtifactMeta]) error {
+	return status.Error(codes.Unimplemented, "method List not implemented")
 }
 func (UnimplementedArtifactServer) mustEmbedUnimplementedArtifactServer() {}
 func (UnimplementedArtifactServer) testEmbeddedByValue()                  {}
@@ -218,6 +249,17 @@ func _Artifact_Delete_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Artifact_List_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ListRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ArtifactServer).List(m, &grpc.GenericServerStream[ListRequest, ArtifactMeta]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Artifact_ListServer = grpc.ServerStreamingServer[ArtifactMeta]
+
 // Artifact_ServiceDesc is the grpc.ServiceDesc for Artifact service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -243,6 +285,11 @@ var Artifact_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Get",
 			Handler:       _Artifact_Get_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "List",
+			Handler:       _Artifact_List_Handler,
 			ServerStreams: true,
 		},
 	},
