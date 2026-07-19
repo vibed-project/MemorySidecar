@@ -45,6 +45,9 @@ proto-python:
 		touch "$$d/__init__.py"; \
 	done
 
+proto-ts:
+	buf generate --template buf.gen.ts.yaml
+
 test:
 	go test ./...
 
