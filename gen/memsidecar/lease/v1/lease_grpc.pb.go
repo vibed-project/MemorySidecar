@@ -23,6 +23,7 @@ const (
 	Lease_Renew_FullMethodName   = "/memsidecar.lease.v1.Lease/Renew"
 	Lease_Release_FullMethodName = "/memsidecar.lease.v1.Lease/Release"
 	Lease_Inspect_FullMethodName = "/memsidecar.lease.v1.Lease/Inspect"
+	Lease_List_FullMethodName    = "/memsidecar.lease.v1.Lease/List"
 )
 
 // LeaseClient is the client API for Lease service.
@@ -40,6 +41,9 @@ type LeaseClient interface {
 	Renew(ctx context.Context, in *RenewRequest, opts ...grpc.CallOption) (*RenewResponse, error)
 	Release(ctx context.Context, in *ReleaseRequest, opts ...grpc.CallOption) (*ReleaseResponse, error)
 	Inspect(ctx context.Context, in *InspectRequest, opts ...grpc.CallOption) (*InspectResponse, error)
+	// List returns every currently-held (unexpired) lease in a namespace.
+	// Inspect is single-key; List enables deadlock/orphan discovery and cleanup.
+	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
 }
 
 type leaseClient struct {
@@ -90,6 +94,16 @@ func (c *leaseClient) Inspect(ctx context.Context, in *InspectRequest, opts ...g
 	return out, nil
 }
 
+func (c *leaseClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListResponse)
+	err := c.cc.Invoke(ctx, Lease_List_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LeaseServer is the server API for Lease service.
 // All implementations must embed UnimplementedLeaseServer
 // for forward compatibility.
@@ -105,6 +119,9 @@ type LeaseServer interface {
 	Renew(context.Context, *RenewRequest) (*RenewResponse, error)
 	Release(context.Context, *ReleaseRequest) (*ReleaseResponse, error)
 	Inspect(context.Context, *InspectRequest) (*InspectResponse, error)
+	// List returns every currently-held (unexpired) lease in a namespace.
+	// Inspect is single-key; List enables deadlock/orphan discovery and cleanup.
+	List(context.Context, *ListRequest) (*ListResponse, error)
 	mustEmbedUnimplementedLeaseServer()
 }
 
@@ -126,6 +143,9 @@ func (UnimplementedLeaseServer) Release(context.Context, *ReleaseRequest) (*Rele
 }
 func (UnimplementedLeaseServer) Inspect(context.Context, *InspectRequest) (*InspectResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Inspect not implemented")
+}
+func (UnimplementedLeaseServer) List(context.Context, *ListRequest) (*ListResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method List not implemented")
 }
 func (UnimplementedLeaseServer) mustEmbedUnimplementedLeaseServer() {}
 func (UnimplementedLeaseServer) testEmbeddedByValue()               {}
@@ -220,6 +240,24 @@ func _Lease_Inspect_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Lease_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LeaseServer).List(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Lease_List_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LeaseServer).List(ctx, req.(*ListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Lease_ServiceDesc is the grpc.ServiceDesc for Lease service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -242,6 +280,10 @@ var Lease_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Inspect",
 			Handler:    _Lease_Inspect_Handler,
+		},
+		{
+			MethodName: "List",
+			Handler:    _Lease_List_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

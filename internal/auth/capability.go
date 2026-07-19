@@ -38,6 +38,7 @@ const (
 	OpLeaseRenew   Op = "lease.renew"
 	OpLeaseRelease Op = "lease.release"
 	OpLeaseInspect Op = "lease.inspect"
+	OpLeaseList    Op = "lease.list"
 
 	OpGraphUpsert Op = "graph.upsert"
 	OpGraphGet    Op = "graph.get"

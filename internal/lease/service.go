@@ -130,6 +130,22 @@ func (s *Service) Inspect(ctx context.Context, req *leasev1.InspectRequest) (*le
 	return resp, nil
 }
 
+func (s *Service) List(ctx context.Context, req *leasev1.ListRequest) (*leasev1.ListResponse, error) {
+	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpLeaseList)
+	if err != nil {
+		return nil, err
+	}
+	leases, err := d.List(ctx, req.GetNamespace())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list: %v", err)
+	}
+	resp := &leasev1.ListResponse{Leases: make([]*leasev1.LeaseHandle, 0, len(leases))}
+	for _, l := range leases {
+		resp.Leases = append(resp.Leases, leaseToProto(l))
+	}
+	return resp, nil
+}
+
 func leaseToProto(l Lease) *leasev1.LeaseHandle {
 	out := &leasev1.LeaseHandle{
 		HolderId:  l.HolderID,
