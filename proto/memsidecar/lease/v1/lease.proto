@@ -18,6 +18,9 @@ service Lease {
   rpc Renew(RenewRequest) returns (RenewResponse);
   rpc Release(ReleaseRequest) returns (ReleaseResponse);
   rpc Inspect(InspectRequest) returns (InspectResponse);
+  // List returns every currently-held (unexpired) lease in a namespace.
+  // Inspect is single-key; List enables deadlock/orphan discovery and cleanup.
+  rpc List(ListRequest) returns (ListResponse);
 }
 
 message AcquireRequest {
@@ -63,6 +66,15 @@ message InspectRequest {
 message InspectResponse {
   bool held = 1;
   LeaseHandle handle = 2;
+}
+
+message ListRequest {
+  string namespace = 1;
+}
+
+message ListResponse {
+  // Held leases in the namespace, ordered by key. Expired leases are omitted.
+  repeated LeaseHandle leases = 1;
 }
 
 message LeaseHandle {

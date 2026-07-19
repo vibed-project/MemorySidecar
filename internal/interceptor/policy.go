@@ -37,6 +37,7 @@ var methodToOp = map[string]struct {
 	"/memsidecar.lease.v1.Lease/Renew":        {auth.OpLeaseRenew, "lease", true},
 	"/memsidecar.lease.v1.Lease/Release":      {auth.OpLeaseRelease, "lease", true},
 	"/memsidecar.lease.v1.Lease/Inspect":      {auth.OpLeaseInspect, "lease", false},
+	"/memsidecar.lease.v1.Lease/List":         {auth.OpLeaseList, "lease", false},
 	"/memsidecar.graph.v1.Graph/UpsertNodes":  {auth.OpGraphUpsert, "graph", true},
 	"/memsidecar.graph.v1.Graph/UpsertEdges":  {auth.OpGraphUpsert, "graph", true},
 	"/memsidecar.graph.v1.Graph/GetNode":      {auth.OpGraphGet, "graph", false},

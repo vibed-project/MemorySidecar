@@ -39,6 +39,7 @@ func RunConformance(t *testing.T, h Harness) {
 		{"Renew", testRenew},
 		{"Release_WrongHolder", testReleaseWrongHolder},
 		{"ConcurrentAcquire_AtMostOneWins", testConcurrentAcquireAtMostOneWins},
+		{"List", testList},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) { tc.fn(t, h) })
@@ -183,4 +184,51 @@ func testConcurrentAcquireAtMostOneWins(t *testing.T, h Harness) {
 	}
 	wg.Wait()
 	assert.Equal(t, 1, wins)
+}
+
+func testList(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+
+	// Three live leases in ns (one with metadata), one in another namespace.
+	a, err := d.Acquire(ctx, "ns", "a", lease.AcquireOptions{TTL: time.Minute})
+	require.NoError(t, err)
+	_, err = d.Acquire(ctx, "ns", "b", lease.AcquireOptions{TTL: time.Minute, Metadata: map[string]string{"job": "compact"}})
+	require.NoError(t, err)
+	_, err = d.Acquire(ctx, "ns", "c", lease.AcquireOptions{TTL: time.Minute})
+	require.NoError(t, err)
+	_, err = d.Acquire(ctx, "other", "z", lease.AcquireOptions{TTL: time.Minute})
+	require.NoError(t, err)
+
+	keys := func(ns string) []string {
+		leases, err := d.List(ctx, ns)
+		require.NoError(t, err)
+		out := make([]string, len(leases))
+		for i, l := range leases {
+			out[i] = l.Key
+			assert.Equal(t, ns, l.Namespace)
+			assert.NotEmpty(t, l.HolderID)
+		}
+		return out
+	}
+
+	// Ordered by key, namespace-scoped.
+	assert.Equal(t, []string{"a", "b", "c"}, keys("ns"))
+	assert.Equal(t, []string{"z"}, keys("other"))
+
+	// Metadata round-trips.
+	leases, err := d.List(ctx, "ns")
+	require.NoError(t, err)
+	require.Len(t, leases, 3)
+	assert.Equal(t, "compact", leases[1].Metadata["job"])
+
+	// A released lease drops out of the listing.
+	_, err = d.Release(ctx, "ns", "a", a.HolderID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"b", "c"}, keys("ns"))
+
+	// An unknown namespace lists empty.
+	empty, err := d.List(ctx, "nope")
+	require.NoError(t, err)
+	assert.Empty(t, empty)
 }

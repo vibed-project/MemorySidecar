@@ -244,6 +244,42 @@ func (d *Driver) Inspect(ctx context.Context, namespace, key string) (lease.Leas
 	return l, true, nil
 }
 
+func (d *Driver) List(ctx context.Context, namespace string) ([]lease.Lease, error) {
+	rows, err := d.pool.Query(ctx, `
+		SELECT key, holder_id, acquired_at, expires_at, metadata
+		  FROM leases
+		 WHERE namespace = $1 AND expires_at > now()
+		 ORDER BY key`,
+		namespace)
+	if err != nil {
+		return nil, fmt.Errorf("lease/postgres: list: %w", err)
+	}
+	defer rows.Close()
+
+	var out []lease.Lease
+	for rows.Next() {
+		var (
+			key       string
+			holder    string
+			acquired  time.Time
+			expires   time.Time
+			metaBytes []byte
+		)
+		if err := rows.Scan(&key, &holder, &acquired, &expires, &metaBytes); err != nil {
+			return nil, fmt.Errorf("lease/postgres: scan: %w", err)
+		}
+		l := lease.Lease{
+			HolderID: holder, Namespace: namespace, Key: key,
+			AcquiredAt: acquired, ExpiresAt: expires,
+		}
+		if len(metaBytes) > 0 {
+			_ = json.Unmarshal(metaBytes, &l.Metadata)
+		}
+		out = append(out, l)
+	}
+	return out, rows.Err()
+}
+
 func runMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	_, err := pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
