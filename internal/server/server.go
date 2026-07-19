@@ -19,12 +19,14 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
+	adminv1 "memsidecar/gen/memsidecar/admin/v1"
 	artifactv1 "memsidecar/gen/memsidecar/artifact/v1"
 	episodicv1 "memsidecar/gen/memsidecar/episodic/v1"
 	graphv1 "memsidecar/gen/memsidecar/graph/v1"
 	kvv1 "memsidecar/gen/memsidecar/kv/v1"
 	leasev1 "memsidecar/gen/memsidecar/lease/v1"
 	semanticv1 "memsidecar/gen/memsidecar/semantic/v1"
+	"memsidecar/internal/admin"
 	"memsidecar/internal/artifact"
 	"memsidecar/internal/auth"
 	"memsidecar/internal/config"
@@ -49,6 +51,9 @@ type Deps struct {
 	Artifact      *artifact.Registry
 	Lease         *lease.Registry
 	Graph         *graph.Registry
+	// Admin is the optional cross-namespace introspection service. When nil the
+	// Admin RPC is not served.
+	Admin *admin.Service
 }
 
 // Server owns the gRPC server and its listeners.
@@ -115,6 +120,9 @@ func New(cfg config.ServerConfig, deps Deps) (*Server, error) {
 	if deps.Graph != nil {
 		graphv1.RegisterGraphServer(grpcSrv, graph.NewService(deps.Graph))
 	}
+	if deps.Admin != nil {
+		adminv1.RegisterAdminServer(grpcSrv, deps.Admin)
+	}
 
 	hs := health.NewServer()
 	hs.SetServingStatus("memsidecar.kv.v1.KV", healthpb.HealthCheckResponse_SERVING)
@@ -132,6 +140,9 @@ func New(cfg config.ServerConfig, deps Deps) (*Server, error) {
 	}
 	if deps.Graph != nil {
 		hs.SetServingStatus("memsidecar.graph.v1.Graph", healthpb.HealthCheckResponse_SERVING)
+	}
+	if deps.Admin != nil {
+		hs.SetServingStatus("memsidecar.admin.v1.Admin", healthpb.HealthCheckResponse_SERVING)
 	}
 	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(grpcSrv, hs)
