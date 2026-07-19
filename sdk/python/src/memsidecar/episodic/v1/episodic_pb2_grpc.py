@@ -35,6 +35,11 @@ class EpisodicStub:
                 request_serializer=memsidecar_dot_episodic_dot_v1_dot_episodic__pb2.TailRequest.SerializeToString,
                 response_deserializer=memsidecar_dot_episodic_dot_v1_dot_episodic__pb2.Event.FromString,
                 _registered_method=True)
+        self.Expire = channel.unary_unary(
+                '/memsidecar.episodic.v1.Episodic/Expire',
+                request_serializer=memsidecar_dot_episodic_dot_v1_dot_episodic__pb2.ExpireRequest.SerializeToString,
+                response_deserializer=memsidecar_dot_episodic_dot_v1_dot_episodic__pb2.ExpireResponse.FromString,
+                _registered_method=True)
 
 
 class EpisodicServicer:
@@ -64,6 +69,16 @@ class EpisodicServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Expire(self, request, context):
+        """Expire tombstones or physically removes events inside a bounded retention
+        window (a cursor/time upper bound), in one server-side operation (U3).
+        max_rows caps the affected set so maintenance stays localized. This is the
+        log's retention/compaction path; per-event revision uses Append.supersedes.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_EpisodicServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -81,6 +96,11 @@ def add_EpisodicServicer_to_server(servicer, server):
                     servicer.Tail,
                     request_deserializer=memsidecar_dot_episodic_dot_v1_dot_episodic__pb2.TailRequest.FromString,
                     response_serializer=memsidecar_dot_episodic_dot_v1_dot_episodic__pb2.Event.SerializeToString,
+            ),
+            'Expire': grpc.unary_unary_rpc_method_handler(
+                    servicer.Expire,
+                    request_deserializer=memsidecar_dot_episodic_dot_v1_dot_episodic__pb2.ExpireRequest.FromString,
+                    response_serializer=memsidecar_dot_episodic_dot_v1_dot_episodic__pb2.ExpireResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -170,6 +190,33 @@ class Episodic:
             '/memsidecar.episodic.v1.Episodic/Tail',
             memsidecar_dot_episodic_dot_v1_dot_episodic__pb2.TailRequest.SerializeToString,
             memsidecar_dot_episodic_dot_v1_dot_episodic__pb2.Event.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Expire(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/memsidecar.episodic.v1.Episodic/Expire',
+            memsidecar_dot_episodic_dot_v1_dot_episodic__pb2.ExpireRequest.SerializeToString,
+            memsidecar_dot_episodic_dot_v1_dot_episodic__pb2.ExpireResponse.FromString,
             options,
             channel_credentials,
             insecure,

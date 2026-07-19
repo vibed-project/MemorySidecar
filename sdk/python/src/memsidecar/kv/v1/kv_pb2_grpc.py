@@ -22,6 +22,11 @@ class KVStub:
                 request_serializer=memsidecar_dot_kv_dot_v1_dot_kv__pb2.GetRequest.SerializeToString,
                 response_deserializer=memsidecar_dot_kv_dot_v1_dot_kv__pb2.GetResponse.FromString,
                 _registered_method=True)
+        self.MultiGet = channel.unary_unary(
+                '/memsidecar.kv.v1.KV/MultiGet',
+                request_serializer=memsidecar_dot_kv_dot_v1_dot_kv__pb2.MultiGetRequest.SerializeToString,
+                response_deserializer=memsidecar_dot_kv_dot_v1_dot_kv__pb2.MultiGetResponse.FromString,
+                _registered_method=True)
         self.Put = channel.unary_unary(
                 '/memsidecar.kv.v1.KV/Put',
                 request_serializer=memsidecar_dot_kv_dot_v1_dot_kv__pb2.PutRequest.SerializeToString,
@@ -51,6 +56,15 @@ class KVServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def MultiGet(self, request, context):
+        """MultiGet fetches many keys in one round-trip. Missing/expired keys are
+        omitted from the response, so semantic/graph-style batch reads no longer
+        cost one RPC per key.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def Put(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -76,6 +90,11 @@ def add_KVServicer_to_server(servicer, server):
                     servicer.Get,
                     request_deserializer=memsidecar_dot_kv_dot_v1_dot_kv__pb2.GetRequest.FromString,
                     response_serializer=memsidecar_dot_kv_dot_v1_dot_kv__pb2.GetResponse.SerializeToString,
+            ),
+            'MultiGet': grpc.unary_unary_rpc_method_handler(
+                    servicer.MultiGet,
+                    request_deserializer=memsidecar_dot_kv_dot_v1_dot_kv__pb2.MultiGetRequest.FromString,
+                    response_serializer=memsidecar_dot_kv_dot_v1_dot_kv__pb2.MultiGetResponse.SerializeToString,
             ),
             'Put': grpc.unary_unary_rpc_method_handler(
                     servicer.Put,
@@ -123,6 +142,33 @@ class KV:
             '/memsidecar.kv.v1.KV/Get',
             memsidecar_dot_kv_dot_v1_dot_kv__pb2.GetRequest.SerializeToString,
             memsidecar_dot_kv_dot_v1_dot_kv__pb2.GetResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def MultiGet(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/memsidecar.kv.v1.KV/MultiGet',
+            memsidecar_dot_kv_dot_v1_dot_kv__pb2.MultiGetRequest.SerializeToString,
+            memsidecar_dot_kv_dot_v1_dot_kv__pb2.MultiGetResponse.FromString,
             options,
             channel_credentials,
             insecure,

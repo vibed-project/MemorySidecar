@@ -41,7 +41,7 @@ proto:
 
 proto-python:
 	buf generate --template buf.gen.python.yaml
-	@for d in sdk/python/src/memsidecar/{,kv,kv/v1,episodic,episodic/v1,semantic,semantic/v1,artifact,artifact/v1,lease,lease/v1}; do \
+	@for d in sdk/python/src/memsidecar/{,kv,kv/v1,episodic,episodic/v1,semantic,semantic/v1,artifact,artifact/v1,lease,lease/v1,graph,graph/v1,admin,admin/v1}; do \
 		touch "$$d/__init__.py"; \
 	done
 

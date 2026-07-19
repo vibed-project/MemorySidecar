@@ -42,6 +42,11 @@ class ArtifactStub:
                 request_serializer=memsidecar_dot_artifact_dot_v1_dot_artifact__pb2.DeleteRequest.SerializeToString,
                 response_deserializer=memsidecar_dot_artifact_dot_v1_dot_artifact__pb2.DeleteResponse.FromString,
                 _registered_method=True)
+        self.List = channel.unary_stream(
+                '/memsidecar.artifact.v1.Artifact/List',
+                request_serializer=memsidecar_dot_artifact_dot_v1_dot_artifact__pb2.ListRequest.SerializeToString,
+                response_deserializer=memsidecar_dot_artifact_dot_v1_dot_artifact__pb2.ArtifactMeta.FromString,
+                _registered_method=True)
 
 
 class ArtifactServicer:
@@ -79,6 +84,15 @@ class ArtifactServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def List(self, request, context):
+        """List enumerates a namespace's artifacts as a stream of ArtifactMeta in
+        ascending id order. Artifact is otherwise addressable only by known id;
+        List lets an agent discover contents without an external index.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ArtifactServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -101,6 +115,11 @@ def add_ArtifactServicer_to_server(servicer, server):
                     servicer.Delete,
                     request_deserializer=memsidecar_dot_artifact_dot_v1_dot_artifact__pb2.DeleteRequest.FromString,
                     response_serializer=memsidecar_dot_artifact_dot_v1_dot_artifact__pb2.DeleteResponse.SerializeToString,
+            ),
+            'List': grpc.unary_stream_rpc_method_handler(
+                    servicer.List,
+                    request_deserializer=memsidecar_dot_artifact_dot_v1_dot_artifact__pb2.ListRequest.FromString,
+                    response_serializer=memsidecar_dot_artifact_dot_v1_dot_artifact__pb2.ArtifactMeta.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -219,6 +238,33 @@ class Artifact:
             '/memsidecar.artifact.v1.Artifact/Delete',
             memsidecar_dot_artifact_dot_v1_dot_artifact__pb2.DeleteRequest.SerializeToString,
             memsidecar_dot_artifact_dot_v1_dot_artifact__pb2.DeleteResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def List(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/memsidecar.artifact.v1.Artifact/List',
+            memsidecar_dot_artifact_dot_v1_dot_artifact__pb2.ListRequest.SerializeToString,
+            memsidecar_dot_artifact_dot_v1_dot_artifact__pb2.ArtifactMeta.FromString,
             options,
             channel_credentials,
             insecure,
