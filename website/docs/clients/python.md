@@ -33,8 +33,9 @@ with MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN) as m:
 `MemSidecar` opens a gRPC channel wrapped with a `CapabilityInterceptor`
 that attaches `x-memsidecar-capability: Bearer <token>` to every outgoing
 call (unary, server-stream, client-stream, bidi). The token is shared
-across all six per-block sub-clients (`m.kv`, `m.episodic`, `m.semantic`,
-`m.artifact`, `m.lease`, `m.graph`).
+across the six per-block sub-clients (`m.kv`, `m.episodic`, `m.semantic`,
+`m.artifact`, `m.lease`, `m.graph`) plus `m.admin` (cross-namespace
+introspection).
 
 ## Per-block surface
 
@@ -43,17 +44,31 @@ across all six per-block sub-clients (`m.kv`, `m.episodic`, `m.semantic`,
 ```python
 m.kv.put(ns, key, value, *, ttl=None, content_type="", metadata=None, if_version=None)
 m.kv.get(ns, key)
+m.kv.multi_get(ns, ["k1", "k2"])          # batch read; missing keys omitted
 m.kv.delete(ns, key, *, if_version=None)
-for item in m.kv.scan(ns, key_prefix="", limit=0, include_values=False):
-    ...
+for item in m.kv.scan(ns, key_prefix="", limit=100, start_after=""):
+    ...                                    # start_after = keyset resume cursor
 ```
 
 ### Episodic
 
 ```python
-ev = m.episodic.append(ns, type="tool_call", payload=b"...", metadata={...})
-for ev in m.episodic.range(ns, after_cursor=0, limit=100):
+from memsidecar.episodic.v1 import episodic_pb2
+
+# dedup_key makes the append idempotent under retry; supersedes tombstones
+# earlier events (revision); source is opaque provenance.
+ev = m.episodic.append(ns, type="tool_call", payload=b"...", metadata={...},
+                       dedup_key="", supersedes=[], source="")
+
+# Range filters: session_id/role/type equality (empty = no filter), ANDed with
+# the cursor/time window; include_deleted also returns tombstoned events.
+for ev in m.episodic.range(ns, after_cursor=0, limit=100, session_id="sess-1"):
     ...
+
+# Bounded retention: soft- or hard-delete a cursor/time window, oldest-first.
+n = m.episodic.expire(ns, before_cursor=1000,
+                      action=episodic_pb2.EXPIRE_ACTION_SOFT_DELETE, max_rows=500)
+
 for ev in m.episodic.tail(ns, include_historical=True, after_cursor=0):
     ...  # blocks; iterator yields events as they arrive
 ```
@@ -117,6 +132,8 @@ ref = m.artifact.put(ns, payload_bytes, id="optional", content_type="image/png")
 got = m.artifact.get(ns, ref.id)           # bytes
 meta = m.artifact.stat(ns, ref.id)
 m.artifact.delete(ns, ref.id)
+for meta in m.artifact.list(ns, filter={"kind": "render"}, limit=100):
+    ...                                    # metadata only; start_after paginates
 ```
 
 `put` chunks at 64 KiB internally; `get` reassembles. For large blobs
@@ -134,7 +151,9 @@ finally:
 ```
 
 `acquire(wait_for=...)` blocks for up to that duration on a held key.
-`renew(holder_id, ns, key, ttl=...)` extends; `inspect(ns, key)` peeks.
+`renew(holder_id, ns, key, ttl=...)` extends; `inspect(ns, key)` peeks at one
+key; `list(ns)` returns every held lease in the namespace (deadlock/orphan
+cleanup).
 
 ### Graph
 
@@ -173,6 +192,20 @@ hybrid recall (semantic search → graph expand) in the agent. Seed the graph
 cheaply with `m.semantic.search(ns, query_text=..., ids_only=True)` — it returns
 just `id`+`score`, skipping content/payload/vector — then feed those ids into
 `m.graph.neighbors` / `m.graph.traverse`. See [Graph](../blocks/graph.md).
+
+### Admin
+
+Cross-namespace introspection (requires the `admin.inspect` op):
+
+```python
+resp = m.admin.list_namespaces()
+print(resp.server.version)
+for ns in resp.namespaces:
+    count = ns.item_count if ns.has_count else "?"
+    print(ns.block, ns.name, ns.backend, ns.driver, count)
+```
+
+See [Admin](../blocks/admin.md).
 
 ## TLS
 

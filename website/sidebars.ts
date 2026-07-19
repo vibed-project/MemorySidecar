@@ -27,6 +27,7 @@ const sidebars: SidebarsConfig = {
         'blocks/artifact',
         'blocks/lease',
         'blocks/graph',
+        'blocks/admin',
       ],
     },
     {

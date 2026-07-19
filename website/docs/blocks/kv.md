@@ -12,10 +12,11 @@ tool-result caching, scratchpads, and short-lived agent state.
 
 ```proto
 service KV {
-  rpc Get    (GetRequest)    returns (GetResponse);
-  rpc Put    (PutRequest)    returns (PutResponse);   // with TTL, CAS
-  rpc Delete (DeleteRequest) returns (DeleteResponse);
-  rpc Scan   (ScanRequest)   returns (stream KVItem);
+  rpc Get      (GetRequest)      returns (GetResponse);
+  rpc MultiGet (MultiGetRequest) returns (MultiGetResponse);  // batch read
+  rpc Put      (PutRequest)      returns (PutResponse);   // with TTL, CAS
+  rpc Delete   (DeleteRequest)   returns (DeleteResponse);
+  rpc Scan     (ScanRequest)     returns (stream KVItem);
 }
 ```
 
@@ -23,7 +24,15 @@ Notable fields:
 
 - `ttl` — `google.protobuf.Duration`; 0 means no expiry.
 - `if_version` — optional uint64 for optimistic concurrency (CAS).
-- `Scan.key_prefix` + `limit` — prefix scan with ordered results.
+- `MultiGet.keys` — fetch many keys in one round-trip. Missing/expired keys are
+  omitted and repeats deduplicated; results are ordered by key.
+- `Scan.key_prefix` + `limit` — prefix scan with ordered (ascending, byte-order)
+  results.
+- `Scan.start_after` — an exclusive keyset **resume cursor**. Because `Scan`
+  streams keys ascending, the last key received is the next page token, so a
+  large namespace pages without re-reading.
+- `KVItem.content_type` is returned by `Scan` and `MultiGet` too (not just
+  `Get`).
 - Server returns a monotonic `version` on every write.
 
 ## Drivers
@@ -31,7 +40,7 @@ Notable fields:
 | Driver | Notes |
 |---|---|
 | `memory` | `sync.RWMutex`-guarded map. Lazy expiry on read + background sweeper (default 30 s). |
-| `postgres` | Single table `kv_items` keyed by `(namespace, key)`, partial index on `expires_at`, periodic sweeper deletes expired rows. CAS via `WHERE version = $if_version`. Embedded migrations applied at startup. |
+| `postgres` | Single table `kv_items` keyed by `(namespace, key)`, partial index on `expires_at`, periodic sweeper deletes expired rows. CAS via `WHERE version = $if_version`. `MultiGet` is one `key = ANY($keys)` query; `Scan.start_after` uses `key COLLATE "C" > $token` + `ORDER BY key COLLATE "C"` so the keyset cursor is byte-ordered and consistent with the memory driver regardless of DB locale. Embedded migrations applied at startup. |
 
 ## Configuration
 
@@ -103,13 +112,21 @@ with MemSidecar("127.0.0.1:7777", token=TOKEN) as m:
     m.kv.put("scratchpad", "hello", b"world", ttl=dt.timedelta(seconds=60))
     rec = m.kv.get("scratchpad", "hello")
     assert rec.found and rec.value == b"world"
+
+    # Batch read (missing keys omitted, ordered by key).
+    items = m.kv.multi_get("scratchpad", ["hello", "absent", "hi"])
+
+    # Page a large namespace with the keyset cursor.
+    page = list(m.kv.scan("scratchpad", limit=100))
+    if page:
+        nxt = list(m.kv.scan("scratchpad", limit=100, start_after=page[-1].key))
 ```
 
 ## Op names (for capability + policy)
 
 | Op | Method |
 |---|---|
-| `kv.get` | `KV/Get` |
+| `kv.get` | `KV/Get`, `KV/MultiGet` |
 | `kv.put` | `KV/Put` |
 | `kv.delete` | `KV/Delete` |
 | `kv.scan` | `KV/Scan` |

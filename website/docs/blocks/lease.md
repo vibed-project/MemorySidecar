@@ -17,6 +17,7 @@ service Lease {
   rpc Renew  (RenewRequest)   returns (RenewResponse);
   rpc Release(ReleaseRequest) returns (ReleaseResponse);
   rpc Inspect(InspectRequest) returns (InspectResponse);
+  rpc List   (ListRequest)    returns (ListResponse);   // held leases in a namespace
 }
 
 message AcquireRequest {
@@ -43,7 +44,10 @@ message LeaseHandle {
 - `Renew` and `Release` require the `holder_id` from `Acquire` —
   presenting the wrong one returns `FailedPrecondition: not held by this
   holder`.
-- `Inspect` is a read-only peek that never blocks.
+- `Inspect` is a read-only peek at one key that never blocks.
+- `List` returns every currently-held (unexpired) lease in a namespace, ordered
+  by key — `Inspect` is single-key, so `List` is what you use for deadlock /
+  orphan-lease discovery and cleanup.
 
 ## Drivers
 
@@ -90,6 +94,10 @@ try:
     m.lease.renew(handle.holder_id, "locks", "deploy", ttl=dt.timedelta(seconds=300))
 finally:
     m.lease.release(handle.holder_id, "locks", "deploy")
+
+# Who holds what right now (for cleanup / observability).
+for h in m.lease.list("locks"):
+    print(h.key, h.holder_id, h.expires_at.ToDatetime())
 ```
 
 ## Op names
@@ -100,6 +108,7 @@ finally:
 | `lease.renew` | `Lease/Renew` |
 | `lease.release` | `Lease/Release` |
 | `lease.inspect` | `Lease/Inspect` |
+| `lease.list` | `Lease/List` |
 
 ## Notes
 
