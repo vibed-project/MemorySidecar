@@ -250,6 +250,18 @@ func (d *Driver) Range(ctx context.Context, namespace string, opts episodic.Rang
 		args = append(args, opts.BeforeTime)
 		fmt.Fprintf(&q, " AND timestamp < $%d", len(args))
 	}
+	if opts.SessionID != "" {
+		args = append(args, opts.SessionID)
+		fmt.Fprintf(&q, " AND session_id = $%d", len(args))
+	}
+	if opts.Role != "" {
+		args = append(args, opts.Role)
+		fmt.Fprintf(&q, " AND role = $%d", len(args))
+	}
+	if opts.Type != "" {
+		args = append(args, opts.Type)
+		fmt.Fprintf(&q, " AND type = $%d", len(args))
+	}
 	if opts.Reverse {
 		q.WriteString(" ORDER BY cursor DESC")
 	} else {

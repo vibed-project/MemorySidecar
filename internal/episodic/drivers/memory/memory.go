@@ -211,6 +211,15 @@ func (d *Driver) Range(_ context.Context, namespace string, opts episodic.RangeO
 		if !opts.IncludeDeleted && !ev.DeletedAt.IsZero() {
 			continue
 		}
+		if opts.SessionID != "" && ev.SessionID != opts.SessionID {
+			continue
+		}
+		if opts.Role != "" && ev.Role != opts.Role {
+			continue
+		}
+		if opts.Type != "" && ev.Type != opts.Type {
+			continue
+		}
 		if opts.AfterCursor > 0 && ev.Cursor <= opts.AfterCursor {
 			continue
 		}

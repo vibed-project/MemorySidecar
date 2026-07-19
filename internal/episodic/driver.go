@@ -64,6 +64,12 @@ type RangeOptions struct {
 	// IncludeDeleted also returns tombstoned events. Default (false) returns
 	// only live events (DeletedAt zero).
 	IncludeDeleted bool
+	// Equality predicates on first-class fields, ANDed with the window and with
+	// each other. An empty string disables that predicate. Together they turn
+	// "reconstruct session X" into a bounded, index-backed scan.
+	SessionID string
+	Role      string
+	Type      string
 }
 
 // ExpireAction selects what Expire does to each matched event.
