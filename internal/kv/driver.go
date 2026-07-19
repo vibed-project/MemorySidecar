@@ -69,12 +69,18 @@ type ScanOptions struct {
 	KeyPrefix     string
 	Limit         uint32 // 0 = unbounded
 	IncludeValues bool
+	// StartAfter is an exclusive lower bound on key (byte order) for keyset
+	// pagination. Empty starts from the beginning.
+	StartAfter string
 }
 
 // Driver is the contract every KV backend implements.
 // Drivers must be safe for concurrent use.
 type Driver interface {
 	Get(ctx context.Context, namespace, key string) (Record, error)
+	// MultiGet returns the live records for the given keys, omitting missing or
+	// expired keys and deduplicating repeats. Results are ordered by key.
+	MultiGet(ctx context.Context, namespace string, keys []string) ([]Record, error)
 	Put(ctx context.Context, namespace, key string, opts PutOptions) (Record, error)
 	Delete(ctx context.Context, namespace, key string, opts DeleteOptions) (existed bool, err error)
 	Scan(ctx context.Context, namespace string, opts ScanOptions, yield func(Record) error) error

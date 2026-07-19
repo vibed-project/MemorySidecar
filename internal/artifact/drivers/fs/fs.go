@@ -17,6 +17,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -163,6 +165,66 @@ func (d *Driver) PatchMeta(ctx context.Context, namespace, id, sha256Hex string,
 	meta.Size = size
 	_, _, metaPath := d.paths(namespace, id)
 	return writeMeta(metaPath, meta)
+}
+
+func (d *Driver) List(ctx context.Context, namespace string, opts artifact.ListOptions, yield func(artifact.Meta) error) error {
+	if !safeID.MatchString(namespace) {
+		return fmt.Errorf("artifact/fs: namespace must match %s", safeID.String())
+	}
+	nsDir := filepath.Join(d.base, namespace)
+	shards, err := os.ReadDir(nsDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil // empty namespace
+		}
+		return err
+	}
+
+	// Enumerate the id/.json metadata sidecars across every shard, then sort by
+	// id so the StartAfter cursor and stream order are deterministic.
+	var metas []artifact.Meta
+	for _, shard := range shards {
+		if !shard.IsDir() {
+			continue
+		}
+		files, err := os.ReadDir(filepath.Join(nsDir, shard.Name()))
+		if err != nil {
+			return err
+		}
+		for _, f := range files {
+			name := f.Name()
+			if f.IsDir() || !strings.HasSuffix(name, ".json") {
+				continue
+			}
+			id := strings.TrimSuffix(name, ".json")
+			if opts.StartAfter != "" && id <= opts.StartAfter {
+				continue
+			}
+			meta, err := d.Stat(ctx, namespace, id)
+			if err != nil {
+				// A data file that happens to end in .json, a half-written temp,
+				// or a removed sidecar: skip rather than fail the whole listing.
+				continue
+			}
+			if !artifact.MatchesFilter(meta.Metadata, opts.Filter) {
+				continue
+			}
+			metas = append(metas, meta)
+		}
+	}
+
+	sort.Slice(metas, func(i, j int) bool { return metas[i].ID < metas[j].ID })
+	var n uint32
+	for _, m := range metas {
+		if opts.Limit > 0 && n >= opts.Limit {
+			break
+		}
+		if err := yield(m); err != nil {
+			return err
+		}
+		n++
+	}
+	return nil
 }
 
 func (d *Driver) Delete(_ context.Context, namespace, id string) (bool, error) {

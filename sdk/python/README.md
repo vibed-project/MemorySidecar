@@ -74,6 +74,42 @@ with MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN) as m:
     print([n.id for n in sub.nodes])
 ```
 
+## LangGraph checkpointer
+
+`memsidecar.ext.langgraph.MemSidecarSaver` implements LangGraph's
+`BaseCheckpointSaver`, so a graph gets durable, multi-tenant thread state by
+pointing at the sidecar — no bespoke persistence code. It stores checkpoints,
+per-version channel blobs, and pending writes in a single **kv** namespace,
+mirroring LangGraph's reference in-memory saver so the runtime behaves
+identically (sync and async).
+
+Install the extra (pulls in `langgraph-checkpoint`):
+
+```bash
+pip install "memsidecar[langgraph]"
+```
+
+The kv namespace must exist on the server and the token must grant kv
+`get,put,delete,scan` on it:
+
+```python
+from memsidecar import MemSidecar
+from memsidecar.ext.langgraph import MemSidecarSaver
+
+client = MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN)
+saver = MemSidecarSaver(client, namespace="checkpoints")
+
+graph = builder.compile(checkpointer=saver)      # your StateGraph
+cfg = {"configurable": {"thread_id": "user-42"}}
+graph.invoke({"messages": [...]}, cfg)           # state persists on the sidecar
+graph.invoke({"messages": [...]}, cfg)           # resumes the same thread
+saver.delete_thread("user-42")                   # purge a thread
+```
+
+Per-thread reads (get-latest, `list`/history) use a kv prefix scan; the episodic
+block isn't used here because it has no per-thread server-side filter, which is
+the access pattern a checkpointer needs.
+
 ## CrewAI memory
 
 `memsidecar.ext.crewai.MemSidecarStorage` implements CrewAI's `StorageBackend`

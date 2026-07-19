@@ -34,6 +34,7 @@ func RunConformance(t *testing.T, h Harness) {
 		{"Stat_RoundTrip", testStatRoundTrip},
 		{"Delete", testDelete},
 		{"Metadata_RoundTrip", testMetadataRoundTrip},
+		{"List", testList},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) { tc.fn(t, h) })
@@ -129,4 +130,39 @@ func testMetadataRoundTrip(t *testing.T, h Harness) {
 	require.NoError(t, err)
 	assert.Equal(t, "v1", meta.Metadata["tag"])
 	assert.Equal(t, "alice", meta.Metadata["owner"])
+}
+
+func testList(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+
+	put := func(ns, id string, meta map[string]string) {
+		_, err := d.Put(ctx, ns, artifact.PutHeader{ID: id, Size: 1, SHA256: "sha", Metadata: meta}, strings.NewReader("x"))
+		require.NoError(t, err)
+	}
+	put("ns", "a", map[string]string{"kind": "doc"})
+	put("ns", "b", map[string]string{"kind": "img"})
+	put("ns", "c", map[string]string{"kind": "doc"})
+	put("other", "z", nil) // different namespace must not leak
+
+	list := func(ns string, opts artifact.ListOptions) []string {
+		var ids []string
+		require.NoError(t, d.List(ctx, ns, opts, func(m artifact.Meta) error {
+			ids = append(ids, m.ID)
+			return nil
+		}))
+		return ids
+	}
+
+	// Full listing is ascending by id and namespace-scoped.
+	assert.Equal(t, []string{"a", "b", "c"}, list("ns", artifact.ListOptions{}))
+	// Metadata filter (exact-match, ANDed).
+	assert.Equal(t, []string{"a", "c"}, list("ns", artifact.ListOptions{Filter: map[string]string{"kind": "doc"}}))
+	// StartAfter is an exclusive resume cursor.
+	assert.Equal(t, []string{"b", "c"}, list("ns", artifact.ListOptions{StartAfter: "a"}))
+	// Limit caps the page; paging via StartAfter continues.
+	assert.Equal(t, []string{"a", "b"}, list("ns", artifact.ListOptions{Limit: 2}))
+	assert.Equal(t, []string{"c"}, list("ns", artifact.ListOptions{StartAfter: "b", Limit: 2}))
+	// Empty namespace yields nothing.
+	assert.Empty(t, list("empty", artifact.ListOptions{}))
 }

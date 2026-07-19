@@ -41,8 +41,34 @@ type Driver struct {
 
 type stream struct {
 	events []episodic.Event
+	// lastCursor is the highest cursor ever handed out for this namespace. It
+	// only ever increases, so hard-deleting events (which shrinks the slice)
+	// never lets a later Append reuse a cursor.
+	lastCursor uint64
+	// byID maps an event id to its index in events; dedupToID maps a non-empty
+	// dedup key to the id of the event that claimed it.
+	byID      map[string]int
+	dedupToID map[string]string
 	// subscribers receive events appended AFTER they were registered.
 	subscribers []*subscriber
+}
+
+func newStream() *stream {
+	return &stream{byID: make(map[string]int), dedupToID: make(map[string]string)}
+}
+
+// reindexByID rebuilds byID from the current events slice and drops dedup keys
+// whose event no longer exists. Called after a hard-delete rewrites events.
+func (s *stream) reindexByID() {
+	s.byID = make(map[string]int, len(s.events))
+	for i := range s.events {
+		s.byID[s.events[i].ID] = i
+	}
+	for k, id := range s.dedupToID {
+		if _, ok := s.byID[id]; !ok {
+			delete(s.dedupToID, k)
+		}
+	}
 }
 
 type subscriber struct {
@@ -107,22 +133,50 @@ func (d *Driver) Append(_ context.Context, namespace string, opts episodic.Appen
 
 	s := d.streams[namespace]
 	if s == nil {
-		s = &stream{}
+		s = newStream()
 		d.streams[namespace] = s
 	}
 
-	cursor := uint64(len(s.events)) + 1
+	// Idempotent replay: a prior Append with this dedup key already wrote an
+	// event, so return it unchanged — no new cursor, no fan-out.
+	if opts.DedupKey != "" {
+		if id, ok := s.dedupToID[opts.DedupKey]; ok {
+			return s.events[s.byID[id]], nil
+		}
+	}
+
+	now := d.now().UTC()
+	s.lastCursor++
 	ev := episodic.Event{
-		ID:        d.newID(),
-		Cursor:    cursor,
-		Timestamp: d.now().UTC(),
-		Type:      opts.Type,
-		Payload:   cloneBytes(opts.Payload),
-		Metadata:  cloneMeta(opts.Metadata),
-		Role:      opts.Role,
-		SessionID: opts.SessionID,
+		ID:         d.newID(),
+		Cursor:     s.lastCursor,
+		Timestamp:  now,
+		Type:       opts.Type,
+		Payload:    cloneBytes(opts.Payload),
+		Metadata:   cloneMeta(opts.Metadata),
+		Role:       opts.Role,
+		SessionID:  opts.SessionID,
+		Supersedes: cloneStrings(opts.Supersedes),
+		Source:     opts.Source,
 	}
 	s.events = append(s.events, ev)
+	idx := len(s.events) - 1
+	s.byID[ev.ID] = idx
+	if opts.DedupKey != "" {
+		s.dedupToID[opts.DedupKey] = ev.ID
+	}
+
+	// Tombstone superseded live events in the same critical section, so the
+	// revision and the invalidation are atomic. Self-references and
+	// already-tombstoned or missing ids are ignored.
+	for _, sid := range opts.Supersedes {
+		if sid == ev.ID {
+			continue
+		}
+		if ti, ok := s.byID[sid]; ok && s.events[ti].DeletedAt.IsZero() {
+			s.events[ti].DeletedAt = now
+		}
+	}
 
 	// Fan out to subscribers. Slow ones are detached.
 	live := s.subscribers[:0]
@@ -154,6 +208,9 @@ func (d *Driver) Range(_ context.Context, namespace string, opts episodic.RangeO
 	// Snapshot to avoid holding the lock across yield.
 	out := make([]episodic.Event, 0, len(s.events))
 	for _, ev := range s.events {
+		if !opts.IncludeDeleted && !ev.DeletedAt.IsZero() {
+			continue
+		}
 		if opts.AfterCursor > 0 && ev.Cursor <= opts.AfterCursor {
 			continue
 		}
@@ -186,6 +243,71 @@ func (d *Driver) Range(_ context.Context, namespace string, opts episodic.RangeO
 	return nil
 }
 
+func (d *Driver) Expire(_ context.Context, namespace string, opts episodic.ExpireOptions) (uint64, error) {
+	if opts.Action != episodic.ExpireSoftDelete && opts.Action != episodic.ExpireHardDelete {
+		return 0, errors.New("episodic/memory: unknown expire action")
+	}
+	if opts.BeforeCursor == 0 && opts.BeforeTime.IsZero() {
+		return 0, episodic.ErrExpireWindowRequired
+	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	s := d.streams[namespace]
+	if s == nil {
+		return 0, nil
+	}
+	now := d.now().UTC()
+
+	// events is in cursor-ascending insertion order, so a forward scan matches
+	// oldest-first; stop once MaxRows are affected.
+	inWindow := func(ev episodic.Event) bool {
+		if opts.BeforeCursor > 0 && ev.Cursor >= opts.BeforeCursor {
+			return false
+		}
+		if !opts.BeforeTime.IsZero() && !ev.Timestamp.Before(opts.BeforeTime) {
+			return false
+		}
+		return true
+	}
+
+	var affected uint64
+	if opts.Action == episodic.ExpireSoftDelete {
+		for i := range s.events {
+			if affected >= uint64(opts.MaxRows) {
+				break
+			}
+			if inWindow(s.events[i]) && s.events[i].DeletedAt.IsZero() {
+				s.events[i].DeletedAt = now
+				affected++
+			}
+		}
+		return affected, nil
+	}
+
+	// Hard delete: collect the oldest matches up to the cap, then rewrite the
+	// slice without them and rebuild the id/dedup indexes.
+	kept := s.events[:0:0]
+	drop := make(map[int]struct{})
+	for i := range s.events {
+		if affected < uint64(opts.MaxRows) && inWindow(s.events[i]) {
+			drop[i] = struct{}{}
+			affected++
+		}
+	}
+	if affected == 0 {
+		return 0, nil
+	}
+	for i := range s.events {
+		if _, gone := drop[i]; !gone {
+			kept = append(kept, s.events[i])
+		}
+	}
+	s.events = kept
+	s.reindexByID()
+	return affected, nil
+}
+
 func (d *Driver) Tail(ctx context.Context, namespace string, opts episodic.TailOptions, yield func(episodic.Event) error) error {
 	d.mu.Lock()
 	if d.closed {
@@ -194,12 +316,12 @@ func (d *Driver) Tail(ctx context.Context, namespace string, opts episodic.TailO
 	}
 	s := d.streams[namespace]
 	if s == nil {
-		s = &stream{}
+		s = newStream()
 		d.streams[namespace] = s
 	}
 
 	var historical []episodic.Event
-	headCursor := uint64(len(s.events))
+	headCursor := s.lastCursor
 	if opts.IncludeHistorical {
 		historical = make([]episodic.Event, 0, len(s.events))
 		for _, ev := range s.events {
@@ -298,5 +420,14 @@ func cloneMeta(m map[string]string) map[string]string {
 	for k, v := range m {
 		out[k] = v
 	}
+	return out
+}
+
+func cloneStrings(s []string) []string {
+	if s == nil {
+		return nil
+	}
+	out := make([]string, len(s))
+	copy(out, s)
 	return out
 }

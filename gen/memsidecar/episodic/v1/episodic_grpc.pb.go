@@ -22,6 +22,7 @@ const (
 	Episodic_Append_FullMethodName = "/memsidecar.episodic.v1.Episodic/Append"
 	Episodic_Range_FullMethodName  = "/memsidecar.episodic.v1.Episodic/Range"
 	Episodic_Tail_FullMethodName   = "/memsidecar.episodic.v1.Episodic/Tail"
+	Episodic_Expire_FullMethodName = "/memsidecar.episodic.v1.Episodic/Expire"
 )
 
 // EpisodicClient is the client API for Episodic service.
@@ -38,6 +39,11 @@ type EpisodicClient interface {
 	Append(ctx context.Context, in *AppendRequest, opts ...grpc.CallOption) (*AppendResponse, error)
 	Range(ctx context.Context, in *RangeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Event], error)
 	Tail(ctx context.Context, in *TailRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Event], error)
+	// Expire tombstones or physically removes events inside a bounded retention
+	// window (a cursor/time upper bound), in one server-side operation (U3).
+	// max_rows caps the affected set so maintenance stays localized. This is the
+	// log's retention/compaction path; per-event revision uses Append.supersedes.
+	Expire(ctx context.Context, in *ExpireRequest, opts ...grpc.CallOption) (*ExpireResponse, error)
 }
 
 type episodicClient struct {
@@ -96,6 +102,16 @@ func (c *episodicClient) Tail(ctx context.Context, in *TailRequest, opts ...grpc
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Episodic_TailClient = grpc.ServerStreamingClient[Event]
 
+func (c *episodicClient) Expire(ctx context.Context, in *ExpireRequest, opts ...grpc.CallOption) (*ExpireResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExpireResponse)
+	err := c.cc.Invoke(ctx, Episodic_Expire_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EpisodicServer is the server API for Episodic service.
 // All implementations must embed UnimplementedEpisodicServer
 // for forward compatibility.
@@ -110,6 +126,11 @@ type EpisodicServer interface {
 	Append(context.Context, *AppendRequest) (*AppendResponse, error)
 	Range(*RangeRequest, grpc.ServerStreamingServer[Event]) error
 	Tail(*TailRequest, grpc.ServerStreamingServer[Event]) error
+	// Expire tombstones or physically removes events inside a bounded retention
+	// window (a cursor/time upper bound), in one server-side operation (U3).
+	// max_rows caps the affected set so maintenance stays localized. This is the
+	// log's retention/compaction path; per-event revision uses Append.supersedes.
+	Expire(context.Context, *ExpireRequest) (*ExpireResponse, error)
 	mustEmbedUnimplementedEpisodicServer()
 }
 
@@ -128,6 +149,9 @@ func (UnimplementedEpisodicServer) Range(*RangeRequest, grpc.ServerStreamingServ
 }
 func (UnimplementedEpisodicServer) Tail(*TailRequest, grpc.ServerStreamingServer[Event]) error {
 	return status.Error(codes.Unimplemented, "method Tail not implemented")
+}
+func (UnimplementedEpisodicServer) Expire(context.Context, *ExpireRequest) (*ExpireResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Expire not implemented")
 }
 func (UnimplementedEpisodicServer) mustEmbedUnimplementedEpisodicServer() {}
 func (UnimplementedEpisodicServer) testEmbeddedByValue()                  {}
@@ -190,6 +214,24 @@ func _Episodic_Tail_Handler(srv interface{}, stream grpc.ServerStream) error {
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Episodic_TailServer = grpc.ServerStreamingServer[Event]
 
+func _Episodic_Expire_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExpireRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EpisodicServer).Expire(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Episodic_Expire_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EpisodicServer).Expire(ctx, req.(*ExpireRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Episodic_ServiceDesc is the grpc.ServiceDesc for Episodic service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -200,6 +242,10 @@ var Episodic_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Append",
 			Handler:    _Episodic_Append_Handler,
+		},
+		{
+			MethodName: "Expire",
+			Handler:    _Episodic_Expire_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

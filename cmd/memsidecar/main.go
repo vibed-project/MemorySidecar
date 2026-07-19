@@ -766,6 +766,13 @@ func buildPolicyEngine(cfg config.PolicyConfig) (policy.Engine, error) {
 				RatePerSecond: r.Bucket.RatePerSecond,
 				Burst:         r.Bucket.Burst,
 			},
+			Max: policy.Cap{
+				TopK:             r.Max.TopK,
+				Limit:            r.Max.Limit,
+				Depth:            r.Max.Depth,
+				FanOut:           r.Max.FanOut,
+				RerankCandidateK: r.Max.RerankCandidateK,
+			},
 		})
 	}
 	return policy.NewRuleEngine(spec)

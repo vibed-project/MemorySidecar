@@ -465,6 +465,95 @@ func (x *InspectResponse) GetHandle() *LeaseHandle {
 	return nil
 }
 
+type ListRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Namespace     string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRequest) Reset() {
+	*x = ListRequest{}
+	mi := &file_memsidecar_lease_v1_lease_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRequest) ProtoMessage() {}
+
+func (x *ListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_memsidecar_lease_v1_lease_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRequest.ProtoReflect.Descriptor instead.
+func (*ListRequest) Descriptor() ([]byte, []int) {
+	return file_memsidecar_lease_v1_lease_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListRequest) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+type ListResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Held leases in the namespace, ordered by key. Expired leases are omitted.
+	Leases        []*LeaseHandle `protobuf:"bytes,1,rep,name=leases,proto3" json:"leases,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListResponse) Reset() {
+	*x = ListResponse{}
+	mi := &file_memsidecar_lease_v1_lease_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListResponse) ProtoMessage() {}
+
+func (x *ListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_memsidecar_lease_v1_lease_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListResponse.ProtoReflect.Descriptor instead.
+func (*ListResponse) Descriptor() ([]byte, []int) {
+	return file_memsidecar_lease_v1_lease_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ListResponse) GetLeases() []*LeaseHandle {
+	if x != nil {
+		return x.Leases
+	}
+	return nil
+}
+
 type LeaseHandle struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Server-assigned UUID. Renew and Release MUST present it.
@@ -480,7 +569,7 @@ type LeaseHandle struct {
 
 func (x *LeaseHandle) Reset() {
 	*x = LeaseHandle{}
-	mi := &file_memsidecar_lease_v1_lease_proto_msgTypes[8]
+	mi := &file_memsidecar_lease_v1_lease_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -492,7 +581,7 @@ func (x *LeaseHandle) String() string {
 func (*LeaseHandle) ProtoMessage() {}
 
 func (x *LeaseHandle) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_lease_v1_lease_proto_msgTypes[8]
+	mi := &file_memsidecar_lease_v1_lease_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -505,7 +594,7 @@ func (x *LeaseHandle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeaseHandle.ProtoReflect.Descriptor instead.
 func (*LeaseHandle) Descriptor() ([]byte, []int) {
-	return file_memsidecar_lease_v1_lease_proto_rawDescGZIP(), []int{8}
+	return file_memsidecar_lease_v1_lease_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *LeaseHandle) GetHolderId() string {
@@ -584,7 +673,11 @@ const file_memsidecar_lease_v1_lease_proto_rawDesc = "" +
 	"\x03key\x18\x02 \x01(\tR\x03key\"_\n" +
 	"\x0fInspectResponse\x12\x12\n" +
 	"\x04held\x18\x01 \x01(\bR\x04held\x128\n" +
-	"\x06handle\x18\x02 \x01(\v2 .memsidecar.lease.v1.LeaseHandleR\x06handle\"\xdb\x02\n" +
+	"\x06handle\x18\x02 \x01(\v2 .memsidecar.lease.v1.LeaseHandleR\x06handle\"+\n" +
+	"\vListRequest\x12\x1c\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\"H\n" +
+	"\fListResponse\x128\n" +
+	"\x06leases\x18\x01 \x03(\v2 .memsidecar.lease.v1.LeaseHandleR\x06leases\"\xdb\x02\n" +
 	"\vLeaseHandle\x12\x1b\n" +
 	"\tholder_id\x18\x01 \x01(\tR\bholderId\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x10\n" +
@@ -596,12 +689,13 @@ const file_memsidecar_lease_v1_lease_proto_rawDesc = "" +
 	"\bmetadata\x18\x06 \x03(\v2..memsidecar.lease.v1.LeaseHandle.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\xd9\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\xa6\x03\n" +
 	"\x05Lease\x12T\n" +
 	"\aAcquire\x12#.memsidecar.lease.v1.AcquireRequest\x1a$.memsidecar.lease.v1.AcquireResponse\x12N\n" +
 	"\x05Renew\x12!.memsidecar.lease.v1.RenewRequest\x1a\".memsidecar.lease.v1.RenewResponse\x12T\n" +
 	"\aRelease\x12#.memsidecar.lease.v1.ReleaseRequest\x1a$.memsidecar.lease.v1.ReleaseResponse\x12T\n" +
-	"\aInspect\x12#.memsidecar.lease.v1.InspectRequest\x1a$.memsidecar.lease.v1.InspectResponseB\xbf\x01\n" +
+	"\aInspect\x12#.memsidecar.lease.v1.InspectRequest\x1a$.memsidecar.lease.v1.InspectResponse\x12K\n" +
+	"\x04List\x12 .memsidecar.lease.v1.ListRequest\x1a!.memsidecar.lease.v1.ListResponseB\xbf\x01\n" +
 	"\x17com.memsidecar.lease.v1B\n" +
 	"LeaseProtoP\x01Z*memsidecar/gen/memsidecar/lease/v1;leasev1\xa2\x02\x03MLX\xaa\x02\x13Memsidecar.Lease.V1\xca\x02\x13Memsidecar\\Lease\\V1\xe2\x02\x1fMemsidecar\\Lease\\V1\\GPBMetadata\xea\x02\x15Memsidecar::Lease::V1b\x06proto3"
 
@@ -617,7 +711,7 @@ func file_memsidecar_lease_v1_lease_proto_rawDescGZIP() []byte {
 	return file_memsidecar_lease_v1_lease_proto_rawDescData
 }
 
-var file_memsidecar_lease_v1_lease_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_memsidecar_lease_v1_lease_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_memsidecar_lease_v1_lease_proto_goTypes = []any{
 	(*AcquireRequest)(nil),        // 0: memsidecar.lease.v1.AcquireRequest
 	(*AcquireResponse)(nil),       // 1: memsidecar.lease.v1.AcquireResponse
@@ -627,36 +721,41 @@ var file_memsidecar_lease_v1_lease_proto_goTypes = []any{
 	(*ReleaseResponse)(nil),       // 5: memsidecar.lease.v1.ReleaseResponse
 	(*InspectRequest)(nil),        // 6: memsidecar.lease.v1.InspectRequest
 	(*InspectResponse)(nil),       // 7: memsidecar.lease.v1.InspectResponse
-	(*LeaseHandle)(nil),           // 8: memsidecar.lease.v1.LeaseHandle
-	nil,                           // 9: memsidecar.lease.v1.AcquireRequest.MetadataEntry
-	nil,                           // 10: memsidecar.lease.v1.LeaseHandle.MetadataEntry
-	(*durationpb.Duration)(nil),   // 11: google.protobuf.Duration
-	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
+	(*ListRequest)(nil),           // 8: memsidecar.lease.v1.ListRequest
+	(*ListResponse)(nil),          // 9: memsidecar.lease.v1.ListResponse
+	(*LeaseHandle)(nil),           // 10: memsidecar.lease.v1.LeaseHandle
+	nil,                           // 11: memsidecar.lease.v1.AcquireRequest.MetadataEntry
+	nil,                           // 12: memsidecar.lease.v1.LeaseHandle.MetadataEntry
+	(*durationpb.Duration)(nil),   // 13: google.protobuf.Duration
+	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
 }
 var file_memsidecar_lease_v1_lease_proto_depIdxs = []int32{
-	11, // 0: memsidecar.lease.v1.AcquireRequest.ttl:type_name -> google.protobuf.Duration
-	11, // 1: memsidecar.lease.v1.AcquireRequest.wait_for:type_name -> google.protobuf.Duration
-	9,  // 2: memsidecar.lease.v1.AcquireRequest.metadata:type_name -> memsidecar.lease.v1.AcquireRequest.MetadataEntry
-	8,  // 3: memsidecar.lease.v1.AcquireResponse.handle:type_name -> memsidecar.lease.v1.LeaseHandle
-	11, // 4: memsidecar.lease.v1.RenewRequest.ttl:type_name -> google.protobuf.Duration
-	8,  // 5: memsidecar.lease.v1.RenewResponse.handle:type_name -> memsidecar.lease.v1.LeaseHandle
-	8,  // 6: memsidecar.lease.v1.InspectResponse.handle:type_name -> memsidecar.lease.v1.LeaseHandle
-	12, // 7: memsidecar.lease.v1.LeaseHandle.acquired_at:type_name -> google.protobuf.Timestamp
-	12, // 8: memsidecar.lease.v1.LeaseHandle.expires_at:type_name -> google.protobuf.Timestamp
-	10, // 9: memsidecar.lease.v1.LeaseHandle.metadata:type_name -> memsidecar.lease.v1.LeaseHandle.MetadataEntry
-	0,  // 10: memsidecar.lease.v1.Lease.Acquire:input_type -> memsidecar.lease.v1.AcquireRequest
-	2,  // 11: memsidecar.lease.v1.Lease.Renew:input_type -> memsidecar.lease.v1.RenewRequest
-	4,  // 12: memsidecar.lease.v1.Lease.Release:input_type -> memsidecar.lease.v1.ReleaseRequest
-	6,  // 13: memsidecar.lease.v1.Lease.Inspect:input_type -> memsidecar.lease.v1.InspectRequest
-	1,  // 14: memsidecar.lease.v1.Lease.Acquire:output_type -> memsidecar.lease.v1.AcquireResponse
-	3,  // 15: memsidecar.lease.v1.Lease.Renew:output_type -> memsidecar.lease.v1.RenewResponse
-	5,  // 16: memsidecar.lease.v1.Lease.Release:output_type -> memsidecar.lease.v1.ReleaseResponse
-	7,  // 17: memsidecar.lease.v1.Lease.Inspect:output_type -> memsidecar.lease.v1.InspectResponse
-	14, // [14:18] is the sub-list for method output_type
-	10, // [10:14] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	13, // 0: memsidecar.lease.v1.AcquireRequest.ttl:type_name -> google.protobuf.Duration
+	13, // 1: memsidecar.lease.v1.AcquireRequest.wait_for:type_name -> google.protobuf.Duration
+	11, // 2: memsidecar.lease.v1.AcquireRequest.metadata:type_name -> memsidecar.lease.v1.AcquireRequest.MetadataEntry
+	10, // 3: memsidecar.lease.v1.AcquireResponse.handle:type_name -> memsidecar.lease.v1.LeaseHandle
+	13, // 4: memsidecar.lease.v1.RenewRequest.ttl:type_name -> google.protobuf.Duration
+	10, // 5: memsidecar.lease.v1.RenewResponse.handle:type_name -> memsidecar.lease.v1.LeaseHandle
+	10, // 6: memsidecar.lease.v1.InspectResponse.handle:type_name -> memsidecar.lease.v1.LeaseHandle
+	10, // 7: memsidecar.lease.v1.ListResponse.leases:type_name -> memsidecar.lease.v1.LeaseHandle
+	14, // 8: memsidecar.lease.v1.LeaseHandle.acquired_at:type_name -> google.protobuf.Timestamp
+	14, // 9: memsidecar.lease.v1.LeaseHandle.expires_at:type_name -> google.protobuf.Timestamp
+	12, // 10: memsidecar.lease.v1.LeaseHandle.metadata:type_name -> memsidecar.lease.v1.LeaseHandle.MetadataEntry
+	0,  // 11: memsidecar.lease.v1.Lease.Acquire:input_type -> memsidecar.lease.v1.AcquireRequest
+	2,  // 12: memsidecar.lease.v1.Lease.Renew:input_type -> memsidecar.lease.v1.RenewRequest
+	4,  // 13: memsidecar.lease.v1.Lease.Release:input_type -> memsidecar.lease.v1.ReleaseRequest
+	6,  // 14: memsidecar.lease.v1.Lease.Inspect:input_type -> memsidecar.lease.v1.InspectRequest
+	8,  // 15: memsidecar.lease.v1.Lease.List:input_type -> memsidecar.lease.v1.ListRequest
+	1,  // 16: memsidecar.lease.v1.Lease.Acquire:output_type -> memsidecar.lease.v1.AcquireResponse
+	3,  // 17: memsidecar.lease.v1.Lease.Renew:output_type -> memsidecar.lease.v1.RenewResponse
+	5,  // 18: memsidecar.lease.v1.Lease.Release:output_type -> memsidecar.lease.v1.ReleaseResponse
+	7,  // 19: memsidecar.lease.v1.Lease.Inspect:output_type -> memsidecar.lease.v1.InspectResponse
+	9,  // 20: memsidecar.lease.v1.Lease.List:output_type -> memsidecar.lease.v1.ListResponse
+	16, // [16:21] is the sub-list for method output_type
+	11, // [11:16] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_memsidecar_lease_v1_lease_proto_init() }
@@ -670,7 +769,7 @@ func file_memsidecar_lease_v1_lease_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_memsidecar_lease_v1_lease_proto_rawDesc), len(file_memsidecar_lease_v1_lease_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

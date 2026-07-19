@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"sort"
 	"sync"
 	"time"
 
@@ -154,6 +155,20 @@ func (d *Driver) Inspect(_ context.Context, namespace, key string) (lease.Lease,
 		return lease.Lease{}, false, nil
 	}
 	return *cur, true, nil
+}
+
+func (d *Driver) List(_ context.Context, namespace string) ([]lease.Lease, error) {
+	d.mu.Lock()
+	now := d.now()
+	out := make([]lease.Lease, 0, len(d.leases[namespace]))
+	for _, l := range d.leases[namespace] {
+		if l.ExpiresAt.After(now) {
+			out = append(out, *l)
+		}
+	}
+	d.mu.Unlock()
+	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
+	return out, nil
 }
 
 func randomID() string {

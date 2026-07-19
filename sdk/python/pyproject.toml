@@ -22,7 +22,10 @@ dev = [
     "pytest>=7",
 ]
 # Framework adapters (memsidecar.ext.*). Each is optional and pulls in its
-# framework only when installed, e.g. `pip install memsidecar[crewai]`.
+# framework only when installed, e.g. `pip install memsidecar[langgraph]`.
+langgraph = [
+    "langgraph-checkpoint>=2.0,<5",
+]
 crewai = [
     "crewai>=1.0,<2",
 ]

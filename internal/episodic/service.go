@@ -53,11 +53,14 @@ func (s *Service) Append(ctx context.Context, req *episodicv1.AppendRequest) (*e
 		return nil, err
 	}
 	ev, err := d.Append(ctx, req.GetNamespace(), AppendOptions{
-		Type:      req.GetType(),
-		Payload:   req.GetPayload(),
-		Metadata:  req.GetMetadata(),
-		Role:      req.GetRole(),
-		SessionID: req.GetSessionId(),
+		Type:       req.GetType(),
+		Payload:    req.GetPayload(),
+		Metadata:   req.GetMetadata(),
+		Role:       req.GetRole(),
+		SessionID:  req.GetSessionId(),
+		DedupKey:   req.GetDedupKey(),
+		Supersedes: req.GetSupersedes(),
+		Source:     req.GetSource(),
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "append: %v", err)
@@ -72,12 +75,13 @@ func (s *Service) Range(req *episodicv1.RangeRequest, stream episodicv1.Episodic
 		return err
 	}
 	err = d.Range(ctx, req.GetNamespace(), RangeOptions{
-		AfterCursor:  req.GetAfterCursor(),
-		BeforeCursor: req.GetBeforeCursor(),
-		Limit:        req.GetLimit(),
-		Reverse:      req.GetReverse(),
-		AfterTime:    tsToTime(req.GetAfterTime()),
-		BeforeTime:   tsToTime(req.GetBeforeTime()),
+		AfterCursor:    req.GetAfterCursor(),
+		BeforeCursor:   req.GetBeforeCursor(),
+		Limit:          req.GetLimit(),
+		Reverse:        req.GetReverse(),
+		AfterTime:      tsToTime(req.GetAfterTime()),
+		BeforeTime:     tsToTime(req.GetBeforeTime()),
+		IncludeDeleted: req.GetIncludeDeleted(),
 	}, func(ev Event) error {
 		return stream.Send(eventToProto(ev))
 	})
@@ -105,17 +109,61 @@ func (s *Service) Tail(req *episodicv1.TailRequest, stream episodicv1.Episodic_T
 	return nil
 }
 
-func eventToProto(e Event) *episodicv1.Event {
-	return &episodicv1.Event{
-		Id:        e.ID,
-		Cursor:    e.Cursor,
-		Timestamp: timestamppb.New(e.Timestamp),
-		Type:      e.Type,
-		Payload:   e.Payload,
-		Metadata:  e.Metadata,
-		Role:      e.Role,
-		SessionId: e.SessionID,
+func (s *Service) Expire(ctx context.Context, req *episodicv1.ExpireRequest) (*episodicv1.ExpireResponse, error) {
+	action, ok := expireActionFromProto(req.GetAction())
+	if !ok {
+		return nil, status.Error(codes.InvalidArgument, "action must be one of soft_delete, hard_delete")
 	}
+	if req.GetMaxRows() == 0 {
+		return nil, status.Error(codes.InvalidArgument, "max_rows must be > 0")
+	}
+	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpEpisodicExpire)
+	if err != nil {
+		return nil, err
+	}
+	affected, err := d.Expire(ctx, req.GetNamespace(), ExpireOptions{
+		BeforeCursor: req.GetBeforeCursor(),
+		BeforeTime:   tsToTime(req.GetBeforeTime()),
+		Action:       action,
+		MaxRows:      req.GetMaxRows(),
+	})
+	if err != nil {
+		if errors.Is(err, ErrExpireWindowRequired) {
+			return nil, status.Error(codes.InvalidArgument, "before_cursor or before_time required")
+		}
+		return nil, status.Errorf(codes.Internal, "expire: %v", err)
+	}
+	return &episodicv1.ExpireResponse{Affected: affected}, nil
+}
+
+func expireActionFromProto(a episodicv1.ExpireAction) (ExpireAction, bool) {
+	switch a {
+	case episodicv1.ExpireAction_EXPIRE_ACTION_SOFT_DELETE:
+		return ExpireSoftDelete, true
+	case episodicv1.ExpireAction_EXPIRE_ACTION_HARD_DELETE:
+		return ExpireHardDelete, true
+	default:
+		return ExpireActionUnspecified, false
+	}
+}
+
+func eventToProto(e Event) *episodicv1.Event {
+	out := &episodicv1.Event{
+		Id:         e.ID,
+		Cursor:     e.Cursor,
+		Timestamp:  timestamppb.New(e.Timestamp),
+		Type:       e.Type,
+		Payload:    e.Payload,
+		Metadata:   e.Metadata,
+		Role:       e.Role,
+		SessionId:  e.SessionID,
+		Supersedes: e.Supersedes,
+		Source:     e.Source,
+	}
+	if !e.DeletedAt.IsZero() {
+		out.DeletedAt = timestamppb.New(e.DeletedAt)
+	}
+	return out
 }
 
 // tsToTime converts an optional protobuf timestamp to a Go time, returning the

@@ -21,6 +21,7 @@ const (
 	OpEpisodicAppend Op = "episodic.append"
 	OpEpisodicRange  Op = "episodic.range"
 	OpEpisodicTail   Op = "episodic.tail"
+	OpEpisodicExpire Op = "episodic.expire"
 
 	OpSemanticUpsert Op = "semantic.upsert"
 	OpSemanticSearch Op = "semantic.search"
@@ -31,11 +32,13 @@ const (
 	OpArtifactGet    Op = "artifact.get"
 	OpArtifactStat   Op = "artifact.stat"
 	OpArtifactDelete Op = "artifact.delete"
+	OpArtifactList   Op = "artifact.list"
 
 	OpLeaseAcquire Op = "lease.acquire"
 	OpLeaseRenew   Op = "lease.renew"
 	OpLeaseRelease Op = "lease.release"
 	OpLeaseInspect Op = "lease.inspect"
+	OpLeaseList    Op = "lease.list"
 
 	OpGraphUpsert Op = "graph.upsert"
 	OpGraphGet    Op = "graph.get"

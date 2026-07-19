@@ -33,6 +33,7 @@ type PolicyRuleConfig struct {
 	Reason string             `koanf:"reason"`
 	Match  PolicyMatchConfig  `koanf:"match"`
 	Bucket PolicyBucketConfig `koanf:"bucket"`
+	Max    PolicyCapConfig    `koanf:"max"`
 }
 
 type PolicyMatchConfig struct {
@@ -50,6 +51,16 @@ type PolicyBucketConfig struct {
 	PerOp         bool    `koanf:"per_op"`
 	RatePerSecond float64 `koanf:"rate_per_second"`
 	Burst         int     `koanf:"burst"`
+}
+
+// PolicyCapConfig mirrors policy.Cap: per-dimension upper bounds for an
+// effect: cap rule. A zero field imposes no bound on that dimension.
+type PolicyCapConfig struct {
+	TopK             uint32 `koanf:"top_k"`
+	Limit            uint32 `koanf:"limit"`
+	Depth            uint32 `koanf:"depth"`
+	FanOut           uint32 `koanf:"fan_out"`
+	RerankCandidateK uint32 `koanf:"rerank_candidate_k"`
 }
 
 type ServerConfig struct {

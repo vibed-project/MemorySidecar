@@ -12,6 +12,10 @@ option go_package = "memsidecar/gen/memsidecar/kv/v1;kvv1";
 // key "x-memsidecar-capability" with value "Bearer <token>".
 service KV {
   rpc Get(GetRequest) returns (GetResponse);
+  // MultiGet fetches many keys in one round-trip. Missing/expired keys are
+  // omitted from the response, so semantic/graph-style batch reads no longer
+  // cost one RPC per key.
+  rpc MultiGet(MultiGetRequest) returns (MultiGetResponse);
   rpc Put(PutRequest) returns (PutResponse);
   rpc Delete(DeleteRequest) returns (DeleteResponse);
   rpc Scan(ScanRequest) returns (stream KVItem);
@@ -30,6 +34,17 @@ message GetResponse {
   google.protobuf.Timestamp expires_at = 5;
   uint64 version = 6;
   map<string, string> metadata = 7;
+}
+
+message MultiGetRequest {
+  string namespace = 1;
+  repeated string keys = 2;
+}
+
+message MultiGetResponse {
+  // Found items only; missing or expired keys are omitted. Ordered by key, and
+  // deduplicated when the request repeats a key.
+  repeated KVItem items = 1;
 }
 
 message PutRequest {
@@ -67,6 +82,11 @@ message ScanRequest {
   // 0 = unbounded.
   uint32 limit = 3;
   bool include_values = 4;
+  // Resume cursor: an exclusive lower bound on key (byte order). Pass the last
+  // key from the previous page to continue; empty starts from the beginning.
+  // Scan streams keys in ascending byte order, so the last key received is the
+  // next token.
+  string start_after = 5;
 }
 
 message KVItem {
@@ -76,4 +96,5 @@ message KVItem {
   google.protobuf.Timestamp expires_at = 4;
   uint64 version = 5;
   map<string, string> metadata = 6;
+  string content_type = 7;
 }

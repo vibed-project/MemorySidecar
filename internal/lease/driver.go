@@ -41,5 +41,8 @@ type Driver interface {
 	Renew(ctx context.Context, namespace, key, holderID string, ttl time.Duration) (Lease, error)
 	Release(ctx context.Context, namespace, key, holderID string) (existed bool, err error)
 	Inspect(ctx context.Context, namespace, key string) (lease Lease, held bool, err error)
+	// List returns every currently-held (unexpired) lease in namespace, ordered
+	// by key.
+	List(ctx context.Context, namespace string) ([]Lease, error)
 	Close() error
 }

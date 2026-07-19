@@ -700,6 +700,80 @@ func (x *DeleteResponse) GetExisted() bool {
 	return false
 }
 
+type ListRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Namespace string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// Exact-match metadata filter: an artifact matches when every (k,v) pair is
+	// present in its metadata. Empty matches all.
+	Filter map[string]string `protobuf:"bytes,2,rep,name=filter,proto3" json:"filter,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Resume cursor: an exclusive lower bound on id. Pass the last id from the
+	// previous page to continue; empty starts from the beginning. Because List
+	// streams ids in ascending order, the last id received is the next token.
+	StartAfter string `protobuf:"bytes,3,opt,name=start_after,json=startAfter,proto3" json:"start_after,omitempty"`
+	// Maximum artifacts to return. 0 = unbounded.
+	Limit         uint32 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRequest) Reset() {
+	*x = ListRequest{}
+	mi := &file_memsidecar_artifact_v1_artifact_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRequest) ProtoMessage() {}
+
+func (x *ListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_memsidecar_artifact_v1_artifact_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRequest.ProtoReflect.Descriptor instead.
+func (*ListRequest) Descriptor() ([]byte, []int) {
+	return file_memsidecar_artifact_v1_artifact_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ListRequest) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *ListRequest) GetFilter() map[string]string {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+func (x *ListRequest) GetStartAfter() string {
+	if x != nil {
+		return x.StartAfter
+	}
+	return ""
+}
+
+func (x *ListRequest) GetLimit() uint32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
 type ArtifactRef struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -714,7 +788,7 @@ type ArtifactRef struct {
 
 func (x *ArtifactRef) Reset() {
 	*x = ArtifactRef{}
-	mi := &file_memsidecar_artifact_v1_artifact_proto_msgTypes[12]
+	mi := &file_memsidecar_artifact_v1_artifact_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -726,7 +800,7 @@ func (x *ArtifactRef) String() string {
 func (*ArtifactRef) ProtoMessage() {}
 
 func (x *ArtifactRef) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_artifact_v1_artifact_proto_msgTypes[12]
+	mi := &file_memsidecar_artifact_v1_artifact_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -739,7 +813,7 @@ func (x *ArtifactRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArtifactRef.ProtoReflect.Descriptor instead.
 func (*ArtifactRef) Descriptor() ([]byte, []int) {
-	return file_memsidecar_artifact_v1_artifact_proto_rawDescGZIP(), []int{12}
+	return file_memsidecar_artifact_v1_artifact_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ArtifactRef) GetId() string {
@@ -791,7 +865,7 @@ type ArtifactMeta struct {
 
 func (x *ArtifactMeta) Reset() {
 	*x = ArtifactMeta{}
-	mi := &file_memsidecar_artifact_v1_artifact_proto_msgTypes[13]
+	mi := &file_memsidecar_artifact_v1_artifact_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -803,7 +877,7 @@ func (x *ArtifactMeta) String() string {
 func (*ArtifactMeta) ProtoMessage() {}
 
 func (x *ArtifactMeta) ProtoReflect() protoreflect.Message {
-	mi := &file_memsidecar_artifact_v1_artifact_proto_msgTypes[13]
+	mi := &file_memsidecar_artifact_v1_artifact_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -816,7 +890,7 @@ func (x *ArtifactMeta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArtifactMeta.ProtoReflect.Descriptor instead.
 func (*ArtifactMeta) Descriptor() ([]byte, []int) {
-	return file_memsidecar_artifact_v1_artifact_proto_rawDescGZIP(), []int{13}
+	return file_memsidecar_artifact_v1_artifact_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ArtifactMeta) GetId() string {
@@ -907,7 +981,16 @@ const file_memsidecar_artifact_v1_artifact_proto_rawDesc = "" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\"*\n" +
 	"\x0eDeleteResponse\x12\x18\n" +
-	"\aexisted\x18\x01 \x01(\bR\aexisted\"\xa7\x01\n" +
+	"\aexisted\x18\x01 \x01(\bR\aexisted\"\xe6\x01\n" +
+	"\vListRequest\x12\x1c\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12G\n" +
+	"\x06filter\x18\x02 \x03(\v2/.memsidecar.artifact.v1.ListRequest.FilterEntryR\x06filter\x12\x1f\n" +
+	"\vstart_after\x18\x03 \x01(\tR\n" +
+	"startAfter\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\rR\x05limit\x1a9\n" +
+	"\vFilterEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa7\x01\n" +
 	"\vArtifactRef\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04size\x18\x02 \x01(\x04R\x04size\x12!\n" +
@@ -925,12 +1008,13 @@ const file_memsidecar_artifact_v1_artifact_proto_rawDesc = "" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\xda\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\xaf\x03\n" +
 	"\bArtifact\x12P\n" +
 	"\x03Put\x12\".memsidecar.artifact.v1.PutRequest\x1a#.memsidecar.artifact.v1.PutResponse(\x01\x12P\n" +
 	"\x03Get\x12\".memsidecar.artifact.v1.GetRequest\x1a#.memsidecar.artifact.v1.GetResponse0\x01\x12Q\n" +
 	"\x04Stat\x12#.memsidecar.artifact.v1.StatRequest\x1a$.memsidecar.artifact.v1.StatResponse\x12W\n" +
-	"\x06Delete\x12%.memsidecar.artifact.v1.DeleteRequest\x1a&.memsidecar.artifact.v1.DeleteResponseB\xd7\x01\n" +
+	"\x06Delete\x12%.memsidecar.artifact.v1.DeleteRequest\x1a&.memsidecar.artifact.v1.DeleteResponse\x12S\n" +
+	"\x04List\x12#.memsidecar.artifact.v1.ListRequest\x1a$.memsidecar.artifact.v1.ArtifactMeta0\x01B\xd7\x01\n" +
 	"\x1acom.memsidecar.artifact.v1B\rArtifactProtoP\x01Z0memsidecar/gen/memsidecar/artifact/v1;artifactv1\xa2\x02\x03MAX\xaa\x02\x16Memsidecar.Artifact.V1\xca\x02\x16Memsidecar\\Artifact\\V1\xe2\x02\"Memsidecar\\Artifact\\V1\\GPBMetadata\xea\x02\x18Memsidecar::Artifact::V1b\x06proto3"
 
 var (
@@ -945,7 +1029,7 @@ func file_memsidecar_artifact_v1_artifact_proto_rawDescGZIP() []byte {
 	return file_memsidecar_artifact_v1_artifact_proto_rawDescData
 }
 
-var file_memsidecar_artifact_v1_artifact_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_memsidecar_artifact_v1_artifact_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_memsidecar_artifact_v1_artifact_proto_goTypes = []any{
 	(*PutRequest)(nil),            // 0: memsidecar.artifact.v1.PutRequest
 	(*PutInit)(nil),               // 1: memsidecar.artifact.v1.PutInit
@@ -959,37 +1043,42 @@ var file_memsidecar_artifact_v1_artifact_proto_goTypes = []any{
 	(*StatResponse)(nil),          // 9: memsidecar.artifact.v1.StatResponse
 	(*DeleteRequest)(nil),         // 10: memsidecar.artifact.v1.DeleteRequest
 	(*DeleteResponse)(nil),        // 11: memsidecar.artifact.v1.DeleteResponse
-	(*ArtifactRef)(nil),           // 12: memsidecar.artifact.v1.ArtifactRef
-	(*ArtifactMeta)(nil),          // 13: memsidecar.artifact.v1.ArtifactMeta
-	nil,                           // 14: memsidecar.artifact.v1.PutInit.MetadataEntry
-	nil,                           // 15: memsidecar.artifact.v1.ArtifactMeta.MetadataEntry
-	(*timestamppb.Timestamp)(nil), // 16: google.protobuf.Timestamp
+	(*ListRequest)(nil),           // 12: memsidecar.artifact.v1.ListRequest
+	(*ArtifactRef)(nil),           // 13: memsidecar.artifact.v1.ArtifactRef
+	(*ArtifactMeta)(nil),          // 14: memsidecar.artifact.v1.ArtifactMeta
+	nil,                           // 15: memsidecar.artifact.v1.PutInit.MetadataEntry
+	nil,                           // 16: memsidecar.artifact.v1.ListRequest.FilterEntry
+	nil,                           // 17: memsidecar.artifact.v1.ArtifactMeta.MetadataEntry
+	(*timestamppb.Timestamp)(nil), // 18: google.protobuf.Timestamp
 }
 var file_memsidecar_artifact_v1_artifact_proto_depIdxs = []int32{
 	1,  // 0: memsidecar.artifact.v1.PutRequest.init:type_name -> memsidecar.artifact.v1.PutInit
 	2,  // 1: memsidecar.artifact.v1.PutRequest.chunk:type_name -> memsidecar.artifact.v1.PutChunk
-	14, // 2: memsidecar.artifact.v1.PutInit.metadata:type_name -> memsidecar.artifact.v1.PutInit.MetadataEntry
-	12, // 3: memsidecar.artifact.v1.PutResponse.ref:type_name -> memsidecar.artifact.v1.ArtifactRef
+	15, // 2: memsidecar.artifact.v1.PutInit.metadata:type_name -> memsidecar.artifact.v1.PutInit.MetadataEntry
+	13, // 3: memsidecar.artifact.v1.PutResponse.ref:type_name -> memsidecar.artifact.v1.ArtifactRef
 	6,  // 4: memsidecar.artifact.v1.GetResponse.header:type_name -> memsidecar.artifact.v1.GetHeader
 	7,  // 5: memsidecar.artifact.v1.GetResponse.chunk:type_name -> memsidecar.artifact.v1.GetChunk
-	13, // 6: memsidecar.artifact.v1.GetHeader.meta:type_name -> memsidecar.artifact.v1.ArtifactMeta
-	13, // 7: memsidecar.artifact.v1.StatResponse.meta:type_name -> memsidecar.artifact.v1.ArtifactMeta
-	16, // 8: memsidecar.artifact.v1.ArtifactRef.created_at:type_name -> google.protobuf.Timestamp
-	15, // 9: memsidecar.artifact.v1.ArtifactMeta.metadata:type_name -> memsidecar.artifact.v1.ArtifactMeta.MetadataEntry
-	16, // 10: memsidecar.artifact.v1.ArtifactMeta.created_at:type_name -> google.protobuf.Timestamp
-	0,  // 11: memsidecar.artifact.v1.Artifact.Put:input_type -> memsidecar.artifact.v1.PutRequest
-	4,  // 12: memsidecar.artifact.v1.Artifact.Get:input_type -> memsidecar.artifact.v1.GetRequest
-	8,  // 13: memsidecar.artifact.v1.Artifact.Stat:input_type -> memsidecar.artifact.v1.StatRequest
-	10, // 14: memsidecar.artifact.v1.Artifact.Delete:input_type -> memsidecar.artifact.v1.DeleteRequest
-	3,  // 15: memsidecar.artifact.v1.Artifact.Put:output_type -> memsidecar.artifact.v1.PutResponse
-	5,  // 16: memsidecar.artifact.v1.Artifact.Get:output_type -> memsidecar.artifact.v1.GetResponse
-	9,  // 17: memsidecar.artifact.v1.Artifact.Stat:output_type -> memsidecar.artifact.v1.StatResponse
-	11, // 18: memsidecar.artifact.v1.Artifact.Delete:output_type -> memsidecar.artifact.v1.DeleteResponse
-	15, // [15:19] is the sub-list for method output_type
-	11, // [11:15] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	14, // 6: memsidecar.artifact.v1.GetHeader.meta:type_name -> memsidecar.artifact.v1.ArtifactMeta
+	14, // 7: memsidecar.artifact.v1.StatResponse.meta:type_name -> memsidecar.artifact.v1.ArtifactMeta
+	16, // 8: memsidecar.artifact.v1.ListRequest.filter:type_name -> memsidecar.artifact.v1.ListRequest.FilterEntry
+	18, // 9: memsidecar.artifact.v1.ArtifactRef.created_at:type_name -> google.protobuf.Timestamp
+	17, // 10: memsidecar.artifact.v1.ArtifactMeta.metadata:type_name -> memsidecar.artifact.v1.ArtifactMeta.MetadataEntry
+	18, // 11: memsidecar.artifact.v1.ArtifactMeta.created_at:type_name -> google.protobuf.Timestamp
+	0,  // 12: memsidecar.artifact.v1.Artifact.Put:input_type -> memsidecar.artifact.v1.PutRequest
+	4,  // 13: memsidecar.artifact.v1.Artifact.Get:input_type -> memsidecar.artifact.v1.GetRequest
+	8,  // 14: memsidecar.artifact.v1.Artifact.Stat:input_type -> memsidecar.artifact.v1.StatRequest
+	10, // 15: memsidecar.artifact.v1.Artifact.Delete:input_type -> memsidecar.artifact.v1.DeleteRequest
+	12, // 16: memsidecar.artifact.v1.Artifact.List:input_type -> memsidecar.artifact.v1.ListRequest
+	3,  // 17: memsidecar.artifact.v1.Artifact.Put:output_type -> memsidecar.artifact.v1.PutResponse
+	5,  // 18: memsidecar.artifact.v1.Artifact.Get:output_type -> memsidecar.artifact.v1.GetResponse
+	9,  // 19: memsidecar.artifact.v1.Artifact.Stat:output_type -> memsidecar.artifact.v1.StatResponse
+	11, // 20: memsidecar.artifact.v1.Artifact.Delete:output_type -> memsidecar.artifact.v1.DeleteResponse
+	14, // 21: memsidecar.artifact.v1.Artifact.List:output_type -> memsidecar.artifact.v1.ArtifactMeta
+	17, // [17:22] is the sub-list for method output_type
+	12, // [12:17] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_memsidecar_artifact_v1_artifact_proto_init() }
@@ -1011,7 +1100,7 @@ func file_memsidecar_artifact_v1_artifact_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_memsidecar_artifact_v1_artifact_proto_rawDesc), len(file_memsidecar_artifact_v1_artifact_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
