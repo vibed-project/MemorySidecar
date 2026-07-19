@@ -19,6 +19,10 @@ service Artifact {
   rpc Get(GetRequest) returns (stream GetResponse);
   rpc Stat(StatRequest) returns (StatResponse);
   rpc Delete(DeleteRequest) returns (DeleteResponse);
+  // List enumerates a namespace's artifacts as a stream of ArtifactMeta in
+  // ascending id order. Artifact is otherwise addressable only by known id;
+  // List lets an agent discover contents without an external index.
+  rpc List(ListRequest) returns (stream ArtifactMeta);
 }
 
 message PutRequest {
@@ -84,6 +88,19 @@ message DeleteRequest {
 
 message DeleteResponse {
   bool existed = 1;
+}
+
+message ListRequest {
+  string namespace = 1;
+  // Exact-match metadata filter: an artifact matches when every (k,v) pair is
+  // present in its metadata. Empty matches all.
+  map<string, string> filter = 2;
+  // Resume cursor: an exclusive lower bound on id. Pass the last id from the
+  // previous page to continue; empty starts from the beginning. Because List
+  // streams ids in ascending order, the last id received is the next token.
+  string start_after = 3;
+  // Maximum artifacts to return. 0 = unbounded.
+  uint32 limit = 4;
 }
 
 message ArtifactRef {

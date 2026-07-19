@@ -38,6 +38,24 @@ type GetOptions struct {
 	Length uint64 // 0 = until end
 }
 
+// ListOptions narrows a List enumeration.
+type ListOptions struct {
+	Filter     map[string]string // exact-match on metadata; empty matches all
+	StartAfter string            // exclusive lower bound on id (resume cursor)
+	Limit      uint32            // 0 = unbounded
+}
+
+// MatchesFilter reports whether meta contains every key/value pair in filter.
+// An empty (or nil) filter matches anything.
+func MatchesFilter(meta, filter map[string]string) bool {
+	for k, v := range filter {
+		if meta[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
 // Driver is the contract every artifact backend implements. Implementations
 // MUST be safe for concurrent use.
 type Driver interface {
@@ -53,5 +71,10 @@ type Driver interface {
 
 	Stat(ctx context.Context, namespace, id string) (Meta, error)
 	Delete(ctx context.Context, namespace, id string) (existed bool, err error)
+
+	// List yields each artifact's Meta in ascending id order, applying
+	// opts.Filter/StartAfter/Limit. It does not read artifact bytes.
+	List(ctx context.Context, namespace string, opts ListOptions, yield func(Meta) error) error
+
 	Close() error
 }

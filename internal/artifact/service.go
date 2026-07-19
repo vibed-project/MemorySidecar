@@ -224,6 +224,25 @@ func (s *Service) Delete(ctx context.Context, req *artifactv1.DeleteRequest) (*a
 	return &artifactv1.DeleteResponse{Existed: existed}, nil
 }
 
+func (s *Service) List(req *artifactv1.ListRequest, stream artifactv1.Artifact_ListServer) error {
+	ctx := stream.Context()
+	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpArtifactList)
+	if err != nil {
+		return err
+	}
+	err = d.List(ctx, req.GetNamespace(), ListOptions{
+		Filter:     req.GetFilter(),
+		StartAfter: req.GetStartAfter(),
+		Limit:      req.GetLimit(),
+	}, func(m Meta) error {
+		return stream.Send(metaToProto(m))
+	})
+	if err != nil {
+		return status.Errorf(codes.Internal, "list: %v", err)
+	}
+	return nil
+}
+
 func metaToProto(m Meta) *artifactv1.ArtifactMeta {
 	out := &artifactv1.ArtifactMeta{
 		Id:          m.ID,

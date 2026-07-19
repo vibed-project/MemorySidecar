@@ -31,6 +31,7 @@ const (
 	OpArtifactGet    Op = "artifact.get"
 	OpArtifactStat   Op = "artifact.stat"
 	OpArtifactDelete Op = "artifact.delete"
+	OpArtifactList   Op = "artifact.list"
 
 	OpLeaseAcquire Op = "lease.acquire"
 	OpLeaseRenew   Op = "lease.renew"

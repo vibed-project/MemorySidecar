@@ -33,6 +33,7 @@ var methodToOp = map[string]struct {
 	"/memsidecar.artifact.v1.Artifact/Get":    {auth.OpArtifactGet, "artifact", false},
 	"/memsidecar.artifact.v1.Artifact/Stat":   {auth.OpArtifactStat, "artifact", false},
 	"/memsidecar.artifact.v1.Artifact/Delete": {auth.OpArtifactDelete, "artifact", true},
+	"/memsidecar.artifact.v1.Artifact/List":   {auth.OpArtifactList, "artifact", false},
 	"/memsidecar.lease.v1.Lease/Acquire":      {auth.OpLeaseAcquire, "lease", true},
 	"/memsidecar.lease.v1.Lease/Renew":        {auth.OpLeaseRenew, "lease", true},
 	"/memsidecar.lease.v1.Lease/Release":      {auth.OpLeaseRelease, "lease", true},

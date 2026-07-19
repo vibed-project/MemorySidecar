@@ -153,6 +153,29 @@ func local_request_Artifact_Delete_0(ctx context.Context, marshaler runtime.Mars
 	return msg, metadata, err
 }
 
+func request_Artifact_List_0(ctx context.Context, marshaler runtime.Marshaler, client ArtifactClient, req *http.Request, pathParams map[string]string) (Artifact_ListClient, runtime.ServerMetadata, error) {
+	var (
+		protoReq ListRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	stream, err := client.List(ctx, &protoReq)
+	if err != nil {
+		return nil, metadata, err
+	}
+	header, err := stream.Header()
+	if err != nil {
+		return nil, metadata, err
+	}
+	metadata.HeaderMD = header
+	return stream, metadata, nil
+}
+
 // RegisterArtifactHandlerServer registers the http handlers for service Artifact to "mux".
 // UnaryRPC     :call ArtifactServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
@@ -211,6 +234,13 @@ func RegisterArtifactHandlerServer(ctx context.Context, mux *runtime.ServeMux, s
 			return
 		}
 		forward_Artifact_Delete_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+	})
+
+	mux.Handle(http.MethodPost, pattern_Artifact_List_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		err := status.Error(codes.Unimplemented, "streaming calls are not yet supported in the in-process transport")
+		_, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+		return
 	})
 
 	return nil
@@ -320,6 +350,23 @@ func RegisterArtifactHandlerClient(ctx context.Context, mux *runtime.ServeMux, c
 		}
 		forward_Artifact_Delete_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodPost, pattern_Artifact_List_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/memsidecar.artifact.v1.Artifact/List", runtime.WithHTTPPathPattern("/memsidecar.artifact.v1.Artifact/List"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_Artifact_List_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Artifact_List_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
+	})
 	return nil
 }
 
@@ -328,6 +375,7 @@ var (
 	pattern_Artifact_Get_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"memsidecar.artifact.v1.Artifact", "Get"}, ""))
 	pattern_Artifact_Stat_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"memsidecar.artifact.v1.Artifact", "Stat"}, ""))
 	pattern_Artifact_Delete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"memsidecar.artifact.v1.Artifact", "Delete"}, ""))
+	pattern_Artifact_List_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"memsidecar.artifact.v1.Artifact", "List"}, ""))
 )
 
 var (
@@ -335,4 +383,5 @@ var (
 	forward_Artifact_Get_0    = runtime.ForwardResponseStream
 	forward_Artifact_Stat_0   = runtime.ForwardResponseMessage
 	forward_Artifact_Delete_0 = runtime.ForwardResponseMessage
+	forward_Artifact_List_0   = runtime.ForwardResponseStream
 )

@@ -202,6 +202,52 @@ func (d *Driver) Stat(ctx context.Context, namespace, id string) (artifact.Meta,
 	return meta, nil
 }
 
+func (d *Driver) List(ctx context.Context, namespace string, opts artifact.ListOptions, yield func(artifact.Meta) error) error {
+	// Cancel the ListObjects goroutine when we stop early (limit reached / yield
+	// error), otherwise minio-go blocks sending on its result channel.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	prefix := d.prefix + namespace + "/"
+	listOpts := miniogo.ListObjectsOptions{Prefix: prefix, Recursive: true}
+	if opts.StartAfter != "" {
+		listOpts.StartAfter = prefix + opts.StartAfter
+	}
+
+	var n uint32
+	// ListObjects yields keys in ascending (lexical) order, matching the id
+	// ordering the memory/fs drivers sort into.
+	for obj := range d.c.ListObjects(ctx, d.bucket, listOpts) {
+		if obj.Err != nil {
+			return fmt.Errorf("artifact/s3: list: %w", obj.Err)
+		}
+		id := strings.TrimPrefix(obj.Key, prefix)
+		if id == "" {
+			continue
+		}
+		// ListObjects omits user-metadata, so Stat each candidate to get the
+		// full Meta the filter and response need.
+		meta, err := d.Stat(ctx, namespace, id)
+		if errors.Is(err, artifact.ErrNotFound) {
+			continue // deleted between list and stat
+		}
+		if err != nil {
+			return err
+		}
+		if !artifact.MatchesFilter(meta.Metadata, opts.Filter) {
+			continue
+		}
+		if err := yield(meta); err != nil {
+			return err
+		}
+		n++
+		if opts.Limit > 0 && n >= opts.Limit {
+			break
+		}
+	}
+	return nil
+}
+
 func (d *Driver) Delete(ctx context.Context, namespace, id string) (bool, error) {
 	// minio-go's RemoveObject succeeds when the object is absent, so probe first.
 	if _, err := d.Stat(ctx, namespace, id); err != nil {

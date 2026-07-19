@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"io"
+	"sort"
 	"sync"
 	"time"
 
@@ -121,6 +122,34 @@ func (d *Driver) PatchMeta(_ context.Context, namespace, id, sha256Hex string, s
 	}
 	s.meta.SHA256 = sha256Hex
 	s.meta.Size = size
+	return nil
+}
+
+func (d *Driver) List(_ context.Context, namespace string, opts artifact.ListOptions, yield func(artifact.Meta) error) error {
+	d.mu.RLock()
+	metas := make([]artifact.Meta, 0, len(d.items[namespace]))
+	for id, s := range d.items[namespace] {
+		if opts.StartAfter != "" && id <= opts.StartAfter {
+			continue
+		}
+		if !artifact.MatchesFilter(s.meta.Metadata, opts.Filter) {
+			continue
+		}
+		metas = append(metas, s.meta)
+	}
+	d.mu.RUnlock()
+
+	sort.Slice(metas, func(i, j int) bool { return metas[i].ID < metas[j].ID })
+	var n uint32
+	for _, m := range metas {
+		if opts.Limit > 0 && n >= opts.Limit {
+			break
+		}
+		if err := yield(m); err != nil {
+			return err
+		}
+		n++
+	}
 	return nil
 }
 
