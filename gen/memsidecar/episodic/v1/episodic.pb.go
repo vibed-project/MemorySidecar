@@ -397,8 +397,16 @@ type RangeRequest struct {
 	// include_deleted: also return tombstoned (superseded or expired) events. By
 	// default Range returns only live events (deleted_at unset).
 	IncludeDeleted bool `protobuf:"varint,8,opt,name=include_deleted,json=includeDeleted,proto3" json:"include_deleted,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Equality predicates, each ANDed with the cursor/time window and with each
+	// other. An empty string means "no filter on this field" (so events with an
+	// empty role/session_id are only excluded by a non-empty predicate). Together
+	// they make "reconstruct session X" (optionally one role or type) a bounded,
+	// index-backed scan instead of an O(namespace) transfer.
+	SessionId     string `protobuf:"bytes,9,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Role          string `protobuf:"bytes,10,opt,name=role,proto3" json:"role,omitempty"`
+	Type          string `protobuf:"bytes,11,opt,name=type,proto3" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RangeRequest) Reset() {
@@ -485,6 +493,27 @@ func (x *RangeRequest) GetIncludeDeleted() bool {
 		return x.IncludeDeleted
 	}
 	return false
+}
+
+func (x *RangeRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *RangeRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *RangeRequest) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
 }
 
 type TailRequest struct {
@@ -724,7 +753,7 @@ const file_memsidecar_episodic_v1_episodic_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"E\n" +
 	"\x0eAppendResponse\x123\n" +
-	"\x05event\x18\x01 \x01(\v2\x1d.memsidecar.episodic.v1.EventR\x05event\"\xc5\x02\n" +
+	"\x05event\x18\x01 \x01(\v2\x1d.memsidecar.episodic.v1.EventR\x05event\"\x8c\x03\n" +
 	"\fRangeRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
 	"\fafter_cursor\x18\x02 \x01(\x04R\vafterCursor\x12#\n" +
@@ -735,7 +764,12 @@ const file_memsidecar_episodic_v1_episodic_proto_rawDesc = "" +
 	"after_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tafterTime\x12;\n" +
 	"\vbefore_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"beforeTime\x12'\n" +
-	"\x0finclude_deleted\x18\b \x01(\bR\x0eincludeDeleted\"}\n" +
+	"\x0finclude_deleted\x18\b \x01(\bR\x0eincludeDeleted\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\t \x01(\tR\tsessionId\x12\x12\n" +
+	"\x04role\x18\n" +
+	" \x01(\tR\x04role\x12\x12\n" +
+	"\x04type\x18\v \x01(\tR\x04type\"}\n" +
 	"\vTailRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
 	"\fafter_cursor\x18\x02 \x01(\x04R\vafterCursor\x12-\n" +

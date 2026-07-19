@@ -49,6 +49,7 @@ func RunConformance(t *testing.T, h Harness) {
 		{"Expire_HardDelete", testExpireHardDelete},
 		{"Expire_MaxRowsBound", testExpireMaxRowsBound},
 		{"Expire_Validation", testExpireValidation},
+		{"Range_SessionRoleTypeFilter", testRangeSessionRoleTypeFilter},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) { tc.fn(t, h) })
@@ -448,6 +449,47 @@ func testExpireValidation(t *testing.T, h Harness) {
 		BeforeCursor: 5, Action: episodic.ExpireActionUnspecified, MaxRows: 1,
 	})
 	require.Error(t, err)
+}
+
+// testRangeSessionRoleTypeFilter checks the equality predicates on Range:
+// each filters independently, empty means "no filter", and they AND with each
+// other and with the cursor/time window.
+func testRangeSessionRoleTypeFilter(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+
+	// cursor: 1     2     3      4     5
+	// sess:   s1    s1    s2     s1    s2
+	// role:   user  asst  user   tool  user
+	// type:   msg   msg   msg    call  obs
+	appends := []episodic.AppendOptions{
+		{Type: "msg", Role: "user", SessionID: "s1"},
+		{Type: "msg", Role: "asst", SessionID: "s1"},
+		{Type: "msg", Role: "user", SessionID: "s2"},
+		{Type: "call", Role: "tool", SessionID: "s1"},
+		{Type: "obs", Role: "user", SessionID: "s2"},
+	}
+	for _, a := range appends {
+		_, err := d.Append(ctx, "ns", a)
+		require.NoError(t, err)
+	}
+
+	// session_id alone.
+	assert.Equal(t, []uint64{1, 2, 4}, cursorsOf(t, d, episodic.RangeOptions{SessionID: "s1"}))
+	// role alone.
+	assert.Equal(t, []uint64{1, 3, 5}, cursorsOf(t, d, episodic.RangeOptions{Role: "user"}))
+	// type alone.
+	assert.Equal(t, []uint64{1, 2, 3}, cursorsOf(t, d, episodic.RangeOptions{Type: "msg"}))
+	// session AND role.
+	assert.Equal(t, []uint64{1}, cursorsOf(t, d, episodic.RangeOptions{SessionID: "s1", Role: "user"}))
+	// session AND role AND type.
+	assert.Equal(t, []uint64{3}, cursorsOf(t, d, episodic.RangeOptions{SessionID: "s2", Role: "user", Type: "msg"}))
+	// Predicate ANDs with the cursor window: session s2 with cursor > 3 → only 5.
+	assert.Equal(t, []uint64{5}, cursorsOf(t, d, episodic.RangeOptions{SessionID: "s2", AfterCursor: 3}))
+	// Empty predicates disable filtering — full log.
+	assert.Equal(t, []uint64{1, 2, 3, 4, 5}, cursorsOf(t, d, episodic.RangeOptions{}))
+	// No match → empty.
+	assert.Empty(t, cursorsOf(t, d, episodic.RangeOptions{SessionID: "nope"}))
 }
 
 func receive(t *testing.T, ch <-chan uint64, h Harness) uint64 {
