@@ -110,6 +110,51 @@ Per-thread reads (get-latest, `list`/history) use a kv prefix scan; the episodic
 block isn't used here because it has no per-thread server-side filter, which is
 the access pattern a checkpointer needs.
 
+## CrewAI memory
+
+`memsidecar.ext.crewai.MemSidecarStorage` implements CrewAI's `StorageBackend`
+protocol (the pluggable storage under CrewAI 1.x's unified `Memory`), so a
+crew's memories live on the sidecar instead of a local vector file.
+
+Install the extra (pulls in `crewai`):
+
+```bash
+pip install "memsidecar[crewai]"
+```
+
+> **Install note.** The generated stubs require `protobuf>=7.35`, while
+> CrewAI's `opentelemetry-proto` dependency still caps `protobuf<7`, so pip's
+> resolver rejects the combined install. The two are compatible **at runtime**
+> (CrewAI imports and runs fine on protobuf 7), so force it:
+>
+> ```bash
+> pip install crewai
+> pip install "protobuf>=7.35"        # runtime-compatible; overrides the cap
+> pip install memsidecar --no-deps    # already have grpcio + protobuf
+> ```
+
+Both a `semantic/<namespace>` and a `kv/<namespace>` must exist on the server
+(the token needs semantic + kv ops on them). CrewAI owns embedding — it fills
+`MemoryRecord.embedding` before `save` and passes `search` a `query_embedding` —
+so this backend stores those vectors as-is; the **semantic namespace's
+`dimensions` must equal the CrewAI embedder's output dimension**.
+
+```python
+from crewai import Crew
+from crewai.memory.unified_memory import Memory
+from memsidecar import MemSidecar
+from memsidecar.ext.crewai import MemSidecarStorage
+
+client = MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN)
+memory = Memory(storage=MemSidecarStorage(client, namespace="memories"))
+crew = Crew(agents=[...], tasks=[...], memory=memory)
+```
+
+The **semantic** block holds the vector index (searched ids-only, then records
+are rehydrated from kv); the **kv** block holds each record under `id/<id>` and
+`rec<scope>/<id>`, which backs get-by-id plus the list/count/scope introspection
+the memory runtime performs during encode and recall.
+
 ## Regenerating proto stubs
 
 The protobuf + gRPC stubs under `src/memsidecar/{kv,episodic,...}/v1/` are
