@@ -98,6 +98,14 @@ message RangeRequest {
   // include_deleted: also return tombstoned (superseded or expired) events. By
   // default Range returns only live events (deleted_at unset).
   bool include_deleted = 8;
+  // Equality predicates, each ANDed with the cursor/time window and with each
+  // other. An empty string means "no filter on this field" (so events with an
+  // empty role/session_id are only excluded by a non-empty predicate). Together
+  // they make "reconstruct session X" (optionally one role or type) a bounded,
+  // index-backed scan instead of an O(namespace) transfer.
+  string session_id = 9;
+  string role = 10;
+  string type = 11;
 }
 
 message TailRequest {

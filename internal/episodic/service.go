@@ -82,6 +82,9 @@ func (s *Service) Range(req *episodicv1.RangeRequest, stream episodicv1.Episodic
 		AfterTime:      tsToTime(req.GetAfterTime()),
 		BeforeTime:     tsToTime(req.GetBeforeTime()),
 		IncludeDeleted: req.GetIncludeDeleted(),
+		SessionID:      req.GetSessionId(),
+		Role:           req.GetRole(),
+		Type:           req.GetType(),
 	}, func(ev Event) error {
 		return stream.Send(eventToProto(ev))
 	})
