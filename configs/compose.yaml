@@ -1,0 +1,65 @@
+# memsidecar config for docker-compose (Postgres + MinIO).
+#
+# DEV KEYPAIR — DO NOT USE IN PRODUCTION. The matching secret is passed to the
+# `token` helper service in docker-compose.yml.
+#
+# Unlike configs/example.yaml this binds 0.0.0.0 so the listeners are reachable
+# from the host and sibling containers, and it backs every durable block with
+# Postgres + artifacts with MinIO (S3).
+
+server:
+  grpc:
+    tcp: "0.0.0.0:7777"
+  http:
+    addr: "0.0.0.0:8080"
+  shutdown_timeout: 10s
+
+observability:
+  tracing:
+    exporter: none
+  metrics:
+    exporter: prometheus
+    prometheus:
+      addr: ":9090"
+      path: /metrics
+  logging:
+    level: info
+    format: json
+
+auth:
+  verifier: paseto
+  paseto:
+    public_key_hex: "61a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9"
+
+policy:
+  default: allow
+
+backends:
+  - name: pg-main
+    driver: postgres
+    options:
+      dsn_env: MEMSIDECAR_PG_DSN
+      max_conns: 10
+      sweeper_interval: 5m
+  - name: blob-s3
+    driver: s3
+    options:
+      endpoint: minio:9000       # the compose service name
+      bucket: memsidecar
+      use_ssl: false
+      access_key_env: MEMSIDECAR_S3_ACCESS_KEY
+      secret_key_env: MEMSIDECAR_S3_SECRET_KEY
+
+namespaces:
+  - { block: kv, name: scratchpad, backend: pg-main }
+  - { block: episodic, name: events, backend: pg-main }
+  - block: semantic
+    name: notes
+    backend: pg-main
+    embedder:
+      provider: fake       # deterministic content-hash embedder (dev only)
+      model: fake-64
+      dimensions: 64
+  - { block: artifact, name: blobs, backend: blob-s3 }
+  - { block: lease, name: locks, backend: pg-main }
+  - { block: graph, name: knowledge, backend: pg-main }

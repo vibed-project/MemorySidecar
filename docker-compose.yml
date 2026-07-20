@@ -1,0 +1,104 @@
+# One-command local memsidecar with a real backend stack: Postgres (pgvector,
+# so the semantic block works) + MinIO (S3-compatible artifacts).
+#
+#   docker compose up --build            # start the stack
+#   TOKEN=$(docker compose run --rm token)   # mint a dev capability token
+#   docker compose run --rm memctl kv put scratchpad hello world --token "$TOKEN"
+#   docker compose run --rm memctl ns ls --token "$TOKEN"
+#
+# The gRPC API is on localhost:7777, the HTTP/JSON gateway on :8080, and
+# Prometheus metrics on :9090. DEV CREDENTIALS ONLY — the PASETO keypair below
+# is public in this repo; do not use it in production.
+
+x-paseto-secret: &paseto_secret 38fb82e74985d41969ce39904d7cbe01dd31ea0b573dc8fc35c5689b8212ccc961a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: memsidecar
+      POSTGRES_PASSWORD: memsidecar
+      POSTGRES_DB: memsidecar
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memsidecar -d memsidecar"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "5432:5432"
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || exit 1"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  # One-shot: create the bucket memsidecar expects, then exit.
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 minioadmin minioadmin &&
+        mc mb --ignore-existing local/memsidecar &&
+        echo 'bucket ready'
+      "
+
+  memsidecar:
+    build:
+      context: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-setup:
+        condition: service_completed_successfully
+    environment:
+      MEMSIDECAR_PG_DSN: "postgres://memsidecar:memsidecar@postgres:5432/memsidecar?sslmode=disable"
+      MEMSIDECAR_S3_ACCESS_KEY: minioadmin
+      MEMSIDECAR_S3_SECRET_KEY: minioadmin
+    volumes:
+      - ./configs/compose.yaml:/etc/memsidecar/config.yaml:ro
+    ports:
+      - "7777:7777" # gRPC
+      - "8080:8080" # HTTP/JSON gateway
+      - "9090:9090" # Prometheus metrics
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/memsidecar", "--version"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Helper: mint a dev capability token. `docker compose run --rm token`.
+  # Override the flags to scope it, e.g.
+  #   docker compose run --rm token token issue --tenant acme --ns 'kv/*' --ops '*'
+  token:
+    build:
+      context: .
+    entrypoint: ["/usr/local/bin/memctl"]
+    command: ["token", "issue", "--tenant", "dev", "--agent", "compose",
+              "--ns", "kv/*,episodic/*,semantic/*,artifact/*,lease/*,graph/*",
+              "--ops", "*", "--ttl", "24h"]
+    environment:
+      MEMSIDECAR_PASETO_SECRET_HEX: *paseto_secret
+    profiles: ["tools"]
+
+  # Helper: run memctl data-plane verbs against the running server.
+  #   docker compose run --rm memctl ns ls --token "$TOKEN"
+  memctl:
+    build:
+      context: .
+    entrypoint: ["/usr/local/bin/memctl"]
+    environment:
+      MEMSIDECAR_ADDR: "memsidecar:7777"
+    profiles: ["tools"]
