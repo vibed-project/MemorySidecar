@@ -9,9 +9,9 @@ Usage::
         rec = m.kv.get("scratchpad", "hello")
         print(rec.value)
 
-The block clients (`m.kv`, `m.episodic`, `m.semantic`, `m.artifact`, `m.lease`)
-wrap the raw generated stubs with idiomatic Python types and inject the
-capability token on every call.
+The block clients (`m.kv`, `m.episodic`, `m.semantic`, `m.artifact`, `m.lease`,
+`m.graph`) plus `m.admin` (cross-namespace introspection) wrap the raw generated
+stubs with idiomatic Python types and inject the capability token on every call.
 """
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ from .semantic.v1 import semantic_pb2, semantic_pb2_grpc
 from .artifact.v1 import artifact_pb2, artifact_pb2_grpc
 from .lease.v1 import lease_pb2, lease_pb2_grpc
 from .graph.v1 import graph_pb2, graph_pb2_grpc
+from .admin.v1 import admin_pb2, admin_pb2_grpc
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +97,14 @@ class _KV:
     def get(self, namespace: str, key: str) -> kv_pb2.GetResponse:
         return self._stub.Get(kv_pb2.GetRequest(namespace=namespace, key=key))
 
+    def multi_get(self, namespace: str, keys: Iterable[str]) -> List[kv_pb2.KVItem]:
+        """Fetch many keys in one round-trip. Missing or expired keys are
+        omitted and repeats are deduplicated; results are ordered by key.
+        """
+        return list(self._stub.MultiGet(kv_pb2.MultiGetRequest(
+            namespace=namespace, keys=list(keys),
+        )).items)
+
     def delete(
         self, namespace: str, key: str, *, if_version: Optional[int] = None,
     ) -> kv_pb2.DeleteResponse:
@@ -106,11 +115,15 @@ class _KV:
 
     def scan(
         self, namespace: str, *, key_prefix: str = "", limit: int = 0,
-        include_values: bool = False,
+        include_values: bool = False, start_after: str = "",
     ) -> Iterator[kv_pb2.KVItem]:
+        """Stream keys in ascending (byte) order. ``start_after`` is an
+        exclusive resume cursor — pass the last key from the previous page to
+        continue; ``limit`` caps the page.
+        """
         req = kv_pb2.ScanRequest(
             namespace=namespace, key_prefix=key_prefix, limit=limit,
-            include_values=include_values,
+            include_values=include_values, start_after=start_after,
         )
         return iter(self._stub.Scan(req))
 
@@ -123,10 +136,18 @@ class _Episodic:
         self, namespace: str, type: str, payload: bytes = b"",
         *, metadata: Optional[Mapping[str, str]] = None,
         role: str = "", session_id: str = "",
+        dedup_key: str = "", supersedes: Optional[Iterable[str]] = None,
+        source: str = "",
     ) -> episodic_pb2.Event:
+        """Append an event. ``dedup_key`` makes the write idempotent under retry
+        — the first append for a (namespace, dedup_key) writes, later ones
+        return the stored event unchanged. ``supersedes`` tombstones the named
+        earlier events (revisability); ``source`` is an opaque provenance handle.
+        """
         resp = self._stub.Append(episodic_pb2.AppendRequest(
             namespace=namespace, type=type, payload=payload,
             metadata=dict(metadata or {}), role=role, session_id=session_id,
+            dedup_key=dedup_key, supersedes=list(supersedes or []), source=source,
         ))
         return resp.event
 
@@ -136,13 +157,22 @@ class _Episodic:
         limit: int = 0, reverse: bool = False,
         after_time: Optional[_dt.datetime] = None,
         before_time: Optional[_dt.datetime] = None,
+        include_deleted: bool = False,
+        session_id: str = "", role: str = "", type: str = "",
     ) -> Iterator[episodic_pb2.Event]:
         """Replay events. ``after_time``/``before_time`` add an exclusive
         event-timestamp window, combined (AND) with the cursor bounds.
+
+        ``session_id``/``role``/``type`` are equality predicates (empty = no
+        filter) ANDed with the window — e.g. reconstruct one conversation with
+        ``session_id="s1"``. ``include_deleted=True`` also returns tombstoned
+        (superseded or Expire'd) events.
         """
         req = episodic_pb2.RangeRequest(
             namespace=namespace, after_cursor=after_cursor,
             before_cursor=before_cursor, limit=limit, reverse=reverse,
+            include_deleted=include_deleted,
+            session_id=session_id, role=role, type=type,
         )
         at = _to_timestamp(after_time)
         if at is not None:
@@ -161,6 +191,27 @@ class _Episodic:
             include_historical=include_historical,
         )
         return iter(self._stub.Tail(req))
+
+    def expire(
+        self, namespace: str, *,
+        action: "episodic_pb2.ExpireAction.ValueType", max_rows: int,
+        before_cursor: int = 0, before_time: Optional[_dt.datetime] = None,
+    ) -> int:
+        """Tombstone or remove events in a bounded retention window, in one
+        server-side operation. The window is a cursor/time upper bound — at
+        least one of ``before_cursor`` / ``before_time`` is required. ``action``
+        is an ``episodic_pb2.ExpireAction`` value (``EXPIRE_ACTION_SOFT_DELETE``
+        / ``_HARD_DELETE``); ``max_rows`` caps the affected set (oldest-first)
+        and is required. Returns the number of events affected.
+        """
+        req = episodic_pb2.ExpireRequest(
+            namespace=namespace, before_cursor=before_cursor,
+            action=action, max_rows=max_rows,
+        )
+        bt = _to_timestamp(before_time)
+        if bt is not None:
+            req.before_time.CopyFrom(bt)
+        return self._stub.Expire(req).affected
 
 
 class _Semantic:
@@ -293,6 +344,22 @@ class _Artifact:
     def delete(self, namespace: str, id: str) -> bool:
         return self._stub.Delete(artifact_pb2.DeleteRequest(namespace=namespace, id=id)).existed
 
+    def list(
+        self, namespace: str, *,
+        filter: Optional[Mapping[str, str]] = None,
+        start_after: str = "", limit: int = 0,
+    ) -> Iterator[artifact_pb2.ArtifactMeta]:
+        """Enumerate a namespace's artifacts (metadata only, no bytes) in
+        ascending id order. ``filter`` is exact-match on metadata; ``start_after``
+        is an exclusive resume cursor (pass the last id from the previous page);
+        ``limit`` caps the page.
+        """
+        req = artifact_pb2.ListRequest(
+            namespace=namespace, filter=dict(filter or {}),
+            start_after=start_after, limit=limit,
+        )
+        return iter(self._stub.List(req))
+
 
 class _Lease:
     def __init__(self, channel: grpc.Channel):
@@ -329,6 +396,12 @@ class _Lease:
 
     def inspect(self, namespace: str, key: str) -> lease_pb2.InspectResponse:
         return self._stub.Inspect(lease_pb2.InspectRequest(namespace=namespace, key=key))
+
+    def list(self, namespace: str) -> List[lease_pb2.LeaseHandle]:
+        """Return every currently-held (unexpired) lease in the namespace,
+        ordered by key — for deadlock/orphan discovery and cleanup.
+        """
+        return list(self._stub.List(lease_pb2.ListRequest(namespace=namespace)).leases)
 
 
 class _Graph:
@@ -398,6 +471,20 @@ class _Graph:
         return self._stub.DeleteEdge(graph_pb2.DeleteEdgeRequest(namespace=namespace, id=id)).existed
 
 
+class _Admin:
+    """Cross-namespace server introspection. Requires the ``admin.inspect`` op."""
+
+    def __init__(self, channel: grpc.Channel):
+        self._stub = admin_pb2_grpc.AdminStub(channel)
+
+    def list_namespaces(self) -> admin_pb2.ListNamespacesResponse:
+        """List every configured namespace with its block, backend, driver, live
+        item count (when the driver reports one cheaply — see ``has_count``), and
+        embedder (semantic only), plus the server version/commit.
+        """
+        return self._stub.ListNamespaces(admin_pb2.ListNamespacesRequest())
+
+
 # ---------------------------------------------------------------------------
 # Top-level client
 
@@ -422,6 +509,7 @@ class MemSidecar:
         self.artifact = _Artifact(self._channel)
         self.lease = _Lease(self._channel)
         self.graph = _Graph(self._channel)
+        self.admin = _Admin(self._channel)
 
     def close(self) -> None:
         self._channel.close()

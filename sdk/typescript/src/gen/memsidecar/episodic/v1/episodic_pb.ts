@@ -2,8 +2,8 @@
 // @generated from file memsidecar/episodic/v1/episodic.proto (package memsidecar.episodic.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file memsidecar/episodic/v1/episodic.proto.
  */
 export const file_memsidecar_episodic_v1_episodic: GenFile = /*@__PURE__*/
-  fileDesc("CiVtZW1zaWRlY2FyL2VwaXNvZGljL3YxL2VwaXNvZGljLnByb3RvEhZtZW1zaWRlY2FyLmVwaXNvZGljLnYxIoMCCgVFdmVudBIKCgJpZBgBIAEoCRIOCgZjdXJzb3IYAiABKAQSLQoJdGltZXN0YW1wGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIMCgR0eXBlGAQgASgJEg8KB3BheWxvYWQYBSABKAwSPQoIbWV0YWRhdGEYBiADKAsyKy5tZW1zaWRlY2FyLmVwaXNvZGljLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnkSDAoEcm9sZRgHIAEoCRISCgpzZXNzaW9uX2lkGAggASgJGi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASLbAQoNQXBwZW5kUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSDAoEdHlwZRgCIAEoCRIPCgdwYXlsb2FkGAMgASgMEkUKCG1ldGFkYXRhGAQgAygLMjMubWVtc2lkZWNhci5lcGlzb2RpYy52MS5BcHBlbmRSZXF1ZXN0Lk1ldGFkYXRhRW50cnkSDAoEcm9sZRgFIAEoCRISCgpzZXNzaW9uX2lkGAYgASgJGi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASI+Cg5BcHBlbmRSZXNwb25zZRIsCgVldmVudBgBIAEoCzIdLm1lbXNpZGVjYXIuZXBpc29kaWMudjEuRXZlbnQizwEKDFJhbmdlUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSFAoMYWZ0ZXJfY3Vyc29yGAIgASgEEhUKDWJlZm9yZV9jdXJzb3IYAyABKAQSDQoFbGltaXQYBCABKA0SDwoHcmV2ZXJzZRgFIAEoCBIuCgphZnRlcl90aW1lGAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIvCgtiZWZvcmVfdGltZRgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiUgoLVGFpbFJlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEhQKDGFmdGVyX2N1cnNvchgCIAEoBBIaChJpbmNsdWRlX2hpc3RvcmljYWwYAyABKAgygQIKCEVwaXNvZGljElcKBkFwcGVuZBIlLm1lbXNpZGVjYXIuZXBpc29kaWMudjEuQXBwZW5kUmVxdWVzdBomLm1lbXNpZGVjYXIuZXBpc29kaWMudjEuQXBwZW5kUmVzcG9uc2USTgoFUmFuZ2USJC5tZW1zaWRlY2FyLmVwaXNvZGljLnYxLlJhbmdlUmVxdWVzdBodLm1lbXNpZGVjYXIuZXBpc29kaWMudjEuRXZlbnQwARJMCgRUYWlsEiMubWVtc2lkZWNhci5lcGlzb2RpYy52MS5UYWlsUmVxdWVzdBodLm1lbXNpZGVjYXIuZXBpc29kaWMudjEuRXZlbnQwAUIyWjBtZW1zaWRlY2FyL2dlbi9tZW1zaWRlY2FyL2VwaXNvZGljL3YxO2VwaXNvZGljdjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("CiVtZW1zaWRlY2FyL2VwaXNvZGljL3YxL2VwaXNvZGljLnByb3RvEhZtZW1zaWRlY2FyLmVwaXNvZGljLnYxItcCCgVFdmVudBIKCgJpZBgBIAEoCRIOCgZjdXJzb3IYAiABKAQSLQoJdGltZXN0YW1wGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIMCgR0eXBlGAQgASgJEg8KB3BheWxvYWQYBSABKAwSPQoIbWV0YWRhdGEYBiADKAsyKy5tZW1zaWRlY2FyLmVwaXNvZGljLnYxLkV2ZW50Lk1ldGFkYXRhRW50cnkSDAoEcm9sZRgHIAEoCRISCgpzZXNzaW9uX2lkGAggASgJEhIKCnN1cGVyc2VkZXMYCSADKAkSDgoGc291cmNlGAogASgJEi4KCmRlbGV0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wGi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASKSAgoNQXBwZW5kUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSDAoEdHlwZRgCIAEoCRIPCgdwYXlsb2FkGAMgASgMEkUKCG1ldGFkYXRhGAQgAygLMjMubWVtc2lkZWNhci5lcGlzb2RpYy52MS5BcHBlbmRSZXF1ZXN0Lk1ldGFkYXRhRW50cnkSDAoEcm9sZRgFIAEoCRISCgpzZXNzaW9uX2lkGAYgASgJEhEKCWRlZHVwX2tleRgHIAEoCRISCgpzdXBlcnNlZGVzGAggAygJEg4KBnNvdXJjZRgJIAEoCRovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiPgoOQXBwZW5kUmVzcG9uc2USLAoFZXZlbnQYASABKAsyHS5tZW1zaWRlY2FyLmVwaXNvZGljLnYxLkV2ZW50IpgCCgxSYW5nZVJlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEhQKDGFmdGVyX2N1cnNvchgCIAEoBBIVCg1iZWZvcmVfY3Vyc29yGAMgASgEEg0KBWxpbWl0GAQgASgNEg8KB3JldmVyc2UYBSABKAgSLgoKYWZ0ZXJfdGltZRgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLwoLYmVmb3JlX3RpbWUYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD2luY2x1ZGVfZGVsZXRlZBgIIAEoCBISCgpzZXNzaW9uX2lkGAkgASgJEgwKBHJvbGUYCiABKAkSDAoEdHlwZRgLIAEoCSJSCgtUYWlsUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSFAoMYWZ0ZXJfY3Vyc29yGAIgASgEEhoKEmluY2x1ZGVfaGlzdG9yaWNhbBgDIAEoCCKyAQoNRXhwaXJlUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSFQoNYmVmb3JlX2N1cnNvchgCIAEoBBIvCgtiZWZvcmVfdGltZRgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASNAoGYWN0aW9uGAQgASgOMiQubWVtc2lkZWNhci5lcGlzb2RpYy52MS5FeHBpcmVBY3Rpb24SEAoIbWF4X3Jvd3MYBSABKA0iIgoORXhwaXJlUmVzcG9uc2USEAoIYWZmZWN0ZWQYASABKAQqawoMRXhwaXJlQWN0aW9uEh0KGUVYUElSRV9BQ1RJT05fVU5TUEVDSUZJRUQQABIdChlFWFBJUkVfQUNUSU9OX1NPRlRfREVMRVRFEAESHQoZRVhQSVJFX0FDVElPTl9IQVJEX0RFTEVURRACMtoCCghFcGlzb2RpYxJXCgZBcHBlbmQSJS5tZW1zaWRlY2FyLmVwaXNvZGljLnYxLkFwcGVuZFJlcXVlc3QaJi5tZW1zaWRlY2FyLmVwaXNvZGljLnYxLkFwcGVuZFJlc3BvbnNlEk4KBVJhbmdlEiQubWVtc2lkZWNhci5lcGlzb2RpYy52MS5SYW5nZVJlcXVlc3QaHS5tZW1zaWRlY2FyLmVwaXNvZGljLnYxLkV2ZW50MAESTAoEVGFpbBIjLm1lbXNpZGVjYXIuZXBpc29kaWMudjEuVGFpbFJlcXVlc3QaHS5tZW1zaWRlY2FyLmVwaXNvZGljLnYxLkV2ZW50MAESVwoGRXhwaXJlEiUubWVtc2lkZWNhci5lcGlzb2RpYy52MS5FeHBpcmVSZXF1ZXN0GiYubWVtc2lkZWNhci5lcGlzb2RpYy52MS5FeHBpcmVSZXNwb25zZUIyWjBtZW1zaWRlY2FyL2dlbi9tZW1zaWRlY2FyL2VwaXNvZGljL3YxO2VwaXNvZGljdjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message memsidecar.episodic.v1.Event
@@ -68,6 +68,35 @@ export type Event = Message<"memsidecar.episodic.v1.Event"> & {
    * @generated from field: string session_id = 8;
    */
   sessionId: string;
+
+  /**
+   * Provenance & revisability (U2). Both optional.
+   * supersedes: ids of earlier events in the same namespace that this event
+   * revises. On Append the server tombstones each named live event
+   * (deleted_at = now()) in the same transaction; self-references and
+   * already-tombstoned ids are ignored. The server performs no inference — the
+   * caller decides what is superseded.
+   *
+   * @generated from field: repeated string supersedes = 9;
+   */
+  supersedes: string[];
+
+  /**
+   * source: opaque provenance handle for where this event came from (e.g. a
+   * semantic record id or artifact id). Stored and returned; never interpreted.
+   *
+   * @generated from field: string source = 10;
+   */
+  source: string;
+
+  /**
+   * deleted_at: soft-delete tombstone. Unset = live. The log stays append-only
+   * and immutable; a tombstoned event is retained and only returned when a
+   * Range sets include_deleted. Set by a superseding Append or by Expire.
+   *
+   * @generated from field: google.protobuf.Timestamp deleted_at = 11;
+   */
+  deletedAt?: Timestamp | undefined;
 };
 
 /**
@@ -110,6 +139,33 @@ export type AppendRequest = Message<"memsidecar.episodic.v1.AppendRequest"> & {
    * @generated from field: string session_id = 6;
    */
   sessionId: string;
+
+  /**
+   * dedup_key: optional client-supplied idempotency key. gRPC delivery is
+   * at-least-once and this log has no update/delete on the write path, so a
+   * retried Append would otherwise insert a duplicate event. When set, the
+   * first Append for a (namespace, dedup_key) writes the event; any later
+   * Append with the same key is a no-op that returns the already-stored event
+   * (same id and cursor). Empty = no dedup (every Append writes).
+   *
+   * @generated from field: string dedup_key = 7;
+   */
+  dedupKey: string;
+
+  /**
+   * supersedes: ids of earlier events this one revises; the server tombstones
+   * each named live event in the same transaction (see Event.supersedes).
+   *
+   * @generated from field: repeated string supersedes = 8;
+   */
+  supersedes: string[];
+
+  /**
+   * source: opaque provenance handle stored on the event (see Event.source).
+   *
+   * @generated from field: string source = 9;
+   */
+  source: string;
 };
 
 /**
@@ -187,6 +243,35 @@ export type RangeRequest = Message<"memsidecar.episodic.v1.RangeRequest"> & {
    * @generated from field: google.protobuf.Timestamp before_time = 7;
    */
   beforeTime?: Timestamp | undefined;
+
+  /**
+   * include_deleted: also return tombstoned (superseded or expired) events. By
+   * default Range returns only live events (deleted_at unset).
+   *
+   * @generated from field: bool include_deleted = 8;
+   */
+  includeDeleted: boolean;
+
+  /**
+   * Equality predicates, each ANDed with the cursor/time window and with each
+   * other. An empty string means "no filter on this field" (so events with an
+   * empty role/session_id are only excluded by a non-empty predicate). Together
+   * they make "reconstruct session X" (optionally one role or type) a bounded,
+   * index-backed scan instead of an O(namespace) transfer.
+   *
+   * @generated from field: string session_id = 9;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: string role = 10;
+   */
+  role: string;
+
+  /**
+   * @generated from field: string type = 11;
+   */
+  type: string;
 };
 
 /**
@@ -229,6 +314,109 @@ export const TailRequestSchema: GenMessage<TailRequest> = /*@__PURE__*/
   messageDesc(file_memsidecar_episodic_v1_episodic, 4);
 
 /**
+ * @generated from message memsidecar.episodic.v1.ExpireRequest
+ */
+export type ExpireRequest = Message<"memsidecar.episodic.v1.ExpireRequest"> & {
+  /**
+   * @generated from field: string namespace = 1;
+   */
+  namespace: string;
+
+  /**
+   * Retention window upper bound; Expire matches events strictly below it.
+   * before_cursor is an exclusive cursor bound (cursor < before_cursor); 0 = no
+   * cursor bound.
+   *
+   * @generated from field: uint64 before_cursor = 2;
+   */
+  beforeCursor: bigint;
+
+  /**
+   * before_time is an exclusive timestamp bound (timestamp < before_time),
+   * ANDed with before_cursor; unset = no time bound. At least one of
+   * before_cursor / before_time must be set, so Expire never matches an entire
+   * namespace unbounded.
+   *
+   * @generated from field: google.protobuf.Timestamp before_time = 3;
+   */
+  beforeTime?: Timestamp | undefined;
+
+  /**
+   * @generated from field: memsidecar.episodic.v1.ExpireAction action = 4;
+   */
+  action: ExpireAction;
+
+  /**
+   * Upper bound on affected events. Required (> 0) to keep the operation
+   * localized; matches are taken oldest-first (ascending cursor) and exceeding
+   * the cap simply stops — re-issue to continue. Bounded further by the policy
+   * max cap (O4).
+   *
+   * @generated from field: uint32 max_rows = 5;
+   */
+  maxRows: number;
+};
+
+/**
+ * Describes the message memsidecar.episodic.v1.ExpireRequest.
+ * Use `create(ExpireRequestSchema)` to create a new message.
+ */
+export const ExpireRequestSchema: GenMessage<ExpireRequest> = /*@__PURE__*/
+  messageDesc(file_memsidecar_episodic_v1_episodic, 5);
+
+/**
+ * @generated from message memsidecar.episodic.v1.ExpireResponse
+ */
+export type ExpireResponse = Message<"memsidecar.episodic.v1.ExpireResponse"> & {
+  /**
+   * Number of events actually affected by the action.
+   *
+   * @generated from field: uint64 affected = 1;
+   */
+  affected: bigint;
+};
+
+/**
+ * Describes the message memsidecar.episodic.v1.ExpireResponse.
+ * Use `create(ExpireResponseSchema)` to create a new message.
+ */
+export const ExpireResponseSchema: GenMessage<ExpireResponse> = /*@__PURE__*/
+  messageDesc(file_memsidecar_episodic_v1_episodic, 6);
+
+/**
+ * ExpireAction selects what Expire does to each matched event.
+ *
+ * @generated from enum memsidecar.episodic.v1.ExpireAction
+ */
+export enum ExpireAction {
+  /**
+   * @generated from enum value: EXPIRE_ACTION_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Soft delete: set deleted_at = now(), retaining the row. Tombstoned events
+   * stay in the log and are returned only by Range with include_deleted.
+   *
+   * @generated from enum value: EXPIRE_ACTION_SOFT_DELETE = 1;
+   */
+  SOFT_DELETE = 1,
+
+  /**
+   * Hard delete: physically remove the row.
+   *
+   * @generated from enum value: EXPIRE_ACTION_HARD_DELETE = 2;
+   */
+  HARD_DELETE = 2,
+}
+
+/**
+ * Describes the enum memsidecar.episodic.v1.ExpireAction.
+ */
+export const ExpireActionSchema: GenEnum<ExpireAction> = /*@__PURE__*/
+  enumDesc(file_memsidecar_episodic_v1_episodic, 0);
+
+/**
  * Episodic is an append-only log of agent events scoped by namespace.
  * Every RPC requires a capability token in the gRPC metadata key
  * "x-memsidecar-capability" with value "Bearer <token>".
@@ -262,6 +450,19 @@ export const Episodic: GenService<{
     methodKind: "server_streaming";
     input: typeof TailRequestSchema;
     output: typeof EventSchema;
+  },
+  /**
+   * Expire tombstones or physically removes events inside a bounded retention
+   * window (a cursor/time upper bound), in one server-side operation (U3).
+   * max_rows caps the affected set so maintenance stays localized. This is the
+   * log's retention/compaction path; per-event revision uses Append.supersedes.
+   *
+   * @generated from rpc memsidecar.episodic.v1.Episodic.Expire
+   */
+  expire: {
+    methodKind: "unary";
+    input: typeof ExpireRequestSchema;
+    output: typeof ExpireResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_memsidecar_episodic_v1_episodic, 0);

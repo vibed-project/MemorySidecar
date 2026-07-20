@@ -19,6 +19,7 @@ $ grpcurl -plaintext 127.0.0.1:7777 list
 grpc.health.v1.Health
 grpc.reflection.v1.ServerReflection
 grpc.reflection.v1alpha.ServerReflection
+memsidecar.admin.v1.Admin
 memsidecar.artifact.v1.Artifact
 memsidecar.episodic.v1.Episodic
 memsidecar.graph.v1.Graph

@@ -17,6 +17,7 @@ service Artifact {
   rpc Get   (GetRequest)         returns (stream GetResponse);
   rpc Stat  (StatRequest)        returns (StatResponse);
   rpc Delete(DeleteRequest)      returns (DeleteResponse);
+  rpc List  (ListRequest)        returns (stream ArtifactMeta);
 }
 
 message PutRequest {
@@ -36,6 +37,12 @@ SHA-256** and **byte count** of the upload.
 `Get` is **server-streaming**: the first message carries `GetHeader`
 (metadata); every subsequent message carries `GetChunk` data. Range reads
 via `offset` / `length` work on every driver.
+
+`List` **enumerates** a namespace's artifacts as a stream of `ArtifactMeta`
+(metadata only, no bytes) in ascending id order — artifact is otherwise
+addressable only by known id, so `List` lets an agent discover contents without
+an external index. It takes an exact-match metadata `filter`, a `start_after`
+resume cursor (the last id from the previous page), and a `limit`.
 
 ## Drivers
 
@@ -99,6 +106,10 @@ ref = m.artifact.put("blobs", open("render.png","rb").read(),
                      id="render-1", content_type="image/png")
 assert ref.size == ...
 data = m.artifact.get("blobs", "render-1")
+
+# Enumerate a namespace (metadata only), optionally filtered and paged.
+for meta in m.artifact.list("blobs", filter={"kind": "render"}, limit=100):
+    print(meta.id, meta.size, meta.content_type)
 ```
 
 ## Op names
@@ -109,6 +120,7 @@ data = m.artifact.get("blobs", "render-1")
 | `artifact.get` | `Artifact/Get` |
 | `artifact.stat` | `Artifact/Stat` |
 | `artifact.delete` | `Artifact/Delete` |
+| `artifact.list` | `Artifact/List` |
 
 ## Notes
 

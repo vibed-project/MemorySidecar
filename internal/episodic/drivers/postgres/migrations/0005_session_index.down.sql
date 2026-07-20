@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS episodic_events_namespace_session_id_idx;

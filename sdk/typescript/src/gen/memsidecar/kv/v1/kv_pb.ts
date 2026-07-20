@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file memsidecar/kv/v1/kv.proto.
  */
 export const file_memsidecar_kv_v1_kv: GenFile = /*@__PURE__*/
-  fileDesc("ChltZW1zaWRlY2FyL2t2L3YxL2t2LnByb3RvEhBtZW1zaWRlY2FyLmt2LnYxIiwKCkdldFJlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEgsKA2tleRgCIAEoCSKiAgoLR2V0UmVzcG9uc2USDQoFZm91bmQYASABKAgSDQoFdmFsdWUYAiABKAwSFAoMY29udGVudF90eXBlGAMgASgJEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB3ZlcnNpb24YBiABKAQSPQoIbWV0YWRhdGEYByADKAsyKy5tZW1zaWRlY2FyLmt2LnYxLkdldFJlc3BvbnNlLk1ldGFkYXRhRW50cnkaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIpACCgpQdXRSZXF1ZXN0EhEKCW5hbWVzcGFjZRgBIAEoCRILCgNrZXkYAiABKAkSDQoFdmFsdWUYAyABKAwSFAoMY29udGVudF90eXBlGAQgASgJEiYKA3R0bBgFIAEoCzIZLmdvb2dsZS5wcm90b2J1Zi5EdXJhdGlvbhI8CghtZXRhZGF0YRgGIAMoCzIqLm1lbXNpZGVjYXIua3YudjEuUHV0UmVxdWVzdC5NZXRhZGF0YUVudHJ5EhcKCmlmX3ZlcnNpb24YByABKARIAIgBARovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAFCDQoLX2lmX3ZlcnNpb24ifgoLUHV0UmVzcG9uc2USDwoHdmVyc2lvbhgBIAEoBBIuCgpjcmVhdGVkX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJXCg1EZWxldGVSZXF1ZXN0EhEKCW5hbWVzcGFjZRgBIAEoCRILCgNrZXkYAiABKAkSFwoKaWZfdmVyc2lvbhgDIAEoBEgAiAEBQg0KC19pZl92ZXJzaW9uIiEKDkRlbGV0ZVJlc3BvbnNlEg8KB2V4aXN0ZWQYASABKAgiWwoLU2NhblJlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEhIKCmtleV9wcmVmaXgYAiABKAkSDQoFbGltaXQYAyABKA0SFgoOaW5jbHVkZV92YWx1ZXMYBCABKAgigAIKBktWSXRlbRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAwSLgoKY3JlYXRlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKZXhwaXJlc19hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASDwoHdmVyc2lvbhgFIAEoBBI4CghtZXRhZGF0YRgGIAMoCzImLm1lbXNpZGVjYXIua3YudjEuS1ZJdGVtLk1ldGFkYXRhRW50cnkaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBMpwCCgJLVhJCCgNHZXQSHC5tZW1zaWRlY2FyLmt2LnYxLkdldFJlcXVlc3QaHS5tZW1zaWRlY2FyLmt2LnYxLkdldFJlc3BvbnNlEkIKA1B1dBIcLm1lbXNpZGVjYXIua3YudjEuUHV0UmVxdWVzdBodLm1lbXNpZGVjYXIua3YudjEuUHV0UmVzcG9uc2USSwoGRGVsZXRlEh8ubWVtc2lkZWNhci5rdi52MS5EZWxldGVSZXF1ZXN0GiAubWVtc2lkZWNhci5rdi52MS5EZWxldGVSZXNwb25zZRJBCgRTY2FuEh0ubWVtc2lkZWNhci5rdi52MS5TY2FuUmVxdWVzdBoYLm1lbXNpZGVjYXIua3YudjEuS1ZJdGVtMAFCJlokbWVtc2lkZWNhci9nZW4vbWVtc2lkZWNhci9rdi92MTtrdnYxYgZwcm90bzM", [file_google_protobuf_duration, file_google_protobuf_timestamp]);
+  fileDesc("ChltZW1zaWRlY2FyL2t2L3YxL2t2LnByb3RvEhBtZW1zaWRlY2FyLmt2LnYxIiwKCkdldFJlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEgsKA2tleRgCIAEoCSKiAgoLR2V0UmVzcG9uc2USDQoFZm91bmQYASABKAgSDQoFdmFsdWUYAiABKAwSFAoMY29udGVudF90eXBlGAMgASgJEi4KCmNyZWF0ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg8KB3ZlcnNpb24YBiABKAQSPQoIbWV0YWRhdGEYByADKAsyKy5tZW1zaWRlY2FyLmt2LnYxLkdldFJlc3BvbnNlLk1ldGFkYXRhRW50cnkaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIjIKD011bHRpR2V0UmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSDAoEa2V5cxgCIAMoCSI7ChBNdWx0aUdldFJlc3BvbnNlEicKBWl0ZW1zGAEgAygLMhgubWVtc2lkZWNhci5rdi52MS5LVkl0ZW0ikAIKClB1dFJlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEgsKA2tleRgCIAEoCRINCgV2YWx1ZRgDIAEoDBIUCgxjb250ZW50X3R5cGUYBCABKAkSJgoDdHRsGAUgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEjwKCG1ldGFkYXRhGAYgAygLMioubWVtc2lkZWNhci5rdi52MS5QdXRSZXF1ZXN0Lk1ldGFkYXRhRW50cnkSFwoKaWZfdmVyc2lvbhgHIAEoBEgAiAEBGi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4AUINCgtfaWZfdmVyc2lvbiJ+CgtQdXRSZXNwb25zZRIPCgd2ZXJzaW9uGAEgASgEEi4KCmNyZWF0ZWRfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmV4cGlyZXNfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIlcKDURlbGV0ZVJlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEgsKA2tleRgCIAEoCRIXCgppZl92ZXJzaW9uGAMgASgESACIAQFCDQoLX2lmX3ZlcnNpb24iIQoORGVsZXRlUmVzcG9uc2USDwoHZXhpc3RlZBgBIAEoCCJwCgtTY2FuUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSEgoKa2V5X3ByZWZpeBgCIAEoCRINCgVsaW1pdBgDIAEoDRIWCg5pbmNsdWRlX3ZhbHVlcxgEIAEoCBITCgtzdGFydF9hZnRlchgFIAEoCSKWAgoGS1ZJdGVtEgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoDBIuCgpjcmVhdGVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIPCgd2ZXJzaW9uGAUgASgEEjgKCG1ldGFkYXRhGAYgAygLMiYubWVtc2lkZWNhci5rdi52MS5LVkl0ZW0uTWV0YWRhdGFFbnRyeRIUCgxjb250ZW50X3R5cGUYByABKAkaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBMu8CCgJLVhJCCgNHZXQSHC5tZW1zaWRlY2FyLmt2LnYxLkdldFJlcXVlc3QaHS5tZW1zaWRlY2FyLmt2LnYxLkdldFJlc3BvbnNlElEKCE11bHRpR2V0EiEubWVtc2lkZWNhci5rdi52MS5NdWx0aUdldFJlcXVlc3QaIi5tZW1zaWRlY2FyLmt2LnYxLk11bHRpR2V0UmVzcG9uc2USQgoDUHV0EhwubWVtc2lkZWNhci5rdi52MS5QdXRSZXF1ZXN0Gh0ubWVtc2lkZWNhci5rdi52MS5QdXRSZXNwb25zZRJLCgZEZWxldGUSHy5tZW1zaWRlY2FyLmt2LnYxLkRlbGV0ZVJlcXVlc3QaIC5tZW1zaWRlY2FyLmt2LnYxLkRlbGV0ZVJlc3BvbnNlEkEKBFNjYW4SHS5tZW1zaWRlY2FyLmt2LnYxLlNjYW5SZXF1ZXN0GhgubWVtc2lkZWNhci5rdi52MS5LVkl0ZW0wAUImWiRtZW1zaWRlY2FyL2dlbi9tZW1zaWRlY2FyL2t2L3YxO2t2djFiBnByb3RvMw", [file_google_protobuf_duration, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message memsidecar.kv.v1.GetRequest
@@ -84,6 +84,48 @@ export const GetResponseSchema: GenMessage<GetResponse> = /*@__PURE__*/
   messageDesc(file_memsidecar_kv_v1_kv, 1);
 
 /**
+ * @generated from message memsidecar.kv.v1.MultiGetRequest
+ */
+export type MultiGetRequest = Message<"memsidecar.kv.v1.MultiGetRequest"> & {
+  /**
+   * @generated from field: string namespace = 1;
+   */
+  namespace: string;
+
+  /**
+   * @generated from field: repeated string keys = 2;
+   */
+  keys: string[];
+};
+
+/**
+ * Describes the message memsidecar.kv.v1.MultiGetRequest.
+ * Use `create(MultiGetRequestSchema)` to create a new message.
+ */
+export const MultiGetRequestSchema: GenMessage<MultiGetRequest> = /*@__PURE__*/
+  messageDesc(file_memsidecar_kv_v1_kv, 2);
+
+/**
+ * @generated from message memsidecar.kv.v1.MultiGetResponse
+ */
+export type MultiGetResponse = Message<"memsidecar.kv.v1.MultiGetResponse"> & {
+  /**
+   * Found items only; missing or expired keys are omitted. Ordered by key, and
+   * deduplicated when the request repeats a key.
+   *
+   * @generated from field: repeated memsidecar.kv.v1.KVItem items = 1;
+   */
+  items: KVItem[];
+};
+
+/**
+ * Describes the message memsidecar.kv.v1.MultiGetResponse.
+ * Use `create(MultiGetResponseSchema)` to create a new message.
+ */
+export const MultiGetResponseSchema: GenMessage<MultiGetResponse> = /*@__PURE__*/
+  messageDesc(file_memsidecar_kv_v1_kv, 3);
+
+/**
  * @generated from message memsidecar.kv.v1.PutRequest
  */
 export type PutRequest = Message<"memsidecar.kv.v1.PutRequest"> & {
@@ -133,7 +175,7 @@ export type PutRequest = Message<"memsidecar.kv.v1.PutRequest"> & {
  * Use `create(PutRequestSchema)` to create a new message.
  */
 export const PutRequestSchema: GenMessage<PutRequest> = /*@__PURE__*/
-  messageDesc(file_memsidecar_kv_v1_kv, 2);
+  messageDesc(file_memsidecar_kv_v1_kv, 4);
 
 /**
  * @generated from message memsidecar.kv.v1.PutResponse
@@ -160,7 +202,7 @@ export type PutResponse = Message<"memsidecar.kv.v1.PutResponse"> & {
  * Use `create(PutResponseSchema)` to create a new message.
  */
 export const PutResponseSchema: GenMessage<PutResponse> = /*@__PURE__*/
-  messageDesc(file_memsidecar_kv_v1_kv, 3);
+  messageDesc(file_memsidecar_kv_v1_kv, 5);
 
 /**
  * @generated from message memsidecar.kv.v1.DeleteRequest
@@ -187,7 +229,7 @@ export type DeleteRequest = Message<"memsidecar.kv.v1.DeleteRequest"> & {
  * Use `create(DeleteRequestSchema)` to create a new message.
  */
 export const DeleteRequestSchema: GenMessage<DeleteRequest> = /*@__PURE__*/
-  messageDesc(file_memsidecar_kv_v1_kv, 4);
+  messageDesc(file_memsidecar_kv_v1_kv, 6);
 
 /**
  * @generated from message memsidecar.kv.v1.DeleteResponse
@@ -204,7 +246,7 @@ export type DeleteResponse = Message<"memsidecar.kv.v1.DeleteResponse"> & {
  * Use `create(DeleteResponseSchema)` to create a new message.
  */
 export const DeleteResponseSchema: GenMessage<DeleteResponse> = /*@__PURE__*/
-  messageDesc(file_memsidecar_kv_v1_kv, 5);
+  messageDesc(file_memsidecar_kv_v1_kv, 7);
 
 /**
  * @generated from message memsidecar.kv.v1.ScanRequest
@@ -231,6 +273,16 @@ export type ScanRequest = Message<"memsidecar.kv.v1.ScanRequest"> & {
    * @generated from field: bool include_values = 4;
    */
   includeValues: boolean;
+
+  /**
+   * Resume cursor: an exclusive lower bound on key (byte order). Pass the last
+   * key from the previous page to continue; empty starts from the beginning.
+   * Scan streams keys in ascending byte order, so the last key received is the
+   * next token.
+   *
+   * @generated from field: string start_after = 5;
+   */
+  startAfter: string;
 };
 
 /**
@@ -238,7 +290,7 @@ export type ScanRequest = Message<"memsidecar.kv.v1.ScanRequest"> & {
  * Use `create(ScanRequestSchema)` to create a new message.
  */
 export const ScanRequestSchema: GenMessage<ScanRequest> = /*@__PURE__*/
-  messageDesc(file_memsidecar_kv_v1_kv, 6);
+  messageDesc(file_memsidecar_kv_v1_kv, 8);
 
 /**
  * @generated from message memsidecar.kv.v1.KVItem
@@ -273,6 +325,11 @@ export type KVItem = Message<"memsidecar.kv.v1.KVItem"> & {
    * @generated from field: map<string, string> metadata = 6;
    */
   metadata: { [key: string]: string };
+
+  /**
+   * @generated from field: string content_type = 7;
+   */
+  contentType: string;
 };
 
 /**
@@ -280,7 +337,7 @@ export type KVItem = Message<"memsidecar.kv.v1.KVItem"> & {
  * Use `create(KVItemSchema)` to create a new message.
  */
 export const KVItemSchema: GenMessage<KVItem> = /*@__PURE__*/
-  messageDesc(file_memsidecar_kv_v1_kv, 7);
+  messageDesc(file_memsidecar_kv_v1_kv, 9);
 
 /**
  * KV provides typed, TTL'd key-value storage scoped by namespace.
@@ -297,6 +354,18 @@ export const KV: GenService<{
     methodKind: "unary";
     input: typeof GetRequestSchema;
     output: typeof GetResponseSchema;
+  },
+  /**
+   * MultiGet fetches many keys in one round-trip. Missing/expired keys are
+   * omitted from the response, so semantic/graph-style batch reads no longer
+   * cost one RPC per key.
+   *
+   * @generated from rpc memsidecar.kv.v1.KV.MultiGet
+   */
+  multiGet: {
+    methodKind: "unary";
+    input: typeof MultiGetRequestSchema;
+    output: typeof MultiGetResponseSchema;
   },
   /**
    * @generated from rpc memsidecar.kv.v1.KV.Put

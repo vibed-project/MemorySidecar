@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file memsidecar/lease/v1/lease.proto.
  */
 export const file_memsidecar_lease_v1_lease: GenFile = /*@__PURE__*/
-  fileDesc("Ch9tZW1zaWRlY2FyL2xlYXNlL3YxL2xlYXNlLnByb3RvEhNtZW1zaWRlY2FyLmxlYXNlLnYxIvsBCg5BY3F1aXJlUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSCwoDa2V5GAIgASgJEiYKA3R0bBgDIAEoCzIZLmdvb2dsZS5wcm90b2J1Zi5EdXJhdGlvbhIrCgh3YWl0X2ZvchgEIAEoCzIZLmdvb2dsZS5wcm90b2J1Zi5EdXJhdGlvbhJDCghtZXRhZGF0YRgFIAMoCzIxLm1lbXNpZGVjYXIubGVhc2UudjEuQWNxdWlyZVJlcXVlc3QuTWV0YWRhdGFFbnRyeRovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiQwoPQWNxdWlyZVJlc3BvbnNlEjAKBmhhbmRsZRgBIAEoCzIgLm1lbXNpZGVjYXIubGVhc2UudjEuTGVhc2VIYW5kbGUiaQoMUmVuZXdSZXF1ZXN0EhEKCWhvbGRlcl9pZBgBIAEoCRIRCgluYW1lc3BhY2UYAiABKAkSCwoDa2V5GAMgASgJEiYKA3R0bBgEIAEoCzIZLmdvb2dsZS5wcm90b2J1Zi5EdXJhdGlvbiJBCg1SZW5ld1Jlc3BvbnNlEjAKBmhhbmRsZRgBIAEoCzIgLm1lbXNpZGVjYXIubGVhc2UudjEuTGVhc2VIYW5kbGUiQwoOUmVsZWFzZVJlcXVlc3QSEQoJaG9sZGVyX2lkGAEgASgJEhEKCW5hbWVzcGFjZRgCIAEoCRILCgNrZXkYAyABKAkiIgoPUmVsZWFzZVJlc3BvbnNlEg8KB2V4aXN0ZWQYASABKAgiMAoOSW5zcGVjdFJlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEgsKA2tleRgCIAEoCSJRCg9JbnNwZWN0UmVzcG9uc2USDAoEaGVsZBgBIAEoCBIwCgZoYW5kbGUYAiABKAsyIC5tZW1zaWRlY2FyLmxlYXNlLnYxLkxlYXNlSGFuZGxlIpQCCgtMZWFzZUhhbmRsZRIRCglob2xkZXJfaWQYASABKAkSEQoJbmFtZXNwYWNlGAIgASgJEgsKA2tleRgDIAEoCRIvCgthY3F1aXJlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKZXhwaXJlc19hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASQAoIbWV0YWRhdGEYBiADKAsyLi5tZW1zaWRlY2FyLmxlYXNlLnYxLkxlYXNlSGFuZGxlLk1ldGFkYXRhRW50cnkaLwoNTWV0YWRhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBMtkCCgVMZWFzZRJUCgdBY3F1aXJlEiMubWVtc2lkZWNhci5sZWFzZS52MS5BY3F1aXJlUmVxdWVzdBokLm1lbXNpZGVjYXIubGVhc2UudjEuQWNxdWlyZVJlc3BvbnNlEk4KBVJlbmV3EiEubWVtc2lkZWNhci5sZWFzZS52MS5SZW5ld1JlcXVlc3QaIi5tZW1zaWRlY2FyLmxlYXNlLnYxLlJlbmV3UmVzcG9uc2USVAoHUmVsZWFzZRIjLm1lbXNpZGVjYXIubGVhc2UudjEuUmVsZWFzZVJlcXVlc3QaJC5tZW1zaWRlY2FyLmxlYXNlLnYxLlJlbGVhc2VSZXNwb25zZRJUCgdJbnNwZWN0EiMubWVtc2lkZWNhci5sZWFzZS52MS5JbnNwZWN0UmVxdWVzdBokLm1lbXNpZGVjYXIubGVhc2UudjEuSW5zcGVjdFJlc3BvbnNlQixaKm1lbXNpZGVjYXIvZ2VuL21lbXNpZGVjYXIvbGVhc2UvdjE7bGVhc2V2MWIGcHJvdG8z", [file_google_protobuf_duration, file_google_protobuf_timestamp]);
+  fileDesc("Ch9tZW1zaWRlY2FyL2xlYXNlL3YxL2xlYXNlLnByb3RvEhNtZW1zaWRlY2FyLmxlYXNlLnYxIvsBCg5BY3F1aXJlUmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSCwoDa2V5GAIgASgJEiYKA3R0bBgDIAEoCzIZLmdvb2dsZS5wcm90b2J1Zi5EdXJhdGlvbhIrCgh3YWl0X2ZvchgEIAEoCzIZLmdvb2dsZS5wcm90b2J1Zi5EdXJhdGlvbhJDCghtZXRhZGF0YRgFIAMoCzIxLm1lbXNpZGVjYXIubGVhc2UudjEuQWNxdWlyZVJlcXVlc3QuTWV0YWRhdGFFbnRyeRovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiQwoPQWNxdWlyZVJlc3BvbnNlEjAKBmhhbmRsZRgBIAEoCzIgLm1lbXNpZGVjYXIubGVhc2UudjEuTGVhc2VIYW5kbGUiaQoMUmVuZXdSZXF1ZXN0EhEKCWhvbGRlcl9pZBgBIAEoCRIRCgluYW1lc3BhY2UYAiABKAkSCwoDa2V5GAMgASgJEiYKA3R0bBgEIAEoCzIZLmdvb2dsZS5wcm90b2J1Zi5EdXJhdGlvbiJBCg1SZW5ld1Jlc3BvbnNlEjAKBmhhbmRsZRgBIAEoCzIgLm1lbXNpZGVjYXIubGVhc2UudjEuTGVhc2VIYW5kbGUiQwoOUmVsZWFzZVJlcXVlc3QSEQoJaG9sZGVyX2lkGAEgASgJEhEKCW5hbWVzcGFjZRgCIAEoCRILCgNrZXkYAyABKAkiIgoPUmVsZWFzZVJlc3BvbnNlEg8KB2V4aXN0ZWQYASABKAgiMAoOSW5zcGVjdFJlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEgsKA2tleRgCIAEoCSJRCg9JbnNwZWN0UmVzcG9uc2USDAoEaGVsZBgBIAEoCBIwCgZoYW5kbGUYAiABKAsyIC5tZW1zaWRlY2FyLmxlYXNlLnYxLkxlYXNlSGFuZGxlIiAKC0xpc3RSZXF1ZXN0EhEKCW5hbWVzcGFjZRgBIAEoCSJACgxMaXN0UmVzcG9uc2USMAoGbGVhc2VzGAEgAygLMiAubWVtc2lkZWNhci5sZWFzZS52MS5MZWFzZUhhbmRsZSKUAgoLTGVhc2VIYW5kbGUSEQoJaG9sZGVyX2lkGAEgASgJEhEKCW5hbWVzcGFjZRgCIAEoCRILCgNrZXkYAyABKAkSLwoLYWNxdWlyZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEkAKCG1ldGFkYXRhGAYgAygLMi4ubWVtc2lkZWNhci5sZWFzZS52MS5MZWFzZUhhbmRsZS5NZXRhZGF0YUVudHJ5Gi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ATKmAwoFTGVhc2USVAoHQWNxdWlyZRIjLm1lbXNpZGVjYXIubGVhc2UudjEuQWNxdWlyZVJlcXVlc3QaJC5tZW1zaWRlY2FyLmxlYXNlLnYxLkFjcXVpcmVSZXNwb25zZRJOCgVSZW5ldxIhLm1lbXNpZGVjYXIubGVhc2UudjEuUmVuZXdSZXF1ZXN0GiIubWVtc2lkZWNhci5sZWFzZS52MS5SZW5ld1Jlc3BvbnNlElQKB1JlbGVhc2USIy5tZW1zaWRlY2FyLmxlYXNlLnYxLlJlbGVhc2VSZXF1ZXN0GiQubWVtc2lkZWNhci5sZWFzZS52MS5SZWxlYXNlUmVzcG9uc2USVAoHSW5zcGVjdBIjLm1lbXNpZGVjYXIubGVhc2UudjEuSW5zcGVjdFJlcXVlc3QaJC5tZW1zaWRlY2FyLmxlYXNlLnYxLkluc3BlY3RSZXNwb25zZRJLCgRMaXN0EiAubWVtc2lkZWNhci5sZWFzZS52MS5MaXN0UmVxdWVzdBohLm1lbXNpZGVjYXIubGVhc2UudjEuTGlzdFJlc3BvbnNlQixaKm1lbXNpZGVjYXIvZ2VuL21lbXNpZGVjYXIvbGVhc2UvdjE7bGVhc2V2MWIGcHJvdG8z", [file_google_protobuf_duration, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message memsidecar.lease.v1.AcquireRequest
@@ -210,6 +210,42 @@ export const InspectResponseSchema: GenMessage<InspectResponse> = /*@__PURE__*/
   messageDesc(file_memsidecar_lease_v1_lease, 7);
 
 /**
+ * @generated from message memsidecar.lease.v1.ListRequest
+ */
+export type ListRequest = Message<"memsidecar.lease.v1.ListRequest"> & {
+  /**
+   * @generated from field: string namespace = 1;
+   */
+  namespace: string;
+};
+
+/**
+ * Describes the message memsidecar.lease.v1.ListRequest.
+ * Use `create(ListRequestSchema)` to create a new message.
+ */
+export const ListRequestSchema: GenMessage<ListRequest> = /*@__PURE__*/
+  messageDesc(file_memsidecar_lease_v1_lease, 8);
+
+/**
+ * @generated from message memsidecar.lease.v1.ListResponse
+ */
+export type ListResponse = Message<"memsidecar.lease.v1.ListResponse"> & {
+  /**
+   * Held leases in the namespace, ordered by key. Expired leases are omitted.
+   *
+   * @generated from field: repeated memsidecar.lease.v1.LeaseHandle leases = 1;
+   */
+  leases: LeaseHandle[];
+};
+
+/**
+ * Describes the message memsidecar.lease.v1.ListResponse.
+ * Use `create(ListResponseSchema)` to create a new message.
+ */
+export const ListResponseSchema: GenMessage<ListResponse> = /*@__PURE__*/
+  messageDesc(file_memsidecar_lease_v1_lease, 9);
+
+/**
  * @generated from message memsidecar.lease.v1.LeaseHandle
  */
 export type LeaseHandle = Message<"memsidecar.lease.v1.LeaseHandle"> & {
@@ -251,7 +287,7 @@ export type LeaseHandle = Message<"memsidecar.lease.v1.LeaseHandle"> & {
  * Use `create(LeaseHandleSchema)` to create a new message.
  */
 export const LeaseHandleSchema: GenMessage<LeaseHandle> = /*@__PURE__*/
-  messageDesc(file_memsidecar_lease_v1_lease, 8);
+  messageDesc(file_memsidecar_lease_v1_lease, 10);
 
 /**
  * Lease provides distributed locks scoped by namespace. A lease is identified
@@ -295,6 +331,17 @@ export const Lease: GenService<{
     methodKind: "unary";
     input: typeof InspectRequestSchema;
     output: typeof InspectResponseSchema;
+  },
+  /**
+   * List returns every currently-held (unexpired) lease in a namespace.
+   * Inspect is single-key; List enables deadlock/orphan discovery and cleanup.
+   *
+   * @generated from rpc memsidecar.lease.v1.Lease.List
+   */
+  list: {
+    methodKind: "unary";
+    input: typeof ListRequestSchema;
+    output: typeof ListResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_memsidecar_lease_v1_lease, 0);

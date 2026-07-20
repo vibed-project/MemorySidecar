@@ -71,5 +71,6 @@ memsidecar moves that plumbing out of the agent and into a sidecar with:
 - Looking for a specific block? Jump straight to
   [KV](./blocks/kv.md), [Episodic](./blocks/episodic.md),
   [Semantic](./blocks/semantic.md), [Artifact](./blocks/artifact.md),
-  [Lease](./blocks/lease.md), or [Graph](./blocks/graph.md).
+  [Lease](./blocks/lease.md), or [Graph](./blocks/graph.md) — or
+  [Admin](./blocks/admin.md) for cross-namespace introspection.
 - Deploying to Kubernetes? See [Helm](./deploy/helm.md).

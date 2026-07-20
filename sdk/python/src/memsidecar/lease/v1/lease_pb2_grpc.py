@@ -40,6 +40,11 @@ class LeaseStub:
                 request_serializer=memsidecar_dot_lease_dot_v1_dot_lease__pb2.InspectRequest.SerializeToString,
                 response_deserializer=memsidecar_dot_lease_dot_v1_dot_lease__pb2.InspectResponse.FromString,
                 _registered_method=True)
+        self.List = channel.unary_unary(
+                '/memsidecar.lease.v1.Lease/List',
+                request_serializer=memsidecar_dot_lease_dot_v1_dot_lease__pb2.ListRequest.SerializeToString,
+                response_deserializer=memsidecar_dot_lease_dot_v1_dot_lease__pb2.ListResponse.FromString,
+                _registered_method=True)
 
 
 class LeaseServicer:
@@ -75,6 +80,14 @@ class LeaseServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def List(self, request, context):
+        """List returns every currently-held (unexpired) lease in a namespace.
+        Inspect is single-key; List enables deadlock/orphan discovery and cleanup.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_LeaseServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -97,6 +110,11 @@ def add_LeaseServicer_to_server(servicer, server):
                     servicer.Inspect,
                     request_deserializer=memsidecar_dot_lease_dot_v1_dot_lease__pb2.InspectRequest.FromString,
                     response_serializer=memsidecar_dot_lease_dot_v1_dot_lease__pb2.InspectResponse.SerializeToString,
+            ),
+            'List': grpc.unary_unary_rpc_method_handler(
+                    servicer.List,
+                    request_deserializer=memsidecar_dot_lease_dot_v1_dot_lease__pb2.ListRequest.FromString,
+                    response_serializer=memsidecar_dot_lease_dot_v1_dot_lease__pb2.ListResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -213,6 +231,33 @@ class Lease:
             '/memsidecar.lease.v1.Lease/Inspect',
             memsidecar_dot_lease_dot_v1_dot_lease__pb2.InspectRequest.SerializeToString,
             memsidecar_dot_lease_dot_v1_dot_lease__pb2.InspectResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def List(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/memsidecar.lease.v1.Lease/List',
+            memsidecar_dot_lease_dot_v1_dot_lease__pb2.ListRequest.SerializeToString,
+            memsidecar_dot_lease_dot_v1_dot_lease__pb2.ListResponse.FromString,
             options,
             channel_credentials,
             insecure,

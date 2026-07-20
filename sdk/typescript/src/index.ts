@@ -7,12 +7,14 @@ export type {
   EpisodicAppendOptions,
   EpisodicRangeOptions,
   EpisodicTailOptions,
+  EpisodicExpireOptions,
   SemanticSearchOptions,
   SemanticExpireOptions,
   SemanticRecordInput,
   FieldPredicateInput,
   ArtifactPutOptions,
   ArtifactGetOptions,
+  ArtifactListOptions,
   LeaseAcquireOptions,
   GraphNeighborsOptions,
   GraphTraverseOptions,
@@ -24,6 +26,9 @@ export { capabilityInterceptor, CAPABILITY_HEADER } from "./auth.js";
 
 // Enums (runtime values).
 export { SearchMode, PredicateOp, ExpireAction } from "./gen/memsidecar/semantic/v1/semantic_pb.js";
+// Episodic Expire has its own action enum, aliased to avoid colliding with the
+// semantic one above.
+export { ExpireAction as EpisodicExpireAction } from "./gen/memsidecar/episodic/v1/episodic_pb.js";
 export { Direction } from "./gen/memsidecar/graph/v1/graph_pb.js";
 
 // Message types returned by the block clients.
@@ -55,3 +60,9 @@ export type {
   Subgraph,
   NeighborsResponse,
 } from "./gen/memsidecar/graph/v1/graph_pb.js";
+export type {
+  ListNamespacesResponse,
+  NamespaceInfo,
+  ServerInfo,
+  EmbedderInfo,
+} from "./gen/memsidecar/admin/v1/admin_pb.js";

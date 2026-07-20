@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file memsidecar/artifact/v1/artifact.proto.
  */
 export const file_memsidecar_artifact_v1_artifact: GenFile = /*@__PURE__*/
-  fileDesc("CiVtZW1zaWRlY2FyL2FydGlmYWN0L3YxL2FydGlmYWN0LnByb3RvEhZtZW1zaWRlY2FyLmFydGlmYWN0LnYxIngKClB1dFJlcXVlc3QSLwoEaW5pdBgBIAEoCzIfLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuUHV0SW5pdEgAEjEKBWNodW5rGAIgASgLMiAubWVtc2lkZWNhci5hcnRpZmFjdC52MS5QdXRDaHVua0gAQgYKBGJvZHkisAEKB1B1dEluaXQSEQoJbmFtZXNwYWNlGAEgASgJEgoKAmlkGAIgASgJEhQKDGNvbnRlbnRfdHlwZRgDIAEoCRI/CghtZXRhZGF0YRgEIAMoCzItLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuUHV0SW5pdC5NZXRhZGF0YUVudHJ5Gi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASIYCghQdXRDaHVuaxIMCgRkYXRhGAEgASgMIj8KC1B1dFJlc3BvbnNlEjAKA3JlZhgBIAEoCzIjLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuQXJ0aWZhY3RSZWYiSwoKR2V0UmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSCgoCaWQYAiABKAkSDgoGb2Zmc2V0GAMgASgEEg4KBmxlbmd0aBgEIAEoBCJ9CgtHZXRSZXNwb25zZRIzCgZoZWFkZXIYASABKAsyIS5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkdldEhlYWRlckgAEjEKBWNodW5rGAIgASgLMiAubWVtc2lkZWNhci5hcnRpZmFjdC52MS5HZXRDaHVua0gAQgYKBGJvZHkiPwoJR2V0SGVhZGVyEjIKBG1ldGEYASABKAsyJC5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkFydGlmYWN0TWV0YSIYCghHZXRDaHVuaxIMCgRkYXRhGAEgASgMIiwKC1N0YXRSZXF1ZXN0EhEKCW5hbWVzcGFjZRgBIAEoCRIKCgJpZBgCIAEoCSJRCgxTdGF0UmVzcG9uc2USDQoFZm91bmQYASABKAgSMgoEbWV0YRgCIAEoCzIkLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuQXJ0aWZhY3RNZXRhIi4KDURlbGV0ZVJlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEgoKAmlkGAIgASgJIiEKDkRlbGV0ZVJlc3BvbnNlEg8KB2V4aXN0ZWQYASABKAgifQoLQXJ0aWZhY3RSZWYSCgoCaWQYASABKAkSDAoEc2l6ZRgCIAEoBBIUCgxjb250ZW50X3R5cGUYAyABKAkSDgoGc2hhMjU2GAQgASgJEi4KCmNyZWF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIvUBCgxBcnRpZmFjdE1ldGESCgoCaWQYASABKAkSDAoEc2l6ZRgCIAEoBBIUCgxjb250ZW50X3R5cGUYAyABKAkSDgoGc2hhMjU2GAQgASgJEkQKCG1ldGFkYXRhGAUgAygLMjIubWVtc2lkZWNhci5hcnRpZmFjdC52MS5BcnRpZmFjdE1ldGEuTWV0YWRhdGFFbnRyeRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEy2gIKCEFydGlmYWN0ElAKA1B1dBIiLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuUHV0UmVxdWVzdBojLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuUHV0UmVzcG9uc2UoARJQCgNHZXQSIi5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkdldFJlcXVlc3QaIy5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkdldFJlc3BvbnNlMAESUQoEU3RhdBIjLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuU3RhdFJlcXVlc3QaJC5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLlN0YXRSZXNwb25zZRJXCgZEZWxldGUSJS5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkRlbGV0ZVJlcXVlc3QaJi5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkRlbGV0ZVJlc3BvbnNlQjJaMG1lbXNpZGVjYXIvZ2VuL21lbXNpZGVjYXIvYXJ0aWZhY3QvdjE7YXJ0aWZhY3R2MWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("CiVtZW1zaWRlY2FyL2FydGlmYWN0L3YxL2FydGlmYWN0LnByb3RvEhZtZW1zaWRlY2FyLmFydGlmYWN0LnYxIngKClB1dFJlcXVlc3QSLwoEaW5pdBgBIAEoCzIfLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuUHV0SW5pdEgAEjEKBWNodW5rGAIgASgLMiAubWVtc2lkZWNhci5hcnRpZmFjdC52MS5QdXRDaHVua0gAQgYKBGJvZHkisAEKB1B1dEluaXQSEQoJbmFtZXNwYWNlGAEgASgJEgoKAmlkGAIgASgJEhQKDGNvbnRlbnRfdHlwZRgDIAEoCRI/CghtZXRhZGF0YRgEIAMoCzItLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuUHV0SW5pdC5NZXRhZGF0YUVudHJ5Gi8KDU1ldGFkYXRhRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASIYCghQdXRDaHVuaxIMCgRkYXRhGAEgASgMIj8KC1B1dFJlc3BvbnNlEjAKA3JlZhgBIAEoCzIjLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuQXJ0aWZhY3RSZWYiSwoKR2V0UmVxdWVzdBIRCgluYW1lc3BhY2UYASABKAkSCgoCaWQYAiABKAkSDgoGb2Zmc2V0GAMgASgEEg4KBmxlbmd0aBgEIAEoBCJ9CgtHZXRSZXNwb25zZRIzCgZoZWFkZXIYASABKAsyIS5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkdldEhlYWRlckgAEjEKBWNodW5rGAIgASgLMiAubWVtc2lkZWNhci5hcnRpZmFjdC52MS5HZXRDaHVua0gAQgYKBGJvZHkiPwoJR2V0SGVhZGVyEjIKBG1ldGEYASABKAsyJC5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkFydGlmYWN0TWV0YSIYCghHZXRDaHVuaxIMCgRkYXRhGAEgASgMIiwKC1N0YXRSZXF1ZXN0EhEKCW5hbWVzcGFjZRgBIAEoCRIKCgJpZBgCIAEoCSJRCgxTdGF0UmVzcG9uc2USDQoFZm91bmQYASABKAgSMgoEbWV0YRgCIAEoCzIkLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuQXJ0aWZhY3RNZXRhIi4KDURlbGV0ZVJlcXVlc3QSEQoJbmFtZXNwYWNlGAEgASgJEgoKAmlkGAIgASgJIiEKDkRlbGV0ZVJlc3BvbnNlEg8KB2V4aXN0ZWQYASABKAgitAEKC0xpc3RSZXF1ZXN0EhEKCW5hbWVzcGFjZRgBIAEoCRI/CgZmaWx0ZXIYAiADKAsyLy5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkxpc3RSZXF1ZXN0LkZpbHRlckVudHJ5EhMKC3N0YXJ0X2FmdGVyGAMgASgJEg0KBWxpbWl0GAQgASgNGi0KC0ZpbHRlckVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEifQoLQXJ0aWZhY3RSZWYSCgoCaWQYASABKAkSDAoEc2l6ZRgCIAEoBBIUCgxjb250ZW50X3R5cGUYAyABKAkSDgoGc2hhMjU2GAQgASgJEi4KCmNyZWF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIvUBCgxBcnRpZmFjdE1ldGESCgoCaWQYASABKAkSDAoEc2l6ZRgCIAEoBBIUCgxjb250ZW50X3R5cGUYAyABKAkSDgoGc2hhMjU2GAQgASgJEkQKCG1ldGFkYXRhGAUgAygLMjIubWVtc2lkZWNhci5hcnRpZmFjdC52MS5BcnRpZmFjdE1ldGEuTWV0YWRhdGFFbnRyeRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBovCg1NZXRhZGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEyrwMKCEFydGlmYWN0ElAKA1B1dBIiLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuUHV0UmVxdWVzdBojLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuUHV0UmVzcG9uc2UoARJQCgNHZXQSIi5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkdldFJlcXVlc3QaIy5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkdldFJlc3BvbnNlMAESUQoEU3RhdBIjLm1lbXNpZGVjYXIuYXJ0aWZhY3QudjEuU3RhdFJlcXVlc3QaJC5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLlN0YXRSZXNwb25zZRJXCgZEZWxldGUSJS5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkRlbGV0ZVJlcXVlc3QaJi5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkRlbGV0ZVJlc3BvbnNlElMKBExpc3QSIy5tZW1zaWRlY2FyLmFydGlmYWN0LnYxLkxpc3RSZXF1ZXN0GiQubWVtc2lkZWNhci5hcnRpZmFjdC52MS5BcnRpZmFjdE1ldGEwAUIyWjBtZW1zaWRlY2FyL2dlbi9tZW1zaWRlY2FyL2FydGlmYWN0L3YxO2FydGlmYWN0djFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message memsidecar.artifact.v1.PutRequest
@@ -292,6 +292,47 @@ export const DeleteResponseSchema: GenMessage<DeleteResponse> = /*@__PURE__*/
   messageDesc(file_memsidecar_artifact_v1_artifact, 11);
 
 /**
+ * @generated from message memsidecar.artifact.v1.ListRequest
+ */
+export type ListRequest = Message<"memsidecar.artifact.v1.ListRequest"> & {
+  /**
+   * @generated from field: string namespace = 1;
+   */
+  namespace: string;
+
+  /**
+   * Exact-match metadata filter: an artifact matches when every (k,v) pair is
+   * present in its metadata. Empty matches all.
+   *
+   * @generated from field: map<string, string> filter = 2;
+   */
+  filter: { [key: string]: string };
+
+  /**
+   * Resume cursor: an exclusive lower bound on id. Pass the last id from the
+   * previous page to continue; empty starts from the beginning. Because List
+   * streams ids in ascending order, the last id received is the next token.
+   *
+   * @generated from field: string start_after = 3;
+   */
+  startAfter: string;
+
+  /**
+   * Maximum artifacts to return. 0 = unbounded.
+   *
+   * @generated from field: uint32 limit = 4;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message memsidecar.artifact.v1.ListRequest.
+ * Use `create(ListRequestSchema)` to create a new message.
+ */
+export const ListRequestSchema: GenMessage<ListRequest> = /*@__PURE__*/
+  messageDesc(file_memsidecar_artifact_v1_artifact, 12);
+
+/**
  * @generated from message memsidecar.artifact.v1.ArtifactRef
  */
 export type ArtifactRef = Message<"memsidecar.artifact.v1.ArtifactRef"> & {
@@ -328,7 +369,7 @@ export type ArtifactRef = Message<"memsidecar.artifact.v1.ArtifactRef"> & {
  * Use `create(ArtifactRefSchema)` to create a new message.
  */
 export const ArtifactRefSchema: GenMessage<ArtifactRef> = /*@__PURE__*/
-  messageDesc(file_memsidecar_artifact_v1_artifact, 12);
+  messageDesc(file_memsidecar_artifact_v1_artifact, 13);
 
 /**
  * @generated from message memsidecar.artifact.v1.ArtifactMeta
@@ -370,7 +411,7 @@ export type ArtifactMeta = Message<"memsidecar.artifact.v1.ArtifactMeta"> & {
  * Use `create(ArtifactMetaSchema)` to create a new message.
  */
 export const ArtifactMetaSchema: GenMessage<ArtifactMeta> = /*@__PURE__*/
-  messageDesc(file_memsidecar_artifact_v1_artifact, 13);
+  messageDesc(file_memsidecar_artifact_v1_artifact, 14);
 
 /**
  * Artifact provides blob storage with metadata, scoped by namespace.
@@ -416,6 +457,18 @@ export const Artifact: GenService<{
     methodKind: "unary";
     input: typeof DeleteRequestSchema;
     output: typeof DeleteResponseSchema;
+  },
+  /**
+   * List enumerates a namespace's artifacts as a stream of ArtifactMeta in
+   * ascending id order. Artifact is otherwise addressable only by known id;
+   * List lets an agent discover contents without an external index.
+   *
+   * @generated from rpc memsidecar.artifact.v1.Artifact.List
+   */
+  list: {
+    methodKind: "server_streaming";
+    input: typeof ListRequestSchema;
+    output: typeof ArtifactMetaSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_memsidecar_artifact_v1_artifact, 0);
