@@ -36,18 +36,34 @@ func main() {
 	case "-h", "--help", "help":
 		usage(os.Stdout)
 	default:
+		// Data-plane verbs (kv / semantic / episodic / graph / ns) talk to a
+		// running server using the capability token memctl issues.
+		if handled, code := dispatchData(os.Args[1], os.Args[2:]); handled {
+			os.Exit(code)
+		}
 		usage(os.Stderr)
 		os.Exit(2)
 	}
 }
 
 func usage(w *os.File) {
-	_, _ = fmt.Fprintf(w, `memctl — memsidecar admin CLI
+	_, _ = fmt.Fprintf(w, `memctl — memsidecar CLI
 
-Usage:
+Control plane:
   memctl token gen-keypair                Mint a PASETO v4.public keypair (hex)
   memctl token issue [flags]              Mint a dev capability token
   memctl version                          Print version
+
+Data plane (needs a running server + a token):
+  memctl kv put <ns> <key> <value> [--ttl 5m]
+  memctl kv get <ns> <key>
+  memctl semantic search <ns> <query> [--top-k 10] [--filter k=v,...]
+  memctl episodic tail <ns> [--historical] [--after-cursor N]
+  memctl graph neighbors <ns> <node-id> [--limit N] [--edge-types a,b]
+  memctl ns ls
+
+Data-plane verbs share --addr (default $MEMSIDECAR_ADDR or 127.0.0.1:7777),
+--token (default $MEMSIDECAR_TOKEN), and --tls.
 
 Examples:
   memctl token gen-keypair
@@ -55,6 +71,11 @@ Examples:
       --secret-key-hex $MEMSIDECAR_PASETO_SECRET_HEX \
       --tenant acme --agent agent-1 \
       --ns 'kv/scratchpad' --ops get,put,delete,scan --ttl 1h
+
+  export MEMSIDECAR_TOKEN=$(memctl token issue --tenant acme --ns 'kv/*' --ops '*')
+  memctl kv put scratchpad hello world
+  memctl kv get scratchpad hello
+  memctl ns ls
 `)
 }
 
