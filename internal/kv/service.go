@@ -19,40 +19,47 @@ const Block = "kv"
 // Service implements the generated KVServer.
 type Service struct {
 	kvv1.UnimplementedKVServer
-	reg *Registry
+	reg             *Registry
+	tenantIsolation bool
 }
 
-func NewService(reg *Registry) *Service {
-	return &Service{reg: reg}
+func NewService(reg *Registry, tenantIsolation bool) *Service {
+	return &Service{reg: reg, tenantIsolation: tenantIsolation}
 }
 
-func (s *Service) namespaceDriver(ctx context.Context, requested string, op auth.Op) (Driver, error) {
+// namespaceDriver authorizes the request and returns the backing driver plus
+// the storage namespace to address it by. The storage namespace is the
+// requested (config) namespace qualified with the caller's tenant when tenant
+// isolation is enabled, so drivers never see cross-tenant data. Resolution and
+// the capability scope check both use the config namespace.
+func (s *Service) namespaceDriver(ctx context.Context, requested string, op auth.Op) (Driver, string, error) {
 	cap, ok := auth.FromContext(ctx)
 	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "missing capability")
+		return nil, "", status.Error(codes.Unauthenticated, "missing capability")
 	}
 	if !cap.PermitsNamespace(Block, requested) {
-		return nil, status.Errorf(codes.PermissionDenied, "namespace %s/%s not in capability scope", Block, requested)
+		return nil, "", status.Errorf(codes.PermissionDenied, "namespace %s/%s not in capability scope", Block, requested)
 	}
 	if !cap.PermitsOp(op) {
-		return nil, status.Errorf(codes.PermissionDenied, "op %s not in capability scope", op)
+		return nil, "", status.Errorf(codes.PermissionDenied, "op %s not in capability scope", op)
 	}
 	d, ok := s.reg.Resolve(requested)
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, "namespace %q not configured", requested)
+		return nil, "", status.Errorf(codes.NotFound, "namespace %q not configured", requested)
 	}
-	return d, nil
+	storageNS := auth.QualifyNamespace(cap.Scope.Tenant, requested, s.tenantIsolation)
+	return d, storageNS, nil
 }
 
 func (s *Service) Get(ctx context.Context, req *kvv1.GetRequest) (*kvv1.GetResponse, error) {
 	if req.GetKey() == "" {
 		return nil, status.Error(codes.InvalidArgument, "key required")
 	}
-	d, err := s.namespaceDriver(ctx, req.GetNamespace(), auth.OpKVGet)
+	d, ns, err := s.namespaceDriver(ctx, req.GetNamespace(), auth.OpKVGet)
 	if err != nil {
 		return nil, err
 	}
-	rec, err := d.Get(ctx, req.GetNamespace(), req.GetKey())
+	rec, err := d.Get(ctx, ns, req.GetKey())
 	if errors.Is(err, ErrNotFound) {
 		return &kvv1.GetResponse{Found: false}, nil
 	}
@@ -63,11 +70,11 @@ func (s *Service) Get(ctx context.Context, req *kvv1.GetRequest) (*kvv1.GetRespo
 }
 
 func (s *Service) MultiGet(ctx context.Context, req *kvv1.MultiGetRequest) (*kvv1.MultiGetResponse, error) {
-	d, err := s.namespaceDriver(ctx, req.GetNamespace(), auth.OpKVGet)
+	d, ns, err := s.namespaceDriver(ctx, req.GetNamespace(), auth.OpKVGet)
 	if err != nil {
 		return nil, err
 	}
-	recs, err := d.MultiGet(ctx, req.GetNamespace(), req.GetKeys())
+	recs, err := d.MultiGet(ctx, ns, req.GetKeys())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "multiget: %v", err)
 	}
@@ -82,7 +89,7 @@ func (s *Service) Put(ctx context.Context, req *kvv1.PutRequest) (*kvv1.PutRespo
 	if req.GetKey() == "" {
 		return nil, status.Error(codes.InvalidArgument, "key required")
 	}
-	d, err := s.namespaceDriver(ctx, req.GetNamespace(), auth.OpKVPut)
+	d, ns, err := s.namespaceDriver(ctx, req.GetNamespace(), auth.OpKVPut)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +105,7 @@ func (s *Service) Put(ctx context.Context, req *kvv1.PutRequest) (*kvv1.PutRespo
 		v := req.GetIfVersion()
 		opts.IfVersion = &v
 	}
-	rec, err := d.Put(ctx, req.GetNamespace(), req.GetKey(), opts)
+	rec, err := d.Put(ctx, ns, req.GetKey(), opts)
 	if errors.Is(err, ErrVersionMismatch) {
 		return nil, status.Error(codes.FailedPrecondition, "version mismatch")
 	}
@@ -116,7 +123,7 @@ func (s *Service) Delete(ctx context.Context, req *kvv1.DeleteRequest) (*kvv1.De
 	if req.GetKey() == "" {
 		return nil, status.Error(codes.InvalidArgument, "key required")
 	}
-	d, err := s.namespaceDriver(ctx, req.GetNamespace(), auth.OpKVDelete)
+	d, ns, err := s.namespaceDriver(ctx, req.GetNamespace(), auth.OpKVDelete)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +132,7 @@ func (s *Service) Delete(ctx context.Context, req *kvv1.DeleteRequest) (*kvv1.De
 		v := req.GetIfVersion()
 		opts.IfVersion = &v
 	}
-	existed, err := d.Delete(ctx, req.GetNamespace(), req.GetKey(), opts)
+	existed, err := d.Delete(ctx, ns, req.GetKey(), opts)
 	if errors.Is(err, ErrVersionMismatch) {
 		return nil, status.Error(codes.FailedPrecondition, "version mismatch")
 	}
@@ -137,7 +144,7 @@ func (s *Service) Delete(ctx context.Context, req *kvv1.DeleteRequest) (*kvv1.De
 
 func (s *Service) Scan(req *kvv1.ScanRequest, stream kvv1.KV_ScanServer) error {
 	ctx := stream.Context()
-	d, err := s.namespaceDriver(ctx, req.GetNamespace(), auth.OpKVScan)
+	d, ns, err := s.namespaceDriver(ctx, req.GetNamespace(), auth.OpKVScan)
 	if err != nil {
 		return err
 	}
@@ -147,7 +154,7 @@ func (s *Service) Scan(req *kvv1.ScanRequest, stream kvv1.KV_ScanServer) error {
 		IncludeValues: req.GetIncludeValues(),
 		StartAfter:    req.GetStartAfter(),
 	}
-	err = d.Scan(ctx, req.GetNamespace(), opts, func(r Record) error {
+	err = d.Scan(ctx, ns, opts, func(r Record) error {
 		return stream.Send(recordToItem(r))
 	})
 	if err != nil {

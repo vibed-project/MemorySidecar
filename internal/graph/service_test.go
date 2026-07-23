@@ -23,7 +23,7 @@ func newTestServer(t *testing.T, cap *auth.Capability) graphv1.GraphClient {
 	t.Helper()
 	reg := graph.NewRegistry()
 	require.NoError(t, reg.Bind("knowledge", memdrv.New(memdrv.Options{})))
-	svc := graph.NewService(reg)
+	svc := graph.NewService(reg, false)
 
 	inject := func(ctx context.Context) context.Context {
 		if cap == nil {

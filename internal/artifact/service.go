@@ -24,27 +24,36 @@ const chunkBytes = 64 << 10 // 64 KiB
 // Service implements the generated ArtifactServer.
 type Service struct {
 	artifactv1.UnimplementedArtifactServer
-	reg *Registry
+	reg             *Registry
+	tenantIsolation bool
 }
 
-func NewService(reg *Registry) *Service { return &Service{reg: reg} }
+func NewService(reg *Registry, tenantIsolation bool) *Service {
+	return &Service{reg: reg, tenantIsolation: tenantIsolation}
+}
 
-func (s *Service) driverFor(ctx context.Context, namespace string, op auth.Op) (Driver, error) {
+// driverFor authorizes the request and returns the backing driver plus the
+// storage namespace to address it by. The storage namespace is the requested
+// (config) namespace qualified with the caller's tenant when tenant isolation
+// is enabled, so drivers never see cross-tenant data. Resolution and the
+// capability scope check both use the config namespace.
+func (s *Service) driverFor(ctx context.Context, requested string, op auth.Op) (Driver, string, error) {
 	cap, ok := auth.FromContext(ctx)
 	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "missing capability")
+		return nil, "", status.Error(codes.Unauthenticated, "missing capability")
 	}
-	if !cap.PermitsNamespace(Block, namespace) {
-		return nil, status.Errorf(codes.PermissionDenied, "namespace %s/%s not in capability scope", Block, namespace)
+	if !cap.PermitsNamespace(Block, requested) {
+		return nil, "", status.Errorf(codes.PermissionDenied, "namespace %s/%s not in capability scope", Block, requested)
 	}
 	if !cap.PermitsOp(op) {
-		return nil, status.Errorf(codes.PermissionDenied, "op %s not in capability scope", op)
+		return nil, "", status.Errorf(codes.PermissionDenied, "op %s not in capability scope", op)
 	}
-	d, ok := s.reg.Resolve(namespace)
+	d, ok := s.reg.Resolve(requested)
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, "namespace %q not configured", namespace)
+		return nil, "", status.Errorf(codes.NotFound, "namespace %q not configured", requested)
 	}
-	return d, nil
+	storageNS := auth.QualifyNamespace(cap.Scope.Tenant, requested, s.tenantIsolation)
+	return d, storageNS, nil
 }
 
 // Put consumes the client stream. The first message must carry PutInit; all
@@ -61,7 +70,7 @@ func (s *Service) Put(stream artifactv1.Artifact_PutServer) error {
 	if init == nil {
 		return status.Error(codes.InvalidArgument, "first message must be PutInit")
 	}
-	d, err := s.driverFor(ctx, init.GetNamespace(), auth.OpArtifactPut)
+	d, ns, err := s.driverFor(ctx, init.GetNamespace(), auth.OpArtifactPut)
 	if err != nil {
 		return err
 	}
@@ -102,7 +111,7 @@ func (s *Service) Put(stream artifactv1.Artifact_PutServer) error {
 
 	// The driver computes nothing about the bytes itself; it just stores
 	// what we hand it. We patch size+sha256 into the returned meta after.
-	meta, err := d.Put(ctx, init.GetNamespace(), PutHeader{
+	meta, err := d.Put(ctx, ns, PutHeader{
 		ID:          init.GetId(),
 		ContentType: init.GetContentType(),
 		Metadata:    init.GetMetadata(),
@@ -123,7 +132,7 @@ func (s *Service) Put(stream artifactv1.Artifact_PutServer) error {
 	// JSON on disk has empty SHA256/Size until the next Stat is overlaid by
 	// the service. To keep the walking-slice simple, we re-Stat then patch.
 	if statter, ok := d.(metaPatcher); ok {
-		_ = statter.PatchMeta(ctx, init.GetNamespace(), meta.ID, meta.SHA256, meta.Size)
+		_ = statter.PatchMeta(ctx, ns, meta.ID, meta.SHA256, meta.Size)
 	}
 
 	return stream.SendAndClose(&artifactv1.PutResponse{
@@ -149,12 +158,12 @@ func (s *Service) Get(req *artifactv1.GetRequest, stream artifactv1.Artifact_Get
 	if req.GetId() == "" {
 		return status.Error(codes.InvalidArgument, "id required")
 	}
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpArtifactGet)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpArtifactGet)
 	if err != nil {
 		return err
 	}
 
-	meta, rc, err := d.Open(ctx, req.GetNamespace(), req.GetId(), GetOptions{
+	meta, rc, err := d.Open(ctx, ns, req.GetId(), GetOptions{
 		Offset: req.GetOffset(),
 		Length: req.GetLength(),
 	})
@@ -195,11 +204,11 @@ func (s *Service) Stat(ctx context.Context, req *artifactv1.StatRequest) (*artif
 	if req.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id required")
 	}
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpArtifactStat)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpArtifactStat)
 	if err != nil {
 		return nil, err
 	}
-	meta, err := d.Stat(ctx, req.GetNamespace(), req.GetId())
+	meta, err := d.Stat(ctx, ns, req.GetId())
 	if errors.Is(err, ErrNotFound) {
 		return &artifactv1.StatResponse{Found: false}, nil
 	}
@@ -213,11 +222,11 @@ func (s *Service) Delete(ctx context.Context, req *artifactv1.DeleteRequest) (*a
 	if req.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id required")
 	}
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpArtifactDelete)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpArtifactDelete)
 	if err != nil {
 		return nil, err
 	}
-	existed, err := d.Delete(ctx, req.GetNamespace(), req.GetId())
+	existed, err := d.Delete(ctx, ns, req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "delete: %v", err)
 	}
@@ -226,11 +235,11 @@ func (s *Service) Delete(ctx context.Context, req *artifactv1.DeleteRequest) (*a
 
 func (s *Service) List(req *artifactv1.ListRequest, stream artifactv1.Artifact_ListServer) error {
 	ctx := stream.Context()
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpArtifactList)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpArtifactList)
 	if err != nil {
 		return err
 	}
-	err = d.List(ctx, req.GetNamespace(), ListOptions{
+	err = d.List(ctx, ns, ListOptions{
 		Filter:     req.GetFilter(),
 		StartAfter: req.GetStartAfter(),
 		Limit:      req.GetLimit(),

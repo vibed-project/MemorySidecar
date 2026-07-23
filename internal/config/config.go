@@ -18,6 +18,12 @@ type Config struct {
 	Policy        PolicyConfig        `koanf:"policy"`
 	Backends      []BackendConfig     `koanf:"backends"`
 	Namespaces    []NamespaceConfig   `koanf:"namespaces"`
+	// TenantIsolation, when true, scopes every block's storage to the caller's
+	// capability tenant, so two tenants sharing a namespace name get physically
+	// separate data. Off by default: a single-tenant deployment behaves exactly
+	// as before and existing data is unaffected. Enable it for multi-tenant
+	// deployments (all tokens must then carry a tenant).
+	TenantIsolation bool `koanf:"tenant_isolation"`
 }
 
 // PolicyConfig mirrors policy.Spec under a config-friendly tag. It is parsed
@@ -339,6 +345,14 @@ func (c *Config) Validate() error {
 		seen[key] = true
 		if _, ok := backendByName[ns.Backend]; !ok {
 			return fmt.Errorf("namespace %q references unknown backend %q", key, ns.Backend)
+		}
+		// Tenant isolation currently covers kv/episodic/lease/graph/artifact. The
+		// semantic block is bound per-namespace and needs a driver-level tenant
+		// column (not yet implemented), so refuse the unsafe combination rather
+		// than silently sharing semantic data across tenants.
+		if c.TenantIsolation && ns.Block == "semantic" {
+			return fmt.Errorf("namespace %q: tenant_isolation does not yet isolate the semantic block; "+
+				"remove semantic namespaces or disable tenant_isolation until semantic isolation lands", key)
 		}
 	}
 	return nil

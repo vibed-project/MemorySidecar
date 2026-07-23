@@ -113,6 +113,24 @@ func (c *Capability) Expired(now time.Time) bool {
 	return !c.ExpiresAt.IsZero() && !now.Before(c.ExpiresAt)
 }
 
+// tenantSep separates the tenant from the namespace in a qualified storage
+// namespace. ASCII unit separator (0x1f): a control char that can't appear in a
+// normal tenant or namespace identifier, so qualification is unambiguous.
+const tenantSep = "\x1f"
+
+// QualifyNamespace scopes a namespace to a tenant for storage isolation. With
+// isolate=false it returns the namespace unchanged — single-tenant behavior,
+// byte-for-byte identical to how storage worked before isolation, so existing
+// data is unaffected. With isolate=true it prefixes the tenant, so two tenants
+// sharing a namespace name address physically separate storage. The isolation
+// is enforced here, in one place, rather than in each driver query.
+func QualifyNamespace(tenant, namespace string, isolate bool) string {
+	if !isolate {
+		return namespace
+	}
+	return tenant + tenantSep + namespace
+}
+
 // ErrAuth is the sentinel returned for auth failures.
 type ErrAuth struct{ Reason string }
 

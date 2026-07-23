@@ -172,6 +172,39 @@ backends:
 	require.ErrorContains(t, err, "duplicate backend")
 }
 
+func TestLoad_TenantIsolationRejectsSemantic(t *testing.T) {
+	_, err := Load(writeTemp(t, `
+tenant_isolation: true
+auth:
+  verifier: paseto
+  paseto: { public_key_hex: dead }
+backends:
+  - { name: mem, driver: memory }
+namespaces:
+  - block: semantic
+    name: notes
+    backend: mem
+    embedder: { provider: fake, model: fake-64, dimensions: 64 }
+`))
+	require.ErrorContains(t, err, "does not yet isolate the semantic block")
+}
+
+func TestLoad_TenantIsolationOK(t *testing.T) {
+	cfg, err := Load(writeTemp(t, `
+tenant_isolation: true
+auth:
+  verifier: paseto
+  paseto: { public_key_hex: dead }
+backends:
+  - { name: mem, driver: memory }
+namespaces:
+  - { block: kv, name: scratchpad, backend: mem }
+  - { block: episodic, name: events, backend: mem }
+`))
+	require.NoError(t, err)
+	assert.True(t, cfg.TenantIsolation)
+}
+
 func TestLoad_EnvOverride(t *testing.T) {
 	t.Setenv("MEMSIDECAR_SERVER__GRPC__TCP", "0.0.0.0:9999")
 	cfg, err := Load(writeTemp(t, `

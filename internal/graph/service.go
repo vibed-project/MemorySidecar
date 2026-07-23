@@ -35,31 +35,40 @@ const (
 // Service implements the generated GraphServer.
 type Service struct {
 	graphv1.UnimplementedGraphServer
-	reg *Registry
+	reg             *Registry
+	tenantIsolation bool
 }
 
-func NewService(reg *Registry) *Service { return &Service{reg: reg} }
+func NewService(reg *Registry, tenantIsolation bool) *Service {
+	return &Service{reg: reg, tenantIsolation: tenantIsolation}
+}
 
-func (s *Service) resolve(ctx context.Context, namespace string, op auth.Op) (Driver, error) {
+// resolve authorizes the request and returns the backing driver plus the
+// storage namespace to address it by. The storage namespace is the requested
+// (config) namespace qualified with the caller's tenant when tenant isolation
+// is enabled, so drivers never see cross-tenant data. Resolution and the
+// capability scope check both use the config namespace.
+func (s *Service) resolve(ctx context.Context, requested string, op auth.Op) (Driver, string, error) {
 	cap, ok := auth.FromContext(ctx)
 	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "missing capability")
+		return nil, "", status.Error(codes.Unauthenticated, "missing capability")
 	}
-	if !cap.PermitsNamespace(Block, namespace) {
-		return nil, status.Errorf(codes.PermissionDenied, "namespace %s/%s not in capability scope", Block, namespace)
+	if !cap.PermitsNamespace(Block, requested) {
+		return nil, "", status.Errorf(codes.PermissionDenied, "namespace %s/%s not in capability scope", Block, requested)
 	}
 	if !cap.PermitsOp(op) {
-		return nil, status.Errorf(codes.PermissionDenied, "op %s not in capability scope", op)
+		return nil, "", status.Errorf(codes.PermissionDenied, "op %s not in capability scope", op)
 	}
-	d, ok := s.reg.Resolve(namespace)
+	d, ok := s.reg.Resolve(requested)
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, "namespace %q not configured", namespace)
+		return nil, "", status.Errorf(codes.NotFound, "namespace %q not configured", requested)
 	}
-	return d, nil
+	storageNS := auth.QualifyNamespace(cap.Scope.Tenant, requested, s.tenantIsolation)
+	return d, storageNS, nil
 }
 
 func (s *Service) UpsertNodes(ctx context.Context, req *graphv1.UpsertNodesRequest) (*graphv1.UpsertNodesResponse, error) {
-	d, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphUpsert)
+	d, ns, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphUpsert)
 	if err != nil {
 		return nil, err
 	}
@@ -78,14 +87,14 @@ func (s *Service) UpsertNodes(ctx context.Context, req *graphv1.UpsertNodesReque
 		}
 		ids[i] = n.GetId()
 	}
-	if err := d.UpsertNodes(ctx, req.GetNamespace(), nodes); err != nil {
+	if err := d.UpsertNodes(ctx, ns, nodes); err != nil {
 		return nil, status.Errorf(codes.Internal, "upsert nodes: %v", err)
 	}
 	return &graphv1.UpsertNodesResponse{Ids: ids}, nil
 }
 
 func (s *Service) UpsertEdges(ctx context.Context, req *graphv1.UpsertEdgesRequest) (*graphv1.UpsertEdgesResponse, error) {
-	d, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphUpsert)
+	d, ns, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphUpsert)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +117,7 @@ func (s *Service) UpsertEdges(ctx context.Context, req *graphv1.UpsertEdgesReque
 		}
 		ids[i] = e.GetId()
 	}
-	if err := d.UpsertEdges(ctx, req.GetNamespace(), edges); err != nil {
+	if err := d.UpsertEdges(ctx, ns, edges); err != nil {
 		return nil, status.Errorf(codes.Internal, "upsert edges: %v", err)
 	}
 	return &graphv1.UpsertEdgesResponse{Ids: ids}, nil
@@ -118,11 +127,11 @@ func (s *Service) GetNode(ctx context.Context, req *graphv1.GetNodeRequest) (*gr
 	if req.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id required")
 	}
-	d, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphGet)
+	d, ns, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphGet)
 	if err != nil {
 		return nil, err
 	}
-	n, err := d.GetNode(ctx, req.GetNamespace(), req.GetId())
+	n, err := d.GetNode(ctx, ns, req.GetId())
 	if errors.Is(err, ErrNotFound) {
 		return nil, status.Errorf(codes.NotFound, "node %q not found", req.GetId())
 	}
@@ -136,11 +145,11 @@ func (s *Service) Neighbors(ctx context.Context, req *graphv1.NeighborsRequest) 
 	if req.GetNodeId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "node_id required")
 	}
-	d, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphQuery)
+	d, ns, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphQuery)
 	if err != nil {
 		return nil, err
 	}
-	nodes, edges, err := d.Neighbors(ctx, req.GetNamespace(), NeighborOptions{
+	nodes, edges, err := d.Neighbors(ctx, ns, NeighborOptions{
 		NodeID:     req.GetNodeId(),
 		EdgeTypes:  req.GetEdgeTypes(),
 		Direction:  directionFromProto(req.GetDirection()),
@@ -161,11 +170,11 @@ func (s *Service) Traverse(ctx context.Context, req *graphv1.TraverseRequest) (*
 	if req.GetStartId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "start_id required")
 	}
-	d, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphQuery)
+	d, ns, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphQuery)
 	if err != nil {
 		return nil, err
 	}
-	sub, err := d.Traverse(ctx, req.GetNamespace(), TraverseOptions{
+	sub, err := d.Traverse(ctx, ns, TraverseOptions{
 		StartID:   req.GetStartId(),
 		EdgeTypes: req.GetEdgeTypes(),
 		Direction: directionFromProto(req.GetDirection()),
@@ -188,11 +197,11 @@ func (s *Service) DeleteNode(ctx context.Context, req *graphv1.DeleteNodeRequest
 	if req.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id required")
 	}
-	d, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphDelete)
+	d, ns, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphDelete)
 	if err != nil {
 		return nil, err
 	}
-	existed, err := d.DeleteNode(ctx, req.GetNamespace(), req.GetId(), req.GetCascade())
+	existed, err := d.DeleteNode(ctx, ns, req.GetId(), req.GetCascade())
 	if errors.Is(err, ErrEdgesExist) {
 		return nil, status.Errorf(codes.FailedPrecondition, "node %q has incident edges; set cascade=true to remove them", req.GetId())
 	}
@@ -206,11 +215,11 @@ func (s *Service) DeleteEdge(ctx context.Context, req *graphv1.DeleteEdgeRequest
 	if req.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id required")
 	}
-	d, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphDelete)
+	d, ns, err := s.resolve(ctx, req.GetNamespace(), auth.OpGraphDelete)
 	if err != nil {
 		return nil, err
 	}
-	existed, err := d.DeleteEdge(ctx, req.GetNamespace(), req.GetId())
+	existed, err := d.DeleteEdge(ctx, ns, req.GetId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "delete edge: %v", err)
 	}

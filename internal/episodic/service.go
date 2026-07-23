@@ -19,40 +19,47 @@ const Block = "episodic"
 // Service implements the generated EpisodicServer.
 type Service struct {
 	episodicv1.UnimplementedEpisodicServer
-	reg *Registry
+	reg             *Registry
+	tenantIsolation bool
 }
 
-func NewService(reg *Registry) *Service {
-	return &Service{reg: reg}
+func NewService(reg *Registry, tenantIsolation bool) *Service {
+	return &Service{reg: reg, tenantIsolation: tenantIsolation}
 }
 
-func (s *Service) driverFor(ctx context.Context, namespace string, op auth.Op) (Driver, error) {
+// driverFor authorizes the request and returns the backing driver plus the
+// storage namespace to address it by. The storage namespace is the requested
+// (config) namespace qualified with the caller's tenant when tenant isolation
+// is enabled, so drivers never see cross-tenant data. Resolution and the
+// capability scope check both use the config namespace.
+func (s *Service) driverFor(ctx context.Context, requested string, op auth.Op) (Driver, string, error) {
 	cap, ok := auth.FromContext(ctx)
 	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "missing capability")
+		return nil, "", status.Error(codes.Unauthenticated, "missing capability")
 	}
-	if !cap.PermitsNamespace(Block, namespace) {
-		return nil, status.Errorf(codes.PermissionDenied, "namespace %s/%s not in capability scope", Block, namespace)
+	if !cap.PermitsNamespace(Block, requested) {
+		return nil, "", status.Errorf(codes.PermissionDenied, "namespace %s/%s not in capability scope", Block, requested)
 	}
 	if !cap.PermitsOp(op) {
-		return nil, status.Errorf(codes.PermissionDenied, "op %s not in capability scope", op)
+		return nil, "", status.Errorf(codes.PermissionDenied, "op %s not in capability scope", op)
 	}
-	d, ok := s.reg.Resolve(namespace)
+	d, ok := s.reg.Resolve(requested)
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, "namespace %q not configured", namespace)
+		return nil, "", status.Errorf(codes.NotFound, "namespace %q not configured", requested)
 	}
-	return d, nil
+	storageNS := auth.QualifyNamespace(cap.Scope.Tenant, requested, s.tenantIsolation)
+	return d, storageNS, nil
 }
 
 func (s *Service) Append(ctx context.Context, req *episodicv1.AppendRequest) (*episodicv1.AppendResponse, error) {
 	if req.GetType() == "" {
 		return nil, status.Error(codes.InvalidArgument, "type required")
 	}
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpEpisodicAppend)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpEpisodicAppend)
 	if err != nil {
 		return nil, err
 	}
-	ev, err := d.Append(ctx, req.GetNamespace(), AppendOptions{
+	ev, err := d.Append(ctx, ns, AppendOptions{
 		Type:       req.GetType(),
 		Payload:    req.GetPayload(),
 		Metadata:   req.GetMetadata(),
@@ -70,11 +77,11 @@ func (s *Service) Append(ctx context.Context, req *episodicv1.AppendRequest) (*e
 
 func (s *Service) Range(req *episodicv1.RangeRequest, stream episodicv1.Episodic_RangeServer) error {
 	ctx := stream.Context()
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpEpisodicRange)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpEpisodicRange)
 	if err != nil {
 		return err
 	}
-	err = d.Range(ctx, req.GetNamespace(), RangeOptions{
+	err = d.Range(ctx, ns, RangeOptions{
 		AfterCursor:    req.GetAfterCursor(),
 		BeforeCursor:   req.GetBeforeCursor(),
 		Limit:          req.GetLimit(),
@@ -96,11 +103,11 @@ func (s *Service) Range(req *episodicv1.RangeRequest, stream episodicv1.Episodic
 
 func (s *Service) Tail(req *episodicv1.TailRequest, stream episodicv1.Episodic_TailServer) error {
 	ctx := stream.Context()
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpEpisodicTail)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpEpisodicTail)
 	if err != nil {
 		return err
 	}
-	err = d.Tail(ctx, req.GetNamespace(), TailOptions{
+	err = d.Tail(ctx, ns, TailOptions{
 		AfterCursor:       req.GetAfterCursor(),
 		IncludeHistorical: req.GetIncludeHistorical(),
 	}, func(ev Event) error {
@@ -120,11 +127,11 @@ func (s *Service) Expire(ctx context.Context, req *episodicv1.ExpireRequest) (*e
 	if req.GetMaxRows() == 0 {
 		return nil, status.Error(codes.InvalidArgument, "max_rows must be > 0")
 	}
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpEpisodicExpire)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpEpisodicExpire)
 	if err != nil {
 		return nil, err
 	}
-	affected, err := d.Expire(ctx, req.GetNamespace(), ExpireOptions{
+	affected, err := d.Expire(ctx, ns, ExpireOptions{
 		BeforeCursor: req.GetBeforeCursor(),
 		BeforeTime:   tsToTime(req.GetBeforeTime()),
 		Action:       action,
