@@ -49,8 +49,9 @@ independent and can be parallelised across contributors.
 
 > **Status (2026-07-03):** U1, U2, U3, U4 implemented on the `semantic` block behind the
 > `semantictest` conformance suite (validity window, soft-delete visibility, resurrection,
-> supersession, bulk expire, versioning/CAS) and recorded in
-> [ADR-0003](../decisions/adr-0003-memory-lifecycle.md). Verified on the in-memory driver
+> supersession, bulk expire, versioning/CAS) — the memory-lifecycle design
+> (formerly ADR-0003, since folded into the semantic driver doc comments during
+> the docs pass). Verified on the in-memory driver
 > (`go test -race ./...`) **and on real pgvector** — all 11 conformance cases pass via
 > `make test-integration` (Podman). The integration run also fixed a pre-existing latent
 > bug in the pgvector driver (nil `payload` inserted as SQL NULL vs. a `NOT NULL` column).

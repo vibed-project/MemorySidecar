@@ -4,9 +4,9 @@ description: A self-hosted, OSS, framework-agnostic memory sidecar for agentic s
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
-home: https://github.com/m-koerbaecher/memsidecar
+home: https://github.com/vibed-project/MemorySidecar
 sources:
-  - https://github.com/m-koerbaecher/memsidecar
+  - https://github.com/vibed-project/MemorySidecar
 keywords:
   - memsidecar
   - agents
