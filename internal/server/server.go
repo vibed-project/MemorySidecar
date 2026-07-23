@@ -57,6 +57,9 @@ type Deps struct {
 	// TenantIsolation scopes every block's storage to the caller's tenant when
 	// true (config `tenant_isolation`). Off by default (single-tenant behavior).
 	TenantIsolation bool
+	// KVQuotas caps live keys per kv namespace, keyed by config namespace name
+	// (0/absent = unlimited). With TenantIsolation on the cap is per tenant.
+	KVQuotas map[string]int
 }
 
 // Server owns the gRPC server and its listeners.
@@ -107,7 +110,7 @@ func New(cfg config.ServerConfig, deps Deps) (*Server, error) {
 		grpc.StatsHandler(statsHandler),
 	)
 
-	kvv1.RegisterKVServer(grpcSrv, kv.NewService(deps.KV, deps.TenantIsolation))
+	kvv1.RegisterKVServer(grpcSrv, kv.NewService(deps.KV, deps.TenantIsolation, deps.KVQuotas))
 	if deps.Episodic != nil {
 		episodicv1.RegisterEpisodicServer(grpcSrv, episodic.NewService(deps.Episodic, deps.TenantIsolation))
 	}

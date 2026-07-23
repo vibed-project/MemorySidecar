@@ -12,6 +12,10 @@ var ErrNotFound = errors.New("kv: not found")
 // ErrVersionMismatch is returned when an if_version CAS check fails.
 var ErrVersionMismatch = errors.New("kv: version mismatch")
 
+// ErrQuotaExceeded is returned by Put when adding a new key would exceed the
+// namespace's configured item quota (PutOptions.MaxItems).
+var ErrQuotaExceeded = errors.New("kv: namespace item quota exceeded")
+
 // Record is the canonical in-memory representation of a stored item.
 type Record struct {
 	Key         string
@@ -57,6 +61,12 @@ type PutOptions struct {
 	Metadata    map[string]string
 	TTL         time.Duration // 0 = no expiry
 	IfVersion   *uint64       // nil = unconditional write
+	// MaxItems, when > 0, caps the number of live keys in the namespace: a Put
+	// that would add a NEW key beyond the cap fails with ErrQuotaExceeded.
+	// Overwriting an existing key is always allowed. Enforced against the
+	// (tenant-qualified) storage namespace, so with tenant isolation on it's a
+	// per-tenant quota. 0 = unlimited.
+	MaxItems int
 }
 
 // DeleteOptions carries fields for a conditional delete.

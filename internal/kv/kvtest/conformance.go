@@ -68,6 +68,7 @@ func RunConformance(t *testing.T, h Harness) {
 		{"Scan_StartAfterCursor", testScanStartAfterCursor},
 		{"MultiGet", testMultiGet},
 		{"ConcurrentPut", testConcurrentPut},
+		{"Quota", testQuota},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) { tc.fn(t, h) })
@@ -301,4 +302,39 @@ func testConcurrentPut(t *testing.T, h Harness) {
 	got, err := d.Get(ctx, "ns", "shared")
 	require.NoError(t, err)
 	assert.Equal(t, uint64(writers*perWriter), got.Version)
+}
+
+func testQuota(t *testing.T, h Harness) {
+	d := h.New(t)
+	ctx := context.Background()
+	const max = 2
+
+	_, err := d.Put(ctx, "ns", "a", kv.PutOptions{Value: []byte("1"), MaxItems: max})
+	require.NoError(t, err)
+	_, err = d.Put(ctx, "ns", "b", kv.PutOptions{Value: []byte("2"), MaxItems: max})
+	require.NoError(t, err)
+
+	// A new key past the cap is rejected.
+	_, err = d.Put(ctx, "ns", "c", kv.PutOptions{Value: []byte("3"), MaxItems: max})
+	require.ErrorIs(t, err, kv.ErrQuotaExceeded)
+
+	// Overwriting an existing key never grows the count.
+	_, err = d.Put(ctx, "ns", "a", kv.PutOptions{Value: []byte("1b"), MaxItems: max})
+	require.NoError(t, err)
+
+	// The cap is per storage namespace, so another namespace is unaffected.
+	_, err = d.Put(ctx, "other", "a", kv.PutOptions{Value: []byte("x"), MaxItems: max})
+	require.NoError(t, err)
+
+	// Deleting frees a slot.
+	_, err = d.Delete(ctx, "ns", "b", kv.DeleteOptions{})
+	require.NoError(t, err)
+	_, err = d.Put(ctx, "ns", "c", kv.PutOptions{Value: []byte("3"), MaxItems: max})
+	require.NoError(t, err)
+
+	// MaxItems=0 means unlimited.
+	for _, k := range []string{"d", "e", "f"} {
+		_, err = d.Put(ctx, "ns", k, kv.PutOptions{Value: []byte("v"), MaxItems: 0})
+		require.NoError(t, err)
+	}
 }

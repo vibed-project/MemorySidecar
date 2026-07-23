@@ -209,6 +209,17 @@ func run() error {
 	}
 	policyHolder := policy.NewHolder(polEngine)
 
+	// Per-namespace kv item quotas (config max_items), keyed by namespace name.
+	var kvQuotas map[string]int
+	for _, ns := range cfg.Namespaces {
+		if ns.Block == "kv" && ns.MaxItems > 0 {
+			if kvQuotas == nil {
+				kvQuotas = make(map[string]int)
+			}
+			kvQuotas[ns.Name] = ns.MaxItems
+		}
+	}
+
 	srv, err := server.New(cfg.Server, server.Deps{
 		Logger:          log,
 		Verifier:        verifierHolder,
@@ -222,6 +233,7 @@ func run() error {
 		Graph:           graphReg,
 		Admin:           adminSvc,
 		TenantIsolation: cfg.TenantIsolation,
+		KVQuotas:        kvQuotas,
 	})
 	if err != nil {
 		return err

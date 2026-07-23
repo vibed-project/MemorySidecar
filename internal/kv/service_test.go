@@ -33,9 +33,14 @@ func newTestServer(t *testing.T, cap *auth.Capability) kvv1.KVClient {
 // isolation setting, so multiple servers can share one backing store to test
 // cross-tenant behavior.
 func newTestServerOn(t *testing.T, reg *kv.Registry, cap *auth.Capability, isolate bool) kvv1.KVClient {
+	return newTestServerOnQ(t, reg, cap, isolate, nil)
+}
+
+// newTestServerOnQ is newTestServerOn with an explicit per-namespace quota map.
+func newTestServerOnQ(t *testing.T, reg *kv.Registry, cap *auth.Capability, isolate bool, quotas map[string]int) kvv1.KVClient {
 	t.Helper()
 
-	svc := kv.NewService(reg, isolate)
+	svc := kv.NewService(reg, isolate, quotas)
 
 	injectCap := func(ctx context.Context) context.Context {
 		if cap == nil {
@@ -227,6 +232,65 @@ func TestService_NoIsolationShares(t *testing.T) {
 	g, err := acme.Get(ctx, &kvv1.GetRequest{Namespace: "scratchpad", Key: "k"})
 	require.NoError(t, err)
 	assert.Equal(t, []byte("beta-val"), g.GetValue()) // shared: last write wins
+}
+
+// A namespace with max_items caps its live keys: a new key past the cap is
+// rejected with ResourceExhausted, overwrites are always allowed, and deleting
+// a key frees a slot.
+func TestService_Quota(t *testing.T) {
+	reg := kv.NewRegistry()
+	require.NoError(t, reg.Bind("scratchpad", memdrv.New(memdrv.Options{SweeperInterval: -1})))
+	t.Cleanup(func() { _ = reg.Close() })
+	c := newTestServerOnQ(t, reg, fullScope(), false, map[string]int{"scratchpad": 2})
+	ctx := context.Background()
+
+	_, err := c.Put(ctx, &kvv1.PutRequest{Namespace: "scratchpad", Key: "a", Value: []byte("1")})
+	require.NoError(t, err)
+	_, err = c.Put(ctx, &kvv1.PutRequest{Namespace: "scratchpad", Key: "b", Value: []byte("2")})
+	require.NoError(t, err)
+
+	// A third new key is over the cap.
+	_, err = c.Put(ctx, &kvv1.PutRequest{Namespace: "scratchpad", Key: "c", Value: []byte("3")})
+	require.Error(t, err)
+	assert.Equal(t, codes.ResourceExhausted, status.Code(err))
+
+	// Overwriting an existing key never grows the count, so it's allowed.
+	_, err = c.Put(ctx, &kvv1.PutRequest{Namespace: "scratchpad", Key: "a", Value: []byte("1b")})
+	require.NoError(t, err)
+
+	// Deleting frees a slot for a new key.
+	_, err = c.Delete(ctx, &kvv1.DeleteRequest{Namespace: "scratchpad", Key: "b"})
+	require.NoError(t, err)
+	_, err = c.Put(ctx, &kvv1.PutRequest{Namespace: "scratchpad", Key: "c", Value: []byte("3")})
+	require.NoError(t, err)
+}
+
+// With tenant isolation on, max_items is enforced against the tenant-qualified
+// storage namespace, so each tenant gets its own quota over the shared store.
+func TestService_QuotaPerTenant(t *testing.T) {
+	reg := kv.NewRegistry()
+	require.NoError(t, reg.Bind("scratchpad", memdrv.New(memdrv.Options{SweeperInterval: -1})))
+	t.Cleanup(func() { _ = reg.Close() })
+	q := map[string]int{"scratchpad": 2}
+	acme := newTestServerOnQ(t, reg, tenantScope("acme"), true, q)
+	beta := newTestServerOnQ(t, reg, tenantScope("beta"), true, q)
+	ctx := context.Background()
+
+	// acme fills its own quota, then is capped.
+	_, err := acme.Put(ctx, &kvv1.PutRequest{Namespace: "scratchpad", Key: "a", Value: []byte("1")})
+	require.NoError(t, err)
+	_, err = acme.Put(ctx, &kvv1.PutRequest{Namespace: "scratchpad", Key: "b", Value: []byte("2")})
+	require.NoError(t, err)
+	_, err = acme.Put(ctx, &kvv1.PutRequest{Namespace: "scratchpad", Key: "c", Value: []byte("3")})
+	assert.Equal(t, codes.ResourceExhausted, status.Code(err))
+
+	// beta's quota is independent — the same key names still fit.
+	_, err = beta.Put(ctx, &kvv1.PutRequest{Namespace: "scratchpad", Key: "a", Value: []byte("1")})
+	require.NoError(t, err)
+	_, err = beta.Put(ctx, &kvv1.PutRequest{Namespace: "scratchpad", Key: "b", Value: []byte("2")})
+	require.NoError(t, err)
+	_, err = beta.Put(ctx, &kvv1.PutRequest{Namespace: "scratchpad", Key: "c", Value: []byte("3")})
+	assert.Equal(t, codes.ResourceExhausted, status.Code(err))
 }
 
 func scanKeys(t *testing.T, c kvv1.KVClient) []string {

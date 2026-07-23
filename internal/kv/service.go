@@ -21,10 +21,16 @@ type Service struct {
 	kvv1.UnimplementedKVServer
 	reg             *Registry
 	tenantIsolation bool
+	// quotas maps a config namespace name to its live-key cap (0/absent =
+	// unlimited). Enforced in the driver against the tenant-qualified storage
+	// namespace, so with tenant isolation on it is a per-tenant cap.
+	quotas map[string]int
 }
 
-func NewService(reg *Registry, tenantIsolation bool) *Service {
-	return &Service{reg: reg, tenantIsolation: tenantIsolation}
+// NewService builds a KV service. quotas, keyed by config namespace name, caps
+// the live keys a namespace may hold (0/absent = unlimited); pass nil for none.
+func NewService(reg *Registry, tenantIsolation bool, quotas map[string]int) *Service {
+	return &Service{reg: reg, tenantIsolation: tenantIsolation, quotas: quotas}
 }
 
 // namespaceDriver authorizes the request and returns the backing driver plus
@@ -97,6 +103,7 @@ func (s *Service) Put(ctx context.Context, req *kvv1.PutRequest) (*kvv1.PutRespo
 		Value:       req.GetValue(),
 		ContentType: req.GetContentType(),
 		Metadata:    req.GetMetadata(),
+		MaxItems:    s.quotas[req.GetNamespace()],
 	}
 	if req.Ttl != nil {
 		opts.TTL = req.GetTtl().AsDuration()
@@ -108,6 +115,9 @@ func (s *Service) Put(ctx context.Context, req *kvv1.PutRequest) (*kvv1.PutRespo
 	rec, err := d.Put(ctx, ns, req.GetKey(), opts)
 	if errors.Is(err, ErrVersionMismatch) {
 		return nil, status.Error(codes.FailedPrecondition, "version mismatch")
+	}
+	if errors.Is(err, ErrQuotaExceeded) {
+		return nil, status.Errorf(codes.ResourceExhausted, "namespace %q item quota exceeded", req.GetNamespace())
 	}
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "put: %v", err)

@@ -87,6 +87,32 @@ namespaces:
 Durations are expressed in seconds. This policy is honoured by the `memory`
 driver only; on a Postgres-backed namespace it is ignored.
 
+### Item quota (`max_items`)
+
+A `kv` namespace can cap the number of live keys it holds on **any** backend
+(memory or Postgres):
+
+```yaml
+namespaces:
+  - block: kv
+    name: tool-cache
+    backend: pg-main
+    max_items: 10000     # 0/omitted = unlimited
+```
+
+A `Put` that would add a **new** key past the cap is rejected with
+`ResourceExhausted`; **overwriting** an existing key is always allowed (it
+doesn't grow the count), and a `Delete` frees a slot. Unlike the in-memory
+`capacity` policy above, `max_items` never evicts — it refuses the write, so
+callers decide what to drop.
+
+The cap is enforced in the driver against the **stored** namespace. With
+[`tenant_isolation`](../concepts/tenant-isolation.md) enabled the storage
+namespace is tenant-qualified, so `max_items` becomes a **per-tenant** quota:
+each tenant gets its own allowance over the shared namespace name. On Postgres
+the live-key count is taken inside the write transaction and can race with
+concurrent inserts, so treat the cap as a soft ceiling.
+
 ## gRPC example
 
 ```bash

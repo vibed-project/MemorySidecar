@@ -186,6 +186,21 @@ func (d *Driver) Put(ctx context.Context, namespace, key string, opts kv.PutOpti
 		}
 	}
 
+	// Item quota: reject a new key that would exceed the namespace cap. Counted
+	// inside the tx over live rows; overwrites (rowExists) never grow the count.
+	// The count can race with concurrent inserts, so the cap is a soft ceiling.
+	if !rowExists && opts.MaxItems > 0 {
+		var count int
+		if err := tx.QueryRow(ctx,
+			`SELECT count(*) FROM kv_items WHERE namespace=$1 AND (expires_at IS NULL OR expires_at > now())`,
+			namespace).Scan(&count); err != nil {
+			return kv.Record{}, fmt.Errorf("postgres: quota count: %w", err)
+		}
+		if count >= opts.MaxItems {
+			return kv.Record{}, kv.ErrQuotaExceeded
+		}
+	}
+
 	nextVersion := currentVersion + 1
 	if !rowExists {
 		nextVersion = 1
