@@ -112,7 +112,7 @@ func New(cfg config.ServerConfig, deps Deps) (*Server, error) {
 		episodicv1.RegisterEpisodicServer(grpcSrv, episodic.NewService(deps.Episodic, deps.TenantIsolation))
 	}
 	if deps.Semantic != nil {
-		semanticv1.RegisterSemanticServer(grpcSrv, semantic.NewService(deps.Semantic))
+		semanticv1.RegisterSemanticServer(grpcSrv, semantic.NewService(deps.Semantic, deps.TenantIsolation))
 	}
 	if deps.Artifact != nil {
 		artifactv1.RegisterArtifactServer(grpcSrv, artifact.NewService(deps.Artifact, deps.TenantIsolation))

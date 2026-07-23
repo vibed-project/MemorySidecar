@@ -50,6 +50,7 @@ func RunConformance(t *testing.T, h Harness) {
 		{"Supersedes_Invalidates", testSupersedesInvalidates},
 		{"Expire_ByFilter", testExpireByFilter},
 		{"Versioning", testVersioning},
+		{"TenantIsolation", testTenantIsolation},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) { tc.fn(t, h) })
@@ -61,6 +62,46 @@ func axisVector(i int) []float32 {
 	v := make([]float32, Dim)
 	v[i] = 1
 	return v
+}
+
+// testTenantIsolation checks that records are scoped by Tenant: two tenants can
+// reuse the same id, each sees only its own on Search, and Delete is
+// tenant-scoped. (Records with an empty Tenant — the default — are the
+// single-tenant case exercised by every other test.)
+func testTenantIsolation(t *testing.T, h Harness) {
+	d := h.New(t, Dim)
+	ctx := context.Background()
+
+	require.NoError(t, d.Upsert(ctx, []semantic.Record{
+		{Tenant: "acme", ID: "x", Vector: axisVector(0), Content: "acme-doc"},
+	}))
+	require.NoError(t, d.Upsert(ctx, []semantic.Record{
+		{Tenant: "beta", ID: "x", Vector: axisVector(1), Content: "beta-doc"},
+	}))
+
+	// Each tenant's search returns only its own record — even querying the
+	// other tenant's vector.
+	for _, tc := range []struct{ tenant, want string }{{"acme", "acme-doc"}, {"beta", "beta-doc"}} {
+		hits, err := d.Search(ctx, semantic.SearchOptions{Tenant: tc.tenant, QueryVector: axisVector(1), TopK: 10})
+		require.NoError(t, err)
+		require.Len(t, hits, 1, "tenant %s", tc.tenant)
+		assert.Equal(t, "x", hits[0].Record.ID)
+		assert.Equal(t, tc.want, hits[0].Record.Content)
+	}
+
+	// Delete is tenant-scoped: acme deleting "x" leaves beta's "x" intact.
+	existed, err := d.Delete(ctx, "x", semantic.DeleteOptions{Tenant: "acme", Hard: true})
+	require.NoError(t, err)
+	assert.True(t, existed)
+
+	acme, err := d.Search(ctx, semantic.SearchOptions{Tenant: "acme", QueryVector: axisVector(0), TopK: 10})
+	require.NoError(t, err)
+	assert.Empty(t, acme, "acme's record is gone")
+
+	beta, err := d.Search(ctx, semantic.SearchOptions{Tenant: "beta", QueryVector: axisVector(1), TopK: 10})
+	require.NoError(t, err)
+	require.Len(t, beta, 1, "beta's record survives")
+	assert.Equal(t, "beta-doc", beta[0].Record.Content)
 }
 
 func testUpsertAssignsID(t *testing.T, h Harness) {

@@ -346,14 +346,6 @@ func (c *Config) Validate() error {
 		if _, ok := backendByName[ns.Backend]; !ok {
 			return fmt.Errorf("namespace %q references unknown backend %q", key, ns.Backend)
 		}
-		// Tenant isolation currently covers kv/episodic/lease/graph/artifact. The
-		// semantic block is bound per-namespace and needs a driver-level tenant
-		// column (not yet implemented), so refuse the unsafe combination rather
-		// than silently sharing semantic data across tenants.
-		if c.TenantIsolation && ns.Block == "semantic" {
-			return fmt.Errorf("namespace %q: tenant_isolation does not yet isolate the semantic block; "+
-				"remove semantic namespaces or disable tenant_isolation until semantic isolation lands", key)
-		}
 	}
 	return nil
 }

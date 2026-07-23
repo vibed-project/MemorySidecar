@@ -39,18 +39,11 @@ namespace, and vice-versa.
 
 ## Coverage
 
-Isolation currently covers **kv, episodic, lease, graph, and artifact**.
-
-The **semantic** block is bound per-namespace and needs a driver-level tenant
-column, which isn't implemented yet. To avoid silently sharing semantic data,
-the server **refuses to start** when `tenant_isolation` is enabled and a
-`semantic` namespace is configured:
-
-```
-namespace "semantic/notes": tenant_isolation does not yet isolate the
-semantic block; remove semantic namespaces or disable tenant_isolation
-until semantic isolation lands
-```
+Isolation covers **all six blocks** — kv, episodic, lease, graph, artifact, and
+semantic. The first five qualify the storage namespace string; the semantic
+block, which is bound per-namespace, carries a `tenant` column so `(tenant, id)`
+is a record's identity and every search/delete/expire is tenant-scoped. Two
+tenants can reuse the same semantic record id without colliding.
 
 ## Enabling it on an existing deployment
 

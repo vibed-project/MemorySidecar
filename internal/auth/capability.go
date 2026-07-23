@@ -131,6 +131,18 @@ func QualifyNamespace(tenant, namespace string, isolate bool) string {
 	return tenant + tenantSep + namespace
 }
 
+// StorageTenant is the tenant a request's data is stored under. It's the
+// capability tenant when isolation is enabled, else "" — so with isolation off
+// every request shares the empty-tenant partition (single-tenant behavior).
+// Blocks that carry a tenant column (semantic) use this; blocks that qualify
+// the namespace string use QualifyNamespace.
+func StorageTenant(tenant string, isolate bool) string {
+	if !isolate {
+		return ""
+	}
+	return tenant
+}
+
 // ErrAuth is the sentinel returned for auth failures.
 type ErrAuth struct{ Reason string }
 

@@ -35,9 +35,7 @@ tenant_isolation: true    # default false
 
 Scopes every block's storage to the caller's capability `tenant`, so two tenants
 sharing a namespace name get physically separate data. Off by default
-(single-tenant behavior; existing data unaffected). Covers kv/episodic/lease/
-graph/artifact; enabling it with a `semantic` namespace configured is refused at
-startup. Restart required to change. See
+(single-tenant behavior; existing data unaffected). Covers all six blocks (kv, episodic, lease, graph, artifact, semantic). Restart required to change. See
 [Tenant isolation](../concepts/tenant-isolation.md).
 
 ## server

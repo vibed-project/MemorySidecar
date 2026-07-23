@@ -172,8 +172,9 @@ backends:
 	require.ErrorContains(t, err, "duplicate backend")
 }
 
-func TestLoad_TenantIsolationRejectsSemantic(t *testing.T) {
-	_, err := Load(writeTemp(t, `
+func TestLoad_TenantIsolationWithSemantic(t *testing.T) {
+	// Semantic isolation is implemented, so this combination is now valid.
+	cfg, err := Load(writeTemp(t, `
 tenant_isolation: true
 auth:
   verifier: paseto
@@ -186,7 +187,8 @@ namespaces:
     backend: mem
     embedder: { provider: fake, model: fake-64, dimensions: 64 }
 `))
-	require.ErrorContains(t, err, "does not yet isolate the semantic block")
+	require.NoError(t, err)
+	assert.True(t, cfg.TenantIsolation)
 }
 
 func TestLoad_TenantIsolationOK(t *testing.T) {
