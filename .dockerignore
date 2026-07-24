@@ -6,6 +6,10 @@
 
 bin/
 dist/
+# The Go image only builds the server + memctl; keep JS/docs out of the context.
+**/node_modules/
+sdk/typescript/dist/
+website/
 sdk/python/.venv
 sdk/python/.pytest_cache
 **/__pycache__/
