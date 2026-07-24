@@ -41,6 +41,7 @@ Notable fields:
 |---|---|
 | `memory` | `sync.RWMutex`-guarded map. Lazy expiry on read + background sweeper (default 30 s). |
 | `postgres` | Single table `kv_items` keyed by `(namespace, key)`, partial index on `expires_at`, periodic sweeper deletes expired rows. CAS via `WHERE version = $if_version`. `MultiGet` is one `key = ANY($keys)` query; `Scan.start_after` uses `key COLLATE "C" > $token` + `ORDER BY key COLLATE "C"` so the keyset cursor is byte-ordered and consistent with the memory driver regardless of DB locale. Embedded migrations applied at startup. |
+| `redis` / `valkey` | RESP server (Redis, Valkey, or any wire-compatible server — the two driver names are aliases). Each record is a hash `…h:<namespace>\x1e<key>`; a per-namespace sorted set `…i:<namespace>` indexes live keys so `Scan` is an ordered `ZRANGEBYLEX` (byte-ordered, prefix + `start_after` cursor) and the item quota is a `ZCARD`. Expiry is authoritative on a stored `expires_at` field (read paths filter `> now`) with a native `PEXPIRE` backstop that reclaims record memory; index members left by a reclaimed record are pruned lazily on `Scan`/`Delete` and when a quota'd `Put` hits the cap. `Put` (version bump + CAS + quota) and `Delete` (CAS) run as atomic Lua scripts. |
 
 ## Configuration
 
@@ -52,10 +53,19 @@ backends:
       dsn_env: MEMSIDECAR_PG_DSN
       max_conns: 10
       sweeper_interval: 5m
+  - name: cache
+    driver: redis                     # or: valkey
+    options:
+      dsn_env: MEMSIDECAR_REDIS_DSN    # redis://[:password@]host:6379/0
+      # key_prefix: "memsidecar:"      # optional; namespaces this driver's keys
 
 namespaces:
   - { block: kv, name: scratchpad, backend: pg-main }
+  - { block: kv, name: tool-cache, backend: cache }
 ```
+
+The `redis`/`valkey` driver serves the **kv block only**. Referencing a redis
+backend from any other block is a config error.
 
 ### Cache-tier access policy (in-memory only)
 

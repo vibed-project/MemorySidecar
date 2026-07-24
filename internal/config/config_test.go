@@ -65,7 +65,7 @@ auth:
   verifier: paseto
   paseto: { public_key_hex: dead }
 backends:
-  - { name: mem, driver: redis }
+  - { name: mem, driver: mongodb }
 `))
 	require.ErrorContains(t, err, "unknown driver")
 }
