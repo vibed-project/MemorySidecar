@@ -131,6 +131,19 @@ func QualifyNamespace(tenant, namespace string, isolate bool) string {
 	return tenant + tenantSep + namespace
 }
 
+// UnqualifyNamespace recovers the config namespace from a (possibly
+// tenant-qualified) storage namespace produced by QualifyNamespace: it returns
+// everything after the first tenant separator, or the input unchanged when no
+// separator is present. The tenant identifier cannot contain the separator, so
+// splitting on the first one is exact. Used by system jobs (e.g. retention)
+// that enumerate raw storage namespaces and need to map them back to config.
+func UnqualifyNamespace(storageNamespace string) string {
+	if i := strings.IndexByte(storageNamespace, tenantSep[0]); i >= 0 {
+		return storageNamespace[i+1:]
+	}
+	return storageNamespace
+}
+
 // StorageTenant is the tenant a request's data is stored under. It's the
 // capability tenant when isolation is enabled, else "" — so with isolation off
 // every request shares the empty-tenant partition (single-tenant behavior).

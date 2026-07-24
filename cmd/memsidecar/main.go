@@ -34,6 +34,7 @@ import (
 	leasepgdrv "memsidecar/internal/lease/drivers/postgres"
 	"memsidecar/internal/obs"
 	"memsidecar/internal/policy"
+	"memsidecar/internal/retention"
 	"memsidecar/internal/semantic"
 	semmemdrv "memsidecar/internal/semantic/drivers/memory"
 	sempgdrv "memsidecar/internal/semantic/drivers/postgres"
@@ -181,6 +182,13 @@ func run() error {
 		return fmt.Errorf("graph registry: %w", err)
 	}
 	defer func() { _ = graphReg.Close() }()
+
+	// Scheduled retention/GC (episodic). Its Close is registered here — after the
+	// registry Closes above — so LIFO ordering stops the sweeps before their
+	// drivers shut down. No-op when no namespace configures retention.
+	retentionSched := retention.New(epReg, cfg.TenantIsolation, retention.PoliciesFromConfig(cfg), evict, log)
+	retentionSched.Start()
+	defer func() { _ = retentionSched.Close() }()
 
 	// Per-block namespace-count sources, shared by the growth gauge and the
 	// Admin introspection service.

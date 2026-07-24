@@ -99,6 +99,52 @@ namespaces:
 	assert.Equal(t, "episodic", cfg.Namespaces[1].Block)
 }
 
+func TestLoad_Retention(t *testing.T) {
+	cfg, err := Load(writeTemp(t, `
+auth:
+  verifier: paseto
+  paseto: { public_key_hex: dead }
+backends:
+  - { name: mem, driver: memory }
+namespaces:
+  - block: episodic
+    name: events
+    backend: mem
+    retention: { max_age_seconds: 3600, action: soft }
+`))
+	require.NoError(t, err)
+	r := cfg.Namespaces[0].Retention
+	assert.True(t, r.Enabled())
+	assert.Equal(t, 3600, r.MaxAgeSeconds)
+	assert.Equal(t, "soft", r.Action)
+}
+
+func TestLoad_RetentionOnlyEpisodic(t *testing.T) {
+	_, err := Load(writeTemp(t, `
+auth:
+  verifier: paseto
+  paseto: { public_key_hex: dead }
+backends:
+  - { name: mem, driver: memory }
+namespaces:
+  - { block: kv, name: scratchpad, backend: mem, retention: { max_age_seconds: 60 } }
+`))
+	require.ErrorContains(t, err, "retention is only supported on episodic")
+}
+
+func TestLoad_RetentionBadAction(t *testing.T) {
+	_, err := Load(writeTemp(t, `
+auth:
+  verifier: paseto
+  paseto: { public_key_hex: dead }
+backends:
+  - { name: mem, driver: memory }
+namespaces:
+  - { block: episodic, name: events, backend: mem, retention: { max_items: 10, action: purge } }
+`))
+	require.ErrorContains(t, err, "action")
+}
+
 func TestLoad_SemanticBlock(t *testing.T) {
 	cfg, err := Load(writeTemp(t, `
 auth:
