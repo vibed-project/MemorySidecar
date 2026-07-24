@@ -1,0 +1,63 @@
+name: Release Python SDK
+
+# Publishes sdk/python to PyPI on a `python-sdk-v*` tag, or to TestPyPI on
+# demand. Uses PyPI Trusted Publishing (OIDC) — no API token is stored; the
+# `id-token: write` permission below lets the job mint a short-lived one, once a
+# Trusted Publisher is configured on PyPI for this repo + workflow (see
+# RELEASING.md).
+on:
+  push:
+    tags:
+      - "python-sdk-v*"
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "Target index"
+        type: choice
+        options: [testpypi, pypi]
+        default: testpypi
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build sdist + wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: build
+        working-directory: sdk/python
+        run: |
+          python -m pip install --upgrade build
+          python -m build --outdir dist
+      - name: check metadata
+        working-directory: sdk/python
+        run: |
+          python -m pip install --upgrade twine
+          python -m twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-sdk-dist
+          path: sdk/python/dist/
+
+  publish:
+    name: publish to ${{ github.event_name == 'push' && 'PyPI' || inputs.repository }}
+    needs: build
+    runs-on: ubuntu-latest
+    # A tag push always targets PyPI; a manual run targets the chosen index.
+    environment: ${{ (github.event_name == 'push' || inputs.repository == 'pypi') && 'pypi' || 'testpypi' }}
+    permissions:
+      id-token: write # OIDC for Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-sdk-dist
+          path: dist/
+      - name: publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: ${{ (github.event_name == 'push' || inputs.repository == 'pypi') && 'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}

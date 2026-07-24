@@ -1,0 +1,51 @@
+name: Release TypeScript SDK
+
+# Publishes sdk/typescript (@memsidecar/client) to npm on a `typescript-sdk-v*`
+# tag. Publishes with provenance (the `id-token: write` permission signs a
+# build-provenance attestation). Auth uses an npm automation token in the
+# `NPM_TOKEN` secret (see RELEASING.md). `workflow_dispatch` with dry_run=true
+# runs everything except the publish for a rehearsal.
+on:
+  push:
+    tags:
+      - "typescript-sdk-v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build + pack only, do not publish"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: build + publish to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # provenance attestation
+    defaults:
+      run:
+        working-directory: sdk/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: pack (always, as a build artifact)
+        run: npm pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: typescript-sdk-tarball
+          path: sdk/typescript/*.tgz
+      - name: publish
+        if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
