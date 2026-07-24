@@ -82,6 +82,40 @@ Pass `tls: true` to use `https`/h2 (or give a full `https://host:port` address):
 const m = new MemSidecar("mem.internal:443", { token, tls: true });
 ```
 
+## Vercel AI SDK — chat persistence
+
+`@memsidecar/client/ai` adapts memsidecar to the [Vercel AI SDK](https://ai-sdk.dev)'s
+chat-persistence convention: a chat is its full `UIMessage[]`, loaded by id and
+re-saved after each turn. The store keeps one kv key per chat. `ai` is an
+optional peer dependency — importing the base client never pulls it in.
+
+```ts
+import { MemSidecar } from "@memsidecar/client";
+import { createChatStore } from "@memsidecar/client/ai";
+
+const m = new MemSidecar("127.0.0.1:7777", { token });
+const store = createChatStore(m, { namespace: "chats" });
+
+// New conversation, or resume an existing one.
+const chatId = await store.createChat();
+const messages = await store.loadChat(chatId);
+```
+
+Wire `saveChat` into a streamed response so every turn is persisted:
+
+```ts
+import { streamText, convertToModelMessages } from "ai";
+
+const result = streamText({ model, messages: convertToModelMessages(messages) });
+return result.toUIMessageStreamResponse({
+  originalMessages: messages,
+  onFinish: ({ messages }) => store.saveChat({ chatId, messages }),
+});
+```
+
+The store also exposes `deleteChat(id)` and `listChats()`. It needs a token with
+`kv` ops on the chat namespace (`get,put,delete,scan`).
+
 ## Codegen
 
 The stubs under `src/gen` are generated from the protos in `../../proto` with
