@@ -26,7 +26,7 @@ func newTestServer(t *testing.T, cap *auth.Capability) episodicv1.EpisodicClient
 	reg := episodic.NewRegistry()
 	require.NoError(t, reg.Bind("events", memdrv.New(memdrv.Options{})))
 
-	svc := episodic.NewService(reg)
+	svc := episodic.NewService(reg, false)
 
 	inject := func(ctx context.Context) context.Context {
 		if cap == nil {

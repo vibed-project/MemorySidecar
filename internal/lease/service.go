@@ -18,27 +18,36 @@ const Block = "lease"
 // Service implements the generated LeaseServer.
 type Service struct {
 	leasev1.UnimplementedLeaseServer
-	reg *Registry
+	reg             *Registry
+	tenantIsolation bool
 }
 
-func NewService(reg *Registry) *Service { return &Service{reg: reg} }
+func NewService(reg *Registry, tenantIsolation bool) *Service {
+	return &Service{reg: reg, tenantIsolation: tenantIsolation}
+}
 
-func (s *Service) driverFor(ctx context.Context, namespace string, op auth.Op) (Driver, error) {
+// driverFor authorizes the request and returns the backing driver plus the
+// storage namespace to address it by. The storage namespace is the requested
+// (config) namespace qualified with the caller's tenant when tenant isolation
+// is enabled, so drivers never see cross-tenant data. Resolution and the
+// capability scope check both use the config namespace.
+func (s *Service) driverFor(ctx context.Context, requested string, op auth.Op) (Driver, string, error) {
 	cap, ok := auth.FromContext(ctx)
 	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "missing capability")
+		return nil, "", status.Error(codes.Unauthenticated, "missing capability")
 	}
-	if !cap.PermitsNamespace(Block, namespace) {
-		return nil, status.Errorf(codes.PermissionDenied, "namespace %s/%s not in capability scope", Block, namespace)
+	if !cap.PermitsNamespace(Block, requested) {
+		return nil, "", status.Errorf(codes.PermissionDenied, "namespace %s/%s not in capability scope", Block, requested)
 	}
 	if !cap.PermitsOp(op) {
-		return nil, status.Errorf(codes.PermissionDenied, "op %s not in capability scope", op)
+		return nil, "", status.Errorf(codes.PermissionDenied, "op %s not in capability scope", op)
 	}
-	d, ok := s.reg.Resolve(namespace)
+	d, ok := s.reg.Resolve(requested)
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, "namespace %q not configured", namespace)
+		return nil, "", status.Errorf(codes.NotFound, "namespace %q not configured", requested)
 	}
-	return d, nil
+	storageNS := auth.QualifyNamespace(cap.Scope.Tenant, requested, s.tenantIsolation)
+	return d, storageNS, nil
 }
 
 func (s *Service) Acquire(ctx context.Context, req *leasev1.AcquireRequest) (*leasev1.AcquireResponse, error) {
@@ -48,7 +57,7 @@ func (s *Service) Acquire(ctx context.Context, req *leasev1.AcquireRequest) (*le
 	if req.GetTtl() == nil || req.GetTtl().AsDuration() <= 0 {
 		return nil, status.Error(codes.InvalidArgument, "ttl required and must be > 0")
 	}
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpLeaseAcquire)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpLeaseAcquire)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +68,7 @@ func (s *Service) Acquire(ctx context.Context, req *leasev1.AcquireRequest) (*le
 	if req.WaitFor != nil {
 		opts.WaitFor = req.GetWaitFor().AsDuration()
 	}
-	l, err := d.Acquire(ctx, req.GetNamespace(), req.GetKey(), opts)
+	l, err := d.Acquire(ctx, ns, req.GetKey(), opts)
 	if errors.Is(err, ErrAlreadyHeld) {
 		return nil, status.Error(codes.FailedPrecondition, "already held")
 	}
@@ -69,7 +78,7 @@ func (s *Service) Acquire(ctx context.Context, req *leasev1.AcquireRequest) (*le
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "acquire: %v", err)
 	}
-	return &leasev1.AcquireResponse{Handle: leaseToProto(l)}, nil
+	return &leasev1.AcquireResponse{Handle: leaseToProto(l, req.GetNamespace())}, nil
 }
 
 func (s *Service) Renew(ctx context.Context, req *leasev1.RenewRequest) (*leasev1.RenewResponse, error) {
@@ -79,29 +88,29 @@ func (s *Service) Renew(ctx context.Context, req *leasev1.RenewRequest) (*leasev
 	if req.GetTtl() == nil || req.GetTtl().AsDuration() <= 0 {
 		return nil, status.Error(codes.InvalidArgument, "ttl required and must be > 0")
 	}
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpLeaseRenew)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpLeaseRenew)
 	if err != nil {
 		return nil, err
 	}
-	l, err := d.Renew(ctx, req.GetNamespace(), req.GetKey(), req.GetHolderId(), req.GetTtl().AsDuration())
+	l, err := d.Renew(ctx, ns, req.GetKey(), req.GetHolderId(), req.GetTtl().AsDuration())
 	if errors.Is(err, ErrNotHeld) {
 		return nil, status.Error(codes.FailedPrecondition, "not held by this holder")
 	}
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "renew: %v", err)
 	}
-	return &leasev1.RenewResponse{Handle: leaseToProto(l)}, nil
+	return &leasev1.RenewResponse{Handle: leaseToProto(l, req.GetNamespace())}, nil
 }
 
 func (s *Service) Release(ctx context.Context, req *leasev1.ReleaseRequest) (*leasev1.ReleaseResponse, error) {
 	if req.GetKey() == "" || req.GetHolderId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "key and holder_id required")
 	}
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpLeaseRelease)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpLeaseRelease)
 	if err != nil {
 		return nil, err
 	}
-	existed, err := d.Release(ctx, req.GetNamespace(), req.GetKey(), req.GetHolderId())
+	existed, err := d.Release(ctx, ns, req.GetKey(), req.GetHolderId())
 	if errors.Is(err, ErrNotHeld) {
 		return nil, status.Error(codes.FailedPrecondition, "not held by this holder")
 	}
@@ -115,41 +124,44 @@ func (s *Service) Inspect(ctx context.Context, req *leasev1.InspectRequest) (*le
 	if req.GetKey() == "" {
 		return nil, status.Error(codes.InvalidArgument, "key required")
 	}
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpLeaseInspect)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpLeaseInspect)
 	if err != nil {
 		return nil, err
 	}
-	l, held, err := d.Inspect(ctx, req.GetNamespace(), req.GetKey())
+	l, held, err := d.Inspect(ctx, ns, req.GetKey())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "inspect: %v", err)
 	}
 	resp := &leasev1.InspectResponse{Held: held}
 	if held {
-		resp.Handle = leaseToProto(l)
+		resp.Handle = leaseToProto(l, req.GetNamespace())
 	}
 	return resp, nil
 }
 
 func (s *Service) List(ctx context.Context, req *leasev1.ListRequest) (*leasev1.ListResponse, error) {
-	d, err := s.driverFor(ctx, req.GetNamespace(), auth.OpLeaseList)
+	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpLeaseList)
 	if err != nil {
 		return nil, err
 	}
-	leases, err := d.List(ctx, req.GetNamespace())
+	leases, err := d.List(ctx, ns)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list: %v", err)
 	}
 	resp := &leasev1.ListResponse{Leases: make([]*leasev1.LeaseHandle, 0, len(leases))}
 	for _, l := range leases {
-		resp.Leases = append(resp.Leases, leaseToProto(l))
+		resp.Leases = append(resp.Leases, leaseToProto(l, req.GetNamespace()))
 	}
 	return resp, nil
 }
 
-func leaseToProto(l Lease) *leasev1.LeaseHandle {
+// leaseToProto maps a stored lease to the wire handle. displayNamespace is the
+// config namespace the caller asked for — returned instead of l.Namespace so the
+// internal tenant-qualified storage namespace never leaks to the client.
+func leaseToProto(l Lease, displayNamespace string) *leasev1.LeaseHandle {
 	out := &leasev1.LeaseHandle{
 		HolderId:  l.HolderID,
-		Namespace: l.Namespace,
+		Namespace: displayNamespace,
 		Key:       l.Key,
 		Metadata:  l.Metadata,
 	}

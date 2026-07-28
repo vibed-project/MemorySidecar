@@ -32,7 +32,7 @@ func newTestServer(t *testing.T, cap *auth.Capability) semanticv1.SemanticClient
 	reg := semantic.NewRegistry()
 	require.NoError(t, reg.Bind("notes", semantic.BoundNamespace{Driver: drv, Embedder: emb}))
 
-	svc := semantic.NewService(reg)
+	svc := semantic.NewService(reg, false)
 
 	inject := func(ctx context.Context) context.Context {
 		if cap == nil {

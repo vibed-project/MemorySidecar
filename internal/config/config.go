@@ -18,6 +18,12 @@ type Config struct {
 	Policy        PolicyConfig        `koanf:"policy"`
 	Backends      []BackendConfig     `koanf:"backends"`
 	Namespaces    []NamespaceConfig   `koanf:"namespaces"`
+	// TenantIsolation, when true, scopes every block's storage to the caller's
+	// capability tenant, so two tenants sharing a namespace name get physically
+	// separate data. Off by default: a single-tenant deployment behaves exactly
+	// as before and existing data is unaffected. Enable it for multi-tenant
+	// deployments (all tokens must then carry a tenant).
+	TenantIsolation bool `koanf:"tenant_isolation"`
 }
 
 // PolicyConfig mirrors policy.Spec under a config-friendly tag. It is parsed

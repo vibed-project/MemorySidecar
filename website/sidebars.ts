@@ -14,6 +14,7 @@ const sidebars: SidebarsConfig = {
         'concepts/capabilities',
         'concepts/namespaces',
         'concepts/policy',
+        'concepts/tenant-isolation',
       ],
     },
     {

@@ -28,7 +28,7 @@ func newTestServer(t *testing.T, cap *auth.Capability) artifactv1.ArtifactClient
 	reg := artifact.NewRegistry()
 	require.NoError(t, reg.Bind("blobs", memdrv.New(memdrv.Options{})))
 
-	svc := artifact.NewService(reg)
+	svc := artifact.NewService(reg, false)
 
 	inject := func(ctx context.Context) context.Context {
 		if cap == nil {

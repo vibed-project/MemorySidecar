@@ -81,7 +81,7 @@ func (d *Driver) Upsert(_ context.Context, records []semantic.Record) error {
 		}
 		var current uint64
 		if r.ID != "" {
-			if existing, ok := d.byID[r.ID]; ok {
+			if existing, ok := d.byID[ck(r.Tenant, r.ID)]; ok {
 				current = existing.Version
 			}
 		}
@@ -98,7 +98,7 @@ func (d *Driver) Upsert(_ context.Context, records []semantic.Record) error {
 		if r.ID == "" {
 			r.ID = d.newID()
 		}
-		existing, exists := d.byID[r.ID]
+		existing, exists := d.byID[ck(r.Tenant, r.ID)]
 		var current uint64
 		if exists {
 			current = existing.Version
@@ -117,9 +117,9 @@ func (d *Driver) Upsert(_ context.Context, records []semantic.Record) error {
 		stored.Metadata = cloneMeta(r.Metadata)
 		stored.Supersedes = cloneStrings(r.Supersedes)
 		if !exists {
-			d.order = append(d.order, stored.ID)
+			d.order = append(d.order, ck(stored.Tenant, stored.ID))
 		}
-		d.byID[stored.ID] = &stored
+		d.byID[ck(stored.Tenant, stored.ID)] = &stored
 		// Reflect server-assigned id and new version back to the caller.
 		records[i].ID = stored.ID
 		records[i].Version = stored.Version
@@ -131,7 +131,7 @@ func (d *Driver) Upsert(_ context.Context, records []semantic.Record) error {
 			if sid == stored.ID {
 				continue
 			}
-			target, ok := d.byID[sid]
+			target, ok := d.byID[ck(stored.Tenant, sid)]
 			if !ok || !target.DeletedAt.IsZero() {
 				continue
 			}
@@ -157,7 +157,7 @@ func (d *Driver) Expire(_ context.Context, opts semantic.ExpireOptions) (uint64,
 			break
 		}
 		r, ok := d.byID[id]
-		if !ok || !matchesFilter(r.Metadata, opts.Filter) {
+		if !ok || r.Tenant != opts.Tenant || !matchesFilter(r.Metadata, opts.Filter) {
 			continue
 		}
 		switch opts.Action {
@@ -223,6 +223,9 @@ func (d *Driver) Search(_ context.Context, opts semantic.SearchOptions) ([]seman
 	d.mu.RLock()
 	cands := make([]candidate, 0, len(d.byID))
 	for _, r := range d.byID {
+		if r.Tenant != opts.Tenant {
+			continue // storage isolation: only this tenant's records
+		}
 		if !matchesFilter(r.Metadata, opts.Filter) {
 			continue
 		}
@@ -359,7 +362,8 @@ func topIDs(cs []candidate, k int) []string {
 func (d *Driver) Delete(_ context.Context, id string, opts semantic.DeleteOptions) (bool, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	r, ok := d.byID[id]
+	key := ck(opts.Tenant, id)
+	r, ok := d.byID[key]
 	if !ok {
 		return false, nil
 	}
@@ -371,14 +375,20 @@ func (d *Driver) Delete(_ context.Context, id string, opts semantic.DeleteOption
 		r.DeletedAt = d.now().UTC()
 		return true, nil
 	}
-	delete(d.byID, id)
+	delete(d.byID, key)
 	for i, o := range d.order {
-		if o == id {
+		if o == key {
 			d.order = append(d.order[:i], d.order[i+1:]...)
 			break
 		}
 	}
 	return true, nil
+}
+
+// ck is the composite storage key: (tenant, id) is a record's identity, so two
+// tenants can reuse the same id without colliding.
+func ck(tenant, id string) string {
+	return tenant + "\x1f" + id
 }
 
 func matchesFilter(meta, filter map[string]string) bool {

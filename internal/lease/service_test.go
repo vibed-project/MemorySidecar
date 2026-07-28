@@ -26,7 +26,7 @@ func newTestServer(t *testing.T, cap *auth.Capability) leasev1.LeaseClient {
 	reg := lease.NewRegistry()
 	require.NoError(t, reg.Bind("locks", memdrv.New(memdrv.Options{})))
 
-	svc := lease.NewService(reg)
+	svc := lease.NewService(reg, false)
 	inject := func(ctx context.Context) context.Context {
 		if cap == nil {
 			return ctx

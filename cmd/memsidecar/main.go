@@ -210,17 +210,18 @@ func run() error {
 	policyHolder := policy.NewHolder(polEngine)
 
 	srv, err := server.New(cfg.Server, server.Deps{
-		Logger:        log,
-		Verifier:      verifierHolder,
-		Policy:        policyHolder,
-		MeterProvider: metrics.MeterProvider,
-		KV:            kvReg,
-		Episodic:      epReg,
-		Semantic:      semReg,
-		Artifact:      artReg,
-		Lease:         leaseReg,
-		Graph:         graphReg,
-		Admin:         adminSvc,
+		Logger:          log,
+		Verifier:        verifierHolder,
+		Policy:          policyHolder,
+		MeterProvider:   metrics.MeterProvider,
+		KV:              kvReg,
+		Episodic:        epReg,
+		Semantic:        semReg,
+		Artifact:        artReg,
+		Lease:           leaseReg,
+		Graph:           graphReg,
+		Admin:           adminSvc,
+		TenantIsolation: cfg.TenantIsolation,
 	})
 	if err != nil {
 		return err

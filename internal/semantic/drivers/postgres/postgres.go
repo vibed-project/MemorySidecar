@@ -152,10 +152,10 @@ func (d *Driver) Upsert(ctx context.Context, records []semantic.Record) error {
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	stmt := fmt.Sprintf(`
-		INSERT INTO %[1]s (id, content, payload, vector, metadata, valid_from, valid_to, deleted_at, supersedes, source)
+		INSERT INTO %[1]s (id, content, payload, vector, metadata, valid_from, valid_to, deleted_at, supersedes, source, tenant)
 		     VALUES (COALESCE(NULLIF($1, ''), gen_random_uuid()::text), $2, $3, $4, $5,
-		             COALESCE($6, now()), $7, $8, $9, $10)
-		ON CONFLICT (id) DO UPDATE
+		             COALESCE($6, now()), $7, $8, $9, $10, $11)
+		ON CONFLICT (tenant, id) DO UPDATE
 		    SET content    = EXCLUDED.content,
 		        payload    = EXCLUDED.payload,
 		        vector     = EXCLUDED.vector,
@@ -173,7 +173,7 @@ func (d *Driver) Upsert(ctx context.Context, records []semantic.Record) error {
 	// touches the named ids (localized); a record never supersedes itself.
 	supersedeStmt := fmt.Sprintf(`
 		UPDATE %s SET valid_to = $1
-		 WHERE id = ANY($2) AND id <> $3 AND deleted_at IS NULL
+		 WHERE tenant = $4 AND id = ANY($2) AND id <> $3 AND deleted_at IS NULL
 		   AND (valid_to IS NULL OR valid_to > $1)`, d.tableName)
 
 	for i, r := range records {
@@ -192,7 +192,7 @@ func (d *Driver) Upsert(ctx context.Context, records []semantic.Record) error {
 			if r.ID != "" {
 				err := tx.QueryRow(
 					ctx,
-					fmt.Sprintf(`SELECT version FROM %s WHERE id = $1 FOR UPDATE`, d.tableName), r.ID,
+					fmt.Sprintf(`SELECT version FROM %s WHERE tenant = $2 AND id = $1 FOR UPDATE`, d.tableName), r.ID, r.Tenant,
 				).Scan(&current)
 				if errors.Is(err, pgx.ErrNoRows) {
 					current = 0
@@ -215,7 +215,7 @@ func (d *Driver) Upsert(ctx context.Context, records []semantic.Record) error {
 			ctx, stmt,
 			r.ID, r.Content, emptyIfNil(r.Payload), pgvector.NewVector(r.Vector), metaBytes,
 			nullTime(r.ValidFrom), nullTime(r.ValidTo), nullTime(r.DeletedAt),
-			r.Supersedes, nullString(r.Source),
+			r.Supersedes, nullString(r.Source), r.Tenant,
 		).Scan(&outID, &outCreated, &outValidFrom, &outVersion)
 		if err != nil {
 			return fmt.Errorf("semantic/postgres: upsert: %w", err)
@@ -226,7 +226,7 @@ func (d *Driver) Upsert(ctx context.Context, records []semantic.Record) error {
 		records[i].Version = outVersion
 
 		if len(r.Supersedes) > 0 {
-			if _, err := tx.Exec(ctx, supersedeStmt, outValidFrom, r.Supersedes, outID); err != nil {
+			if _, err := tx.Exec(ctx, supersedeStmt, outValidFrom, r.Supersedes, outID, r.Tenant); err != nil {
 				return fmt.Errorf("semantic/postgres: supersede: %w", err)
 			}
 		}
@@ -260,6 +260,11 @@ func (d *Driver) Search(ctx context.Context, opts semantic.SearchOptions) ([]sem
 func (d *Driver) filterConds(opts semantic.SearchOptions) ([]string, []any) {
 	var conds []string
 	var args []any
+	// Storage isolation: every search lane funnels through here, so scoping the
+	// tenant once covers dense/sparse/hybrid. Always applied (tenant is "" when
+	// isolation is off, matching the un-scoped rows).
+	args = append(args, opts.Tenant)
+	conds = append(conds, fmt.Sprintf("tenant = $%d", len(args)))
 	if len(opts.Filter) > 0 {
 		args = append(args, mustMarshalFilter(opts.Filter))
 		conds = append(conds, fmt.Sprintf("metadata @> $%d::jsonb", len(args)))
@@ -494,8 +499,11 @@ func (d *Driver) materialize(ctx context.Context, opts semantic.SearchOptions, o
 		}
 		return hits, nil
 	}
-	q := fmt.Sprintf("SELECT %s, 0::float8 AS distance FROM %s WHERE id = ANY($1)", fullRecordColumns, d.tableName)
-	rows, err := d.pool.Query(ctx, q, orderedIDs)
+	// Scope by tenant too: ids from the ranking lanes are already this tenant's,
+	// but ids can collide across tenants, so id = ANY alone could fetch another
+	// tenant's colliding row.
+	q := fmt.Sprintf("SELECT %s, 0::float8 AS distance FROM %s WHERE tenant = $2 AND id = ANY($1)", fullRecordColumns, d.tableName)
+	rows, err := d.pool.Query(ctx, q, orderedIDs, opts.Tenant)
 	if err != nil {
 		return nil, fmt.Errorf("semantic/postgres: materialize: %w", err)
 	}
@@ -524,12 +532,12 @@ func (d *Driver) materialize(ctx context.Context, opts semantic.SearchOptions, o
 func (d *Driver) Delete(ctx context.Context, id string, opts semantic.DeleteOptions) (bool, error) {
 	var stmt string
 	if opts.Hard {
-		stmt = fmt.Sprintf(`DELETE FROM %s WHERE id = $1`, d.tableName)
+		stmt = fmt.Sprintf(`DELETE FROM %s WHERE tenant = $2 AND id = $1`, d.tableName)
 	} else {
 		// Soft delete: tombstone a live row; already-retracted rows are a no-op.
-		stmt = fmt.Sprintf(`UPDATE %s SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`, d.tableName)
+		stmt = fmt.Sprintf(`UPDATE %s SET deleted_at = now() WHERE tenant = $2 AND id = $1 AND deleted_at IS NULL`, d.tableName)
 	}
-	ct, err := d.pool.Exec(ctx, stmt, id)
+	ct, err := d.pool.Exec(ctx, stmt, id, opts.Tenant)
 	if err != nil {
 		return false, fmt.Errorf("semantic/postgres: delete: %w", err)
 	}
@@ -540,29 +548,32 @@ func (d *Driver) Expire(ctx context.Context, opts semantic.ExpireOptions) (uint6
 	// Reuse the same metadata @> jsonb predicate as Search; {} matches all.
 	// A bounded subselect caps the affected set (max_rows), so the whole
 	// operation is one localized statement (ADR-0003, U3).
+	// Both the outer statement and the bounded subselect are tenant-scoped: ids
+	// can collide across tenants, so id IN (…) alone could touch another
+	// tenant's row.
 	var stmt string
 	switch opts.Action {
 	case semantic.ExpireInvalidate:
 		stmt = `UPDATE %[1]s SET valid_to = now()
-		         WHERE id IN (SELECT id FROM %[1]s
-		                       WHERE metadata @> $1::jsonb AND deleted_at IS NULL
+		         WHERE tenant = $3 AND id IN (SELECT id FROM %[1]s
+		                       WHERE tenant = $3 AND metadata @> $1::jsonb AND deleted_at IS NULL
 		                         AND (valid_to IS NULL OR valid_to > now())
 		                       LIMIT $2)`
 	case semantic.ExpireSoftDelete:
 		stmt = `UPDATE %[1]s SET deleted_at = now()
-		         WHERE id IN (SELECT id FROM %[1]s
-		                       WHERE metadata @> $1::jsonb AND deleted_at IS NULL
+		         WHERE tenant = $3 AND id IN (SELECT id FROM %[1]s
+		                       WHERE tenant = $3 AND metadata @> $1::jsonb AND deleted_at IS NULL
 		                       LIMIT $2)`
 	case semantic.ExpireHardDelete:
 		stmt = `DELETE FROM %[1]s
-		         WHERE id IN (SELECT id FROM %[1]s
-		                       WHERE metadata @> $1::jsonb
+		         WHERE tenant = $3 AND id IN (SELECT id FROM %[1]s
+		                       WHERE tenant = $3 AND metadata @> $1::jsonb
 		                       LIMIT $2)`
 	default:
 		return 0, fmt.Errorf("semantic/postgres: unknown expire action %d", opts.Action)
 	}
 	ct, err := d.pool.Exec(ctx, fmt.Sprintf(stmt, d.tableName),
-		mustMarshalFilter(opts.Filter), int32(opts.MaxRows))
+		mustMarshalFilter(opts.Filter), int32(opts.MaxRows), opts.Tenant)
 	if err != nil {
 		return 0, fmt.Errorf("semantic/postgres: expire: %w", err)
 	}
@@ -671,18 +682,23 @@ func ensureSchema(ctx context.Context, pool *pgxpool.Pool, table string, dim int
 	}
 	if _, err := pool.Exec(ctx, fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS %s (
-			id         text        PRIMARY KEY,
+			tenant     text        NOT NULL DEFAULT '',
+			id         text        NOT NULL,
 			content    text        NOT NULL DEFAULT '',
 			payload    bytea       NOT NULL DEFAULT ''::bytea,
 			vector     vector(%d)  NOT NULL,
 			metadata   jsonb       NOT NULL DEFAULT '{}'::jsonb,
-			created_at timestamptz NOT NULL DEFAULT now()
+			created_at timestamptz NOT NULL DEFAULT now(),
+			PRIMARY KEY (tenant, id)
 		)`, table, dim)); err != nil {
 		return fmt.Errorf("create table %s: %w", table, err)
 	}
-	// Lifecycle columns (ADR-0003). Added idempotently so existing tables
-	// upgrade in place; existing rows backfill valid_from=now() and read as live.
+	// Lifecycle columns (ADR-0003) + the tenant column (storage isolation).
+	// Added idempotently so existing tables upgrade in place; existing rows
+	// backfill valid_from=now() and read as live, and tenant='' (the un-isolated
+	// partition, matching pre-isolation behavior).
 	for _, alter := range []string{
+		`ALTER TABLE %s ADD COLUMN IF NOT EXISTS tenant text NOT NULL DEFAULT ''`,
 		`ALTER TABLE %s ADD COLUMN IF NOT EXISTS valid_from timestamptz NOT NULL DEFAULT now()`,
 		`ALTER TABLE %s ADD COLUMN IF NOT EXISTS valid_to timestamptz`,
 		`ALTER TABLE %s ADD COLUMN IF NOT EXISTS deleted_at timestamptz`,
@@ -693,6 +709,22 @@ func ensureSchema(ctx context.Context, pool *pgxpool.Pool, table string, dim int
 		if _, err := pool.Exec(ctx, fmt.Sprintf(alter, table)); err != nil {
 			return fmt.Errorf("add lifecycle column on %s: %w", table, err)
 		}
+	}
+	// Upgrade a pre-isolation table whose primary key is still (id) to the
+	// composite (tenant, id). Idempotent: a single-column PK is the old shape.
+	if _, err := pool.Exec(ctx, fmt.Sprintf(`
+		DO $$
+		BEGIN
+			IF EXISTS (
+				SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid = i.indrelid
+				WHERE c.relname = '%[1]s' AND i.indisprimary
+				  AND array_length(i.indkey::int[], 1) = 1
+			) THEN
+				ALTER TABLE %[1]s DROP CONSTRAINT %[1]s_pkey;
+				ALTER TABLE %[1]s ADD PRIMARY KEY (tenant, id);
+			END IF;
+		END $$`, table)); err != nil {
+		return fmt.Errorf("upgrade primary key on %s: %w", table, err)
 	}
 	// Partial index over the non-tombstoned set to keep the default live-search
 	// pre-filter cheap (the deleted_at IS NULL predicate is immutable).

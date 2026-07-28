@@ -54,6 +54,9 @@ type Deps struct {
 	// Admin is the optional cross-namespace introspection service. When nil the
 	// Admin RPC is not served.
 	Admin *admin.Service
+	// TenantIsolation scopes every block's storage to the caller's tenant when
+	// true (config `tenant_isolation`). Off by default (single-tenant behavior).
+	TenantIsolation bool
 }
 
 // Server owns the gRPC server and its listeners.
@@ -104,21 +107,21 @@ func New(cfg config.ServerConfig, deps Deps) (*Server, error) {
 		grpc.StatsHandler(statsHandler),
 	)
 
-	kvv1.RegisterKVServer(grpcSrv, kv.NewService(deps.KV))
+	kvv1.RegisterKVServer(grpcSrv, kv.NewService(deps.KV, deps.TenantIsolation))
 	if deps.Episodic != nil {
-		episodicv1.RegisterEpisodicServer(grpcSrv, episodic.NewService(deps.Episodic))
+		episodicv1.RegisterEpisodicServer(grpcSrv, episodic.NewService(deps.Episodic, deps.TenantIsolation))
 	}
 	if deps.Semantic != nil {
-		semanticv1.RegisterSemanticServer(grpcSrv, semantic.NewService(deps.Semantic))
+		semanticv1.RegisterSemanticServer(grpcSrv, semantic.NewService(deps.Semantic, deps.TenantIsolation))
 	}
 	if deps.Artifact != nil {
-		artifactv1.RegisterArtifactServer(grpcSrv, artifact.NewService(deps.Artifact))
+		artifactv1.RegisterArtifactServer(grpcSrv, artifact.NewService(deps.Artifact, deps.TenantIsolation))
 	}
 	if deps.Lease != nil {
-		leasev1.RegisterLeaseServer(grpcSrv, lease.NewService(deps.Lease))
+		leasev1.RegisterLeaseServer(grpcSrv, lease.NewService(deps.Lease, deps.TenantIsolation))
 	}
 	if deps.Graph != nil {
-		graphv1.RegisterGraphServer(grpcSrv, graph.NewService(deps.Graph))
+		graphv1.RegisterGraphServer(grpcSrv, graph.NewService(deps.Graph, deps.TenantIsolation))
 	}
 	if deps.Admin != nil {
 		adminv1.RegisterAdminServer(grpcSrv, deps.Admin)

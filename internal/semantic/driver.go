@@ -15,6 +15,11 @@ var ErrVersionMismatch = errors.New("semantic: version mismatch")
 
 // Record is the canonical in-memory representation of a stored vector.
 type Record struct {
+	// Tenant scopes the record for storage isolation. Set by the service from
+	// the caller's capability tenant when tenant isolation is enabled, else "".
+	// Part of the record's identity: (tenant, id) is unique, so two tenants may
+	// reuse the same id.
+	Tenant    string
 	ID        string
 	Content   string
 	Payload   []byte
@@ -55,6 +60,10 @@ type Hit struct {
 
 // SearchOptions narrows a Search call.
 type SearchOptions struct {
+	// Tenant scopes the search to one tenant's records (storage isolation).
+	// Empty when tenant isolation is disabled — matches records stored with the
+	// empty tenant, i.e. the whole namespace.
+	Tenant      string
 	QueryVector []float32
 	// QueryText is the raw query for the sparse lane (SPARSE/HYBRID). Empty for
 	// pure dense search.
@@ -93,6 +102,9 @@ type SearchOptions struct {
 
 // DeleteOptions controls a Delete call.
 type DeleteOptions struct {
+	// Tenant scopes the delete so a tenant can only remove its own record with
+	// the given id (storage isolation). Empty = the un-scoped namespace.
+	Tenant string
 	// Hard physically removes the row. Default (false) is a soft delete that
 	// sets DeletedAt=now() and retains the row (ADR-0003).
 	Hard bool
@@ -114,6 +126,9 @@ const (
 
 // ExpireOptions configures a bounded, filter-scoped lifecycle operation.
 type ExpireOptions struct {
+	// Tenant scopes the operation to one tenant's records (storage isolation).
+	// Empty = the un-scoped namespace.
+	Tenant string
 	// Filter is the exact-match metadata predicate; empty matches every record.
 	Filter map[string]string
 	Action ExpireAction

@@ -22,9 +22,21 @@ server: {...}
 observability: {...}
 auth: {...}
 policy: {...}
+tenant_isolation: false   # optional; see below
 backends: [...]
 namespaces: [...]
 ```
+
+## tenant_isolation
+
+```yaml
+tenant_isolation: true    # default false
+```
+
+Scopes every block's storage to the caller's capability `tenant`, so two tenants
+sharing a namespace name get physically separate data. Off by default
+(single-tenant behavior; existing data unaffected). Covers all six blocks (kv, episodic, lease, graph, artifact, semantic). Restart required to change. See
+[Tenant isolation](../concepts/tenant-isolation.md).
 
 ## server
 

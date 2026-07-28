@@ -21,34 +21,38 @@ const defaultTopK = 10
 // Service implements the generated SemanticServer.
 type Service struct {
 	semanticv1.UnimplementedSemanticServer
-	reg   *Registry
-	instr *instruments
+	reg             *Registry
+	instr           *instruments
+	tenantIsolation bool
 }
 
-func NewService(reg *Registry) *Service {
-	return &Service{reg: reg, instr: newInstruments()}
+func NewService(reg *Registry, tenantIsolation bool) *Service {
+	return &Service{reg: reg, instr: newInstruments(), tenantIsolation: tenantIsolation}
 }
 
-func (s *Service) resolve(ctx context.Context, namespace string, op auth.Op) (BoundNamespace, error) {
+// resolve authorizes the request and returns the bound namespace plus the
+// storage tenant to scope its records by (the caller's tenant when isolation is
+// enabled, else ""). The semantic driver stores/searches by (tenant, id).
+func (s *Service) resolve(ctx context.Context, namespace string, op auth.Op) (BoundNamespace, string, error) {
 	cap, ok := auth.FromContext(ctx)
 	if !ok {
-		return BoundNamespace{}, status.Error(codes.Unauthenticated, "missing capability")
+		return BoundNamespace{}, "", status.Error(codes.Unauthenticated, "missing capability")
 	}
 	if !cap.PermitsNamespace(Block, namespace) {
-		return BoundNamespace{}, status.Errorf(codes.PermissionDenied, "namespace %s/%s not in capability scope", Block, namespace)
+		return BoundNamespace{}, "", status.Errorf(codes.PermissionDenied, "namespace %s/%s not in capability scope", Block, namespace)
 	}
 	if !cap.PermitsOp(op) {
-		return BoundNamespace{}, status.Errorf(codes.PermissionDenied, "op %s not in capability scope", op)
+		return BoundNamespace{}, "", status.Errorf(codes.PermissionDenied, "op %s not in capability scope", op)
 	}
 	b, ok := s.reg.Resolve(namespace)
 	if !ok {
-		return BoundNamespace{}, status.Errorf(codes.NotFound, "namespace %q not configured", namespace)
+		return BoundNamespace{}, "", status.Errorf(codes.NotFound, "namespace %q not configured", namespace)
 	}
-	return b, nil
+	return b, auth.StorageTenant(cap.Scope.Tenant, s.tenantIsolation), nil
 }
 
 func (s *Service) Upsert(ctx context.Context, req *semanticv1.UpsertRequest) (*semanticv1.UpsertResponse, error) {
-	b, err := s.resolve(ctx, req.GetNamespace(), auth.OpSemanticUpsert)
+	b, tenant, err := s.resolve(ctx, req.GetNamespace(), auth.OpSemanticUpsert)
 	if err != nil {
 		return nil, err
 	}
@@ -100,6 +104,7 @@ func (s *Service) Upsert(ctx context.Context, req *semanticv1.UpsertRequest) (*s
 	recs := make([]Record, len(pbRecs))
 	for i, r := range pbRecs {
 		recs[i] = Record{
+			Tenant:     tenant,
 			ID:         r.GetId(),
 			Content:    r.GetContent(),
 			Payload:    r.GetPayload(),
@@ -138,7 +143,7 @@ func (s *Service) Upsert(ctx context.Context, req *semanticv1.UpsertRequest) (*s
 }
 
 func (s *Service) Search(ctx context.Context, req *semanticv1.SearchRequest) (*semanticv1.SearchResponse, error) {
-	b, err := s.resolve(ctx, req.GetNamespace(), auth.OpSemanticSearch)
+	b, tenant, err := s.resolve(ctx, req.GetNamespace(), auth.OpSemanticSearch)
 	if err != nil {
 		return nil, err
 	}
@@ -200,6 +205,7 @@ func (s *Service) Search(ctx context.Context, req *semanticv1.SearchRequest) (*s
 
 	searchStart := time.Now()
 	hits, err := b.Driver.Search(ctx, SearchOptions{
+		Tenant:             tenant,
 		QueryVector:        queryVec,
 		QueryText:          queryText,
 		Mode:               mode,
@@ -238,12 +244,12 @@ func (s *Service) Delete(ctx context.Context, req *semanticv1.DeleteRequest) (*s
 	if req.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "id required")
 	}
-	b, err := s.resolve(ctx, req.GetNamespace(), auth.OpSemanticDelete)
+	b, tenant, err := s.resolve(ctx, req.GetNamespace(), auth.OpSemanticDelete)
 	if err != nil {
 		return nil, err
 	}
 	delStart := time.Now()
-	existed, err := b.Driver.Delete(ctx, req.GetId(), DeleteOptions{Hard: req.GetHard()})
+	existed, err := b.Driver.Delete(ctx, req.GetId(), DeleteOptions{Tenant: tenant, Hard: req.GetHard()})
 	s.instr.backend(ctx, auth.OpSemanticDelete, req.GetNamespace(), time.Since(delStart))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "delete: %v", err)
@@ -259,12 +265,13 @@ func (s *Service) Expire(ctx context.Context, req *semanticv1.ExpireRequest) (*s
 	if req.GetMaxRows() == 0 {
 		return nil, status.Error(codes.InvalidArgument, "max_rows must be > 0")
 	}
-	b, err := s.resolve(ctx, req.GetNamespace(), auth.OpSemanticExpire)
+	b, tenant, err := s.resolve(ctx, req.GetNamespace(), auth.OpSemanticExpire)
 	if err != nil {
 		return nil, err
 	}
 	expStart := time.Now()
 	affected, err := b.Driver.Expire(ctx, ExpireOptions{
+		Tenant:  tenant,
 		Filter:  req.GetFilter(),
 		Action:  action,
 		MaxRows: req.GetMaxRows(),
