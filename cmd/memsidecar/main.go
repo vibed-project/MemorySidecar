@@ -28,6 +28,7 @@ import (
 	"memsidecar/internal/kv"
 	memdrv "memsidecar/internal/kv/drivers/memory"
 	pgdrv "memsidecar/internal/kv/drivers/postgres"
+	redisdrv "memsidecar/internal/kv/drivers/redis"
 	"memsidecar/internal/lease"
 	leasememdrv "memsidecar/internal/lease/drivers/memory"
 	leasepgdrv "memsidecar/internal/lease/drivers/postgres"
@@ -373,6 +374,12 @@ func buildKVRegistry(cfg *config.Config, evict *obs.EvictionCounter) (*kv.Regist
 				return nil, fmt.Errorf("backend %q: %w", b.Name, err)
 			}
 			drivers[b.Name] = d
+		case "redis", "valkey":
+			d, err := newKVRedisDriver(b)
+			if err != nil {
+				return nil, fmt.Errorf("backend %q: %w", b.Name, err)
+			}
+			drivers[b.Name] = d
 		default:
 			return nil, fmt.Errorf("backend %q: unknown driver %q", b.Name, b.Driver)
 		}
@@ -476,6 +483,19 @@ func resolveDSN(b config.BackendConfig) (string, error) {
 		return "", fmt.Errorf("postgres: dsn (or dsn_env) required")
 	}
 	return dsn, nil
+}
+
+func newKVRedisDriver(b config.BackendConfig) (*redisdrv.Driver, error) {
+	dsn, err := resolveDSN(b)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return redisdrv.New(ctx, redisdrv.Options{
+		DSN:       dsn,
+		KeyPrefix: stringOpt(b.Options, "key_prefix"),
+	})
 }
 
 func newKVPostgresDriver(b config.BackendConfig) (*pgdrv.Driver, error) {

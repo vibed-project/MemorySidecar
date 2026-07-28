@@ -166,6 +166,12 @@ backends:
       sweeper_interval: 5m         # kv: kv_items expiry sweep
       tail_interval: 250ms         # episodic: Tail poll cadence
       poll_interval: 100ms         # lease: wait_for poll cadence
+  - name: cache
+    driver: redis                  # or: valkey (alias — same driver)
+    options:
+      dsn: "redis://host:6379/0"   # OR
+      dsn_env: MEMSIDECAR_REDIS_DSN # redis:// or rediss:// URL
+      key_prefix: "memsidecar:"    # optional; namespaces this driver's keys
   - name: blob-local
     driver: fs
     options:
@@ -183,10 +189,11 @@ backends:
 ```
 
 Not every driver fits every block — `fs` and `s3` only serve `artifact`;
-`memory` and `postgres` serve everything except artifact-on-`postgres`
-(which isn't implemented). The `graph` block runs on `memory` or `postgres`
-(the Postgres driver stores nodes/edges in shared `graph_*` tables and runs
-bounded traversal in Go).
+`redis`/`valkey` only serve `kv`; `memory` and `postgres` serve everything
+except artifact-on-`postgres` (which isn't implemented). The `graph` block runs
+on `memory` or `postgres` (the Postgres driver stores nodes/edges in shared
+`graph_*` tables and runs bounded traversal in Go). A backend referenced by a
+block its driver doesn't support is a startup error.
 
 ## namespaces
 

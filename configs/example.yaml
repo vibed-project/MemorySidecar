@@ -111,6 +111,11 @@ backends:
   #     dsn_env: MEMSIDECAR_PG_DSN
   #     max_conns: 10
   #     sweeper_interval: 5m
+  # - name: cache
+  #   driver: redis                      # or: valkey (alias for the same driver)
+  #   options:                           # serves the kv block only
+  #     dsn_env: MEMSIDECAR_REDIS_DSN     # redis://[:password@]host:6379/0
+  #     # key_prefix: "memsidecar:"       # optional; namespaces this driver's keys
   # - name: blob-s3
   #   driver: s3
   #   options:

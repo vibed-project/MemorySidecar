@@ -322,9 +322,9 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("duplicate backend name %q", b.Name)
 		}
 		switch b.Driver {
-		case "memory", "postgres", "fs", "s3":
+		case "memory", "postgres", "redis", "valkey", "fs", "s3":
 		default:
-			return fmt.Errorf("backend %q: unknown driver %q (expected memory|postgres|fs|s3)", b.Name, b.Driver)
+			return fmt.Errorf("backend %q: unknown driver %q (expected memory|postgres|redis|valkey|fs|s3)", b.Name, b.Driver)
 		}
 		backendByName[b.Name] = b
 	}
