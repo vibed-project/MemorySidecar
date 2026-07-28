@@ -74,6 +74,32 @@ namespaces:
   - { block: episodic, name: events, backend: pg-main }
 ```
 
+### Scheduled retention (automatic GC)
+
+`Expire` (above) is the on-demand primitive; a namespace can also opt into a
+background scheduler that drives it on a timer, so the log is pruned without a
+client having to call `Expire`:
+
+```yaml
+namespaces:
+  - block: episodic
+    name: events
+    backend: pg-main
+    retention:
+      max_age_seconds: 2592000   # >0: delete events older than 30 days
+      max_items: 100000          # >0: keep only the newest 100k (by cursor)
+      action: hard               # hard (default; remove) | soft (tombstone)
+      interval_seconds: 3600      # sweep cadence; 0 = default 300s
+```
+
+Set `max_age_seconds`, `max_items`, or both (each independently enforced); the
+zero value disables retention. `action: soft` sets `deleted_at` (still queryable
+with `include_deleted`); `hard` reclaims the row. Sweeps run in bounded batches.
+With [`tenant_isolation`](../concepts/tenant-isolation.md) on, the policy is
+applied to **every tenant's** copy of the namespace. Retention is **episodic
+only**; other blocks reject a `retention` block. Pruned events are counted on
+`memsidecar.eviction.total{block="episodic",cause="retention"}`.
+
 ## gRPC example
 
 ```bash

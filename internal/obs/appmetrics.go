@@ -51,6 +51,7 @@ func RegisterNamespaceItemsGauge(sources []NamespaceItemSource) error {
 const (
 	EvictionTTL           = "ttl"           // key/record dropped because its TTL elapsed
 	EvictionConsolidation = "consolidation" // reserved for future memory consolidation
+	EvictionRetention     = "retention"     // record pruned by a scheduled retention policy
 )
 
 // EvictionCounter records items removed from a namespace, labelled by cause. It

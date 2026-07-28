@@ -101,6 +101,26 @@ func (d *Driver) Close() error {
 	return nil
 }
 
+// Namespaces returns every storage namespace that currently has events.
+// Retention uses it to discover tenant-qualified namespaces to prune when
+// tenant isolation is on. Implements the retention NamespaceLister capability.
+func (d *Driver) Namespaces(ctx context.Context) ([]string, error) {
+	rows, err := d.pool.Query(ctx, `SELECT DISTINCT namespace FROM episodic_events`)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: list namespaces: %w", err)
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var ns string
+		if err := rows.Scan(&ns); err != nil {
+			return nil, fmt.Errorf("postgres: scan namespace: %w", err)
+		}
+		out = append(out, ns)
+	}
+	return out, rows.Err()
+}
+
 // querier is the subset of pgxpool.Pool / pgx.Tx used for single-row reads, so
 // selectByDedup can run either inside a tx or on the pool.
 type querier interface {

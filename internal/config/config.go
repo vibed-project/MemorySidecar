@@ -218,6 +218,32 @@ type NamespaceConfig struct {
 	// ResourceExhausted. With tenant_isolation on, the cap is per tenant.
 	// KV block only. 0 = unlimited.
 	MaxItems int `koanf:"max_items"`
+	// Retention is the opt-in background retention/GC policy. Episodic block
+	// only. The zero value is disabled.
+	Retention RetentionConfig `koanf:"retention"`
+}
+
+// RetentionConfig is a per-namespace background retention policy: a scheduler
+// periodically prunes events older than MaxAgeSeconds and/or beyond the newest
+// MaxItems. The zero value is disabled. Episodic block only. Durations are
+// integer seconds (koanf here doesn't decode duration strings), matching
+// AccessConfig.
+type RetentionConfig struct {
+	// MaxAgeSeconds, when > 0, deletes events whose timestamp is older than this.
+	MaxAgeSeconds int `koanf:"max_age_seconds"`
+	// MaxItems, when > 0, keeps only the newest MaxItems events (by cursor),
+	// deleting older ones.
+	MaxItems int `koanf:"max_items"`
+	// Action is "hard" (default; physically remove) or "soft" (tombstone via
+	// DeletedAt, still queryable with include_deleted).
+	Action string `koanf:"action"`
+	// IntervalSeconds is the sweep cadence. 0 uses the default (300s).
+	IntervalSeconds int `koanf:"interval_seconds"`
+}
+
+// Enabled reports whether the policy prunes anything.
+func (r RetentionConfig) Enabled() bool {
+	return r.MaxAgeSeconds > 0 || r.MaxItems > 0
 }
 
 // AccessConfig is the per-namespace KV cache-tier policy (U5). The zero value
@@ -349,6 +375,9 @@ func (c *Config) Validate() error {
 		if ns.MaxItems > 0 && ns.Block != "kv" {
 			return fmt.Errorf("namespace %q: max_items is only supported on kv namespaces", ns.Name)
 		}
+		if err := validateRetention(ns); err != nil {
+			return err
+		}
 		key := ns.Block + "/" + ns.Name
 		if seen[key] {
 			return fmt.Errorf("duplicate namespace %q", key)
@@ -357,6 +386,22 @@ func (c *Config) Validate() error {
 		if _, ok := backendByName[ns.Backend]; !ok {
 			return fmt.Errorf("namespace %q references unknown backend %q", key, ns.Backend)
 		}
+	}
+	return nil
+}
+
+func validateRetention(ns NamespaceConfig) error {
+	r := ns.Retention
+	if r.MaxAgeSeconds < 0 || r.MaxItems < 0 || r.IntervalSeconds < 0 {
+		return fmt.Errorf("namespace %q: retention max_age_seconds/max_items/interval_seconds must be >= 0", ns.Name)
+	}
+	switch r.Action {
+	case "", "soft", "hard":
+	default:
+		return fmt.Errorf("namespace %q: retention action %q invalid (expected soft|hard)", ns.Name, r.Action)
+	}
+	if r.Enabled() && ns.Block != "episodic" {
+		return fmt.Errorf("namespace %q: retention is only supported on episodic namespaces", ns.Name)
 	}
 	return nil
 }

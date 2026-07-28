@@ -236,6 +236,26 @@ in the driver against the stored namespace, so with
 The Postgres count is taken inside the write transaction and can race with
 concurrent inserts, so the cap is a soft ceiling. Omit or set `0` for unlimited.
 
+`episodic` namespaces may set a `retention` block (episodic block only) for
+background GC of the event log:
+
+```yaml
+namespaces:
+  - block: episodic
+    name: events
+    backend: pg-main
+    retention:
+      max_age_seconds: 2592000   # >0: delete events older than this
+      max_items: 100000          # >0: keep only the newest N (by cursor)
+      action: hard               # hard (default) | soft (tombstone)
+      interval_seconds: 3600      # sweep cadence; 0 = default 300s
+```
+
+A background scheduler prunes each policy on its own timer, driving the episodic
+`Expire` primitive in bounded batches; the zero value disables it. With
+`tenant_isolation` on the policy applies per tenant. See
+[Episodic → scheduled retention](../blocks/episodic.md#scheduled-retention-automatic-gc).
+
 `embedder.cache_size` bounds a per-namespace **embedding cache**: identical
 content (same `(namespace, model, content)`) is embedded once and served from a
 bounded LRU thereafter, cutting provider calls and cost on repeated or duplicate

@@ -140,6 +140,13 @@ namespaces:
   - block: episodic
     name: events
     backend: mem-default
+    # Optional background retention/GC of the event log (episodic only). A
+    # scheduler prunes on a timer via the Expire primitive. Omit to disable.
+    # retention:
+    #   max_age_seconds: 2592000   # delete events older than 30 days
+    #   max_items: 100000          # and/or keep only the newest 100k by cursor
+    #   action: hard               # hard (remove) | soft (tombstone); default hard
+    #   interval_seconds: 3600      # sweep cadence; 0 = default 300s
   - block: semantic
     name: notes
     backend: mem-default

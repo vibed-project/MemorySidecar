@@ -123,6 +123,19 @@ func (d *Driver) Size(_ context.Context, namespace string) (int64, error) {
 	return 0, nil
 }
 
+// Namespaces returns every storage namespace that currently holds a stream.
+// Retention uses it to discover tenant-qualified namespaces to prune when
+// tenant isolation is on. Implements the retention NamespaceLister capability.
+func (d *Driver) Namespaces(_ context.Context) ([]string, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	out := make([]string, 0, len(d.streams))
+	for ns := range d.streams {
+		out = append(out, ns)
+	}
+	return out, nil
+}
+
 func (d *Driver) Append(_ context.Context, namespace string, opts episodic.AppendOptions) (episodic.Event, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
