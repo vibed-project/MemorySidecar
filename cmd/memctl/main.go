@@ -31,6 +31,8 @@ func main() {
 			usage(os.Stderr)
 			os.Exit(2)
 		}
+	case "mcp":
+		os.Exit(cmdMCP(os.Args[2:]))
 	case "version", "-v", "--version":
 		fmt.Println("memctl", version.String())
 	case "-h", "--help", "help":
@@ -52,6 +54,7 @@ func usage(w *os.File) {
 Control plane:
   memctl token gen-keypair                Mint a PASETO v4.public keypair (hex)
   memctl token issue [flags]              Mint a dev capability token
+  memctl mcp [flags]                      Run an MCP (stdio) server for LLM hosts
   memctl version                          Print version
 
 Data plane (needs a running server + a token):

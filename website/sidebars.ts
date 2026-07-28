@@ -55,6 +55,7 @@ const sidebars: SidebarsConfig = {
         'clients/python',
         'clients/http-gateway',
         'clients/grpc',
+        'clients/mcp',
       ],
     },
     {
