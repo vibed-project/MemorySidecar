@@ -53,11 +53,11 @@ Inside the process, each hot-reloadable subsystem hides behind a thin
 holder that satisfies the same interface the rest of the code already
 talks to:
 
-- [`policy.Holder`](https://github.com/m-koerbaecher/memsidecar/blob/main/internal/policy/holder.go)
+- [`policy.Holder`](https://github.com/vibed-project/MemorySidecar/blob/main/internal/policy/holder.go)
   — wraps an `Engine` in `atomic.Pointer`. The policy interceptor calls
   `holder.PreRead` / `holder.PreWrite`; the holder loads the current
   engine and delegates.
-- [`auth.VerifierHolder`](https://github.com/m-koerbaecher/memsidecar/blob/main/internal/auth/holder.go)
+- [`auth.VerifierHolder`](https://github.com/vibed-project/MemorySidecar/blob/main/internal/auth/holder.go)
   — mirrors the pattern for `TokenVerifier`.
 - `slog.LevelVar` — the standard library's own atomic level.
 

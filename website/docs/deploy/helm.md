@@ -121,5 +121,5 @@ startup. Use that as your rollout signal.
 - **Configure the gateway with TLS.** Terminate TLS on the gateway port
   at your ingress.
 
-See [`deploy/helm/memsidecar/README.md`](https://github.com/m-koerbaecher/memsidecar/blob/main/deploy/helm/memsidecar/README.md) for
+See [`deploy/helm/memsidecar/README.md`](https://github.com/vibed-project/MemorySidecar/blob/main/deploy/helm/memsidecar/README.md) for
 the full values reference.

@@ -16,7 +16,7 @@ Brings up memsidecar backed by Postgres (pgvector) and MinIO (S3), with helpers
 to mint a token and drive the data plane. No Go/buf toolchain needed.
 
 ```bash
-git clone https://github.com/m-koerbaecher/memsidecar.git
+git clone https://github.com/vibed-project/MemorySidecar.git
 cd memsidecar
 docker compose up --build -d           # gRPC :7777, HTTP :8080, metrics :9090
 
