@@ -213,6 +213,11 @@ type NamespaceConfig struct {
 	// in-memory driver. Durations are seconds (koanf here doesn't decode
 	// duration strings).
 	Access AccessConfig `koanf:"access"`
+	// MaxItems, when > 0, caps the number of live keys the namespace may hold; a
+	// Put that would add a new key past the cap is rejected with
+	// ResourceExhausted. With tenant_isolation on, the cap is per tenant.
+	// KV block only. 0 = unlimited.
+	MaxItems int `koanf:"max_items"`
 }
 
 // AccessConfig is the per-namespace KV cache-tier policy (U5). The zero value
@@ -337,6 +342,12 @@ func (c *Config) Validate() error {
 		}
 		if ns.Name == "" {
 			return fmt.Errorf("namespace with empty name")
+		}
+		if ns.MaxItems < 0 {
+			return fmt.Errorf("namespace %q: max_items must be >= 0", ns.Name)
+		}
+		if ns.MaxItems > 0 && ns.Block != "kv" {
+			return fmt.Errorf("namespace %q: max_items is only supported on kv namespaces", ns.Name)
 		}
 		key := ns.Block + "/" + ns.Name
 		if seen[key] {

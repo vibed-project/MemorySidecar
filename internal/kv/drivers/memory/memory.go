@@ -202,6 +202,11 @@ func (d *Driver) Put(_ context.Context, namespace, key string, opts kv.PutOption
 		existing, found = nil, false
 	}
 
+	// Item quota: a new key beyond the cap is rejected; overwrites are fine.
+	if !found && opts.MaxItems > 0 && len(bucket) >= opts.MaxItems {
+		return kv.Record{}, kv.ErrQuotaExceeded
+	}
+
 	if opts.IfVersion != nil {
 		expected := *opts.IfVersion
 		var currentVersion uint64

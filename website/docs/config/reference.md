@@ -193,6 +193,7 @@ bounded traversal in Go).
 ```yaml
 namespaces:
   - { block: kv,       name: scratchpad, backend: mem-default }
+  - { block: kv,       name: tool-cache, backend: pg-main, max_items: 10000 }
   - { block: episodic, name: events,     backend: pg-main }
   - { block: artifact, name: blobs,      backend: blob-local }
   - { block: lease,    name: locks,      backend: pg-main }
@@ -218,6 +219,15 @@ backend must support the block (e.g. you can't use `driver: fs` for
 In-memory `kv` namespaces may add an optional `access` block (cache-tier
 tracking, read-through TTL, and heat-based capacity eviction) — off by default.
 See [KV → cache-tier access policy](../blocks/kv.md#cache-tier-access-policy-in-memory-only).
+
+`kv` namespaces may set `max_items` (integer, kv block only) to cap the number
+of live keys: a `Put` that would add a **new** key past the cap is rejected with
+`ResourceExhausted`; overwriting an existing key is always allowed. It's enforced
+in the driver against the stored namespace, so with
+[`tenant_isolation`](#tenant_isolation) on it becomes a **per-tenant** cap
+(each tenant gets its own `max_items` allowance over the shared namespace).
+The Postgres count is taken inside the write transaction and can race with
+concurrent inserts, so the cap is a soft ceiling. Omit or set `0` for unlimited.
 
 `embedder.cache_size` bounds a per-namespace **embedding cache**: identical
 content (same `(namespace, model, content)`) is embedded once and served from a

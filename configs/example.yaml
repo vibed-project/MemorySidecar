@@ -127,6 +127,11 @@ namespaces:
   - block: kv
     name: tool-cache
     backend: mem-default
+    # max_items caps the live keys this namespace may hold; a Put that would add
+    # a new key past the cap is rejected with ResourceExhausted (overwrites are
+    # always allowed). With tenant_isolation on, the cap is applied per tenant.
+    # kv block only; 0/omitted = unlimited.
+    # max_items: 10000
   - block: episodic
     name: events
     backend: mem-default
