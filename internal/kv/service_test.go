@@ -15,10 +15,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
-	kvv1 "memsidecar/gen/memsidecar/kv/v1"
-	"memsidecar/internal/auth"
-	"memsidecar/internal/kv"
-	memdrv "memsidecar/internal/kv/drivers/memory"
+	kvv1 "github.com/vibed-project/mindD/gen/mindd/kv/v1"
+	"github.com/vibed-project/mindD/internal/auth"
+	"github.com/vibed-project/mindD/internal/kv"
+	memdrv "github.com/vibed-project/mindD/internal/kv/drivers/memory"
 )
 
 func newTestServer(t *testing.T, cap *auth.Capability) kvv1.KVClient {

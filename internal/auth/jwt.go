@@ -12,7 +12,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"memsidecar/internal/config"
+	"github.com/vibed-project/mindD/internal/config"
 )
 
 type jwtVerifier struct {

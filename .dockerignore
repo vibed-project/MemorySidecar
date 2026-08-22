@@ -6,7 +6,7 @@
 
 bin/
 dist/
-# The Go image only builds the server + memctl; keep JS/docs out of the context.
+# The Go image only builds the server + mindctl; keep JS/docs out of the context.
 **/node_modules/
 sdk/typescript/dist/
 website/

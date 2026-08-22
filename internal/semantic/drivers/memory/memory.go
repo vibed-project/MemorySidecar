@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"memsidecar/internal/semantic"
+	"github.com/vibed-project/mindD/internal/semantic"
 )
 
 // Options configures a Driver.

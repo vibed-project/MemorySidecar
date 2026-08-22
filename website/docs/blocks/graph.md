@@ -116,7 +116,7 @@ backends:
   - name: pg-main            # durable, shared across processes
     driver: postgres
     options:
-      dsn_env: MEMSIDECAR_PG_DSN
+      dsn_env: MINDD_PG_DSN
       max_conns: 10
 namespaces:
   - block: graph
@@ -130,25 +130,25 @@ startup; a namespace is a column, so one backend serves many graph namespaces.
 ## gRPC example
 
 ```bash
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"knowledge","nodes":[
         {"id":"kim","labels":["Person"]},{"id":"paris","labels":["City"]}]}' \
-  127.0.0.1:7777 memsidecar.graph.v1.Graph/UpsertNodes
+  127.0.0.1:7777 mindd.graph.v1.Graph/UpsertNodes
 
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"knowledge","edges":[
         {"id":"e1","type":"LIVES_IN","from":"kim","to":"paris"}]}' \
-  127.0.0.1:7777 memsidecar.graph.v1.Graph/UpsertEdges
+  127.0.0.1:7777 mindd.graph.v1.Graph/UpsertEdges
 
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"knowledge","start_id":"kim","direction":"DIRECTION_OUT","depth":2}' \
-  127.0.0.1:7777 memsidecar.graph.v1.Graph/Traverse
+  127.0.0.1:7777 mindd.graph.v1.Graph/Traverse
 ```
 
 ## Python example
 
 ```python
-from memsidecar.graph.v1 import graph_pb2
+from mindd.graph.v1 import graph_pb2
 
 m.graph.upsert_nodes("knowledge", [
     graph_pb2.Node(id="kim", labels=["Person"]),

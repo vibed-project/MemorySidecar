@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"memsidecar/internal/episodic"
-	"memsidecar/internal/episodic/episodictest"
+	"github.com/vibed-project/mindD/internal/episodic"
+	"github.com/vibed-project/mindD/internal/episodic/episodictest"
 )
 
 type harness struct{}

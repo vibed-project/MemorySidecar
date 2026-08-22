@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"memsidecar/internal/lease"
-	"memsidecar/internal/lease/leasetest"
+	"github.com/vibed-project/mindD/internal/lease"
+	"github.com/vibed-project/mindD/internal/lease/leasetest"
 )
 
 type harness struct{}

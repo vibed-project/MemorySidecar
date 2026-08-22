@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # Architecture
 
-memsidecar runs as a co-process to one or more agents — typically in the
+mindD runs as a co-process to one or more agents — typically in the
 same Kubernetes pod, the same VM, or the same container network in local
 dev. Agents make local calls over Unix domain socket or loopback gRPC; the
 sidecar fans out to configured backends and enforces policy on the way
@@ -37,10 +37,10 @@ The interceptor chain is intentional:
 2. **Observability** records a span and an access-log line at the wire
    boundary. OTel metrics flow through the same `otelgrpc.StatsHandler`,
    so `/metrics` reports per-method latency histograms and counters for
-   free — plus a memory-aware `memsidecar.op.duration` split by
+   free — plus a memory-aware `mindd.op.duration` split by
    write/query op-class and per-block backend-latency / result-shape
    metrics. See [Observability](../ops/observability.md).
-3. **Auth** reads `x-memsidecar-capability` from gRPC metadata, verifies
+3. **Auth** reads `x-mindd-capability` from gRPC metadata, verifies
    the token (PASETO or JWT), and attaches a typed `*auth.Capability` to
    the request context. Missing → `Unauthenticated`; out-of-scope →
    `PermissionDenied`. See [Capabilities](./capabilities.md).
@@ -73,7 +73,7 @@ stack (auth, policy, observability, HTTP gateway) costs them nothing.
 
 ## Listeners
 
-memsidecar opens up to four listeners side by side:
+mindD opens up to four listeners side by side:
 
 | Listener | Purpose | TLS? |
 |---|---|---|
@@ -93,7 +93,7 @@ full restart. See [Hot reload](../config/hot-reload.md).
 
 ## What's *not* in the sidecar
 
-- **No agent framework.** memsidecar doesn't orchestrate, plan, or invoke
+- **No agent framework.** mindD doesn't orchestrate, plan, or invoke
   LLMs.
 - **No prompt assembly.** Final context-window construction stays in the
   agent or framework.

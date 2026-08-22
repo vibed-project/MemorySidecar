@@ -16,9 +16,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
-	kvv1 "memsidecar/gen/memsidecar/kv/v1"
-	"memsidecar/internal/auth"
-	"memsidecar/internal/interceptor"
+	kvv1 "github.com/vibed-project/mindD/gen/mindd/kv/v1"
+	"github.com/vibed-project/mindD/internal/auth"
+	"github.com/vibed-project/mindD/internal/interceptor"
 )
 
 type fakeVerifier struct {

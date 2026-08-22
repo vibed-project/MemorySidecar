@@ -1,8 +1,8 @@
-"""Integration tests for the LangGraph checkpointer (memsidecar.ext.langgraph).
+"""Integration tests for the LangGraph checkpointer (mindd.ext.langgraph).
 
-Needs a running memsidecar with a kv namespace for checkpoints and a token that
-grants kv get/put/delete/scan on it. Set MEMSIDECAR_TOKEN (and optionally
-MEMSIDECAR_ADDR, MEMSIDECAR_CHECKPOINT_NS); the tests skip otherwise.
+Needs a running mindd with a kv namespace for checkpoints and a token that
+grants kv get/put/delete/scan on it. Set MINDD_TOKEN (and optionally
+MINDD_ADDR, MINDD_CHECKPOINT_NS); the tests skip otherwise.
 """
 import os
 import uuid
@@ -10,21 +10,21 @@ import uuid
 import pytest
 
 pytestmark = pytest.mark.skipif(
-    not os.getenv("MEMSIDECAR_TOKEN"),
-    reason="needs a running memsidecar (set MEMSIDECAR_TOKEN)",
+    not os.getenv("MINDD_TOKEN"),
+    reason="needs a running mindd (set MINDD_TOKEN)",
 )
 
 
 @pytest.fixture
 def saver():
-    from memsidecar import MemSidecar
-    from memsidecar.ext.langgraph import MemSidecarSaver
+    from mindd import MindD
+    from mindd.ext.langgraph import MindDSaver
 
-    addr = os.getenv("MEMSIDECAR_ADDR", "127.0.0.1:7777")
-    ns = os.getenv("MEMSIDECAR_CHECKPOINT_NS", "checkpoints")
-    client = MemSidecar(addr, token=os.environ["MEMSIDECAR_TOKEN"])
+    addr = os.getenv("MINDD_ADDR", "127.0.0.1:7777")
+    ns = os.getenv("MINDD_CHECKPOINT_NS", "checkpoints")
+    client = MindD(addr, token=os.environ["MINDD_TOKEN"])
     try:
-        yield MemSidecarSaver(client, namespace=ns)
+        yield MindDSaver(client, namespace=ns)
     finally:
         client.close()
 

@@ -8,7 +8,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-const appMeterName = "memsidecar/obs"
+const appMeterName = "mindd/obs"
 
 // NamespaceItemSource reports the current item count per namespace for one
 // building block. The Items func is typically a registry method value, e.g.
@@ -19,7 +19,7 @@ type NamespaceItemSource struct {
 }
 
 // RegisterNamespaceItemsGauge registers a single observable gauge,
-// memsidecar.namespace.items{block,namespace}, whose callback polls every
+// mindd.namespace.items{block,namespace}, whose callback polls every
 // source on each metric collection. Sources must be cheap: memory drivers
 // report map length and the pgvector driver uses a reltuples estimate — never
 // count(*) on the hot path. Safe to call under a no-op meter provider (records
@@ -27,7 +27,7 @@ type NamespaceItemSource struct {
 func RegisterNamespaceItemsGauge(sources []NamespaceItemSource) error {
 	m := otel.GetMeterProvider().Meter(appMeterName)
 	gauge, err := m.Int64ObservableGauge(
-		"memsidecar.namespace.items",
+		"mindd.namespace.items",
 		metric.WithDescription("Live item count per (block, namespace)."),
 	)
 	if err != nil {
@@ -60,12 +60,12 @@ type EvictionCounter struct {
 	c metric.Int64Counter
 }
 
-// NewEvictionCounter builds memsidecar.eviction.total from the global meter
+// NewEvictionCounter builds mindd.eviction.total from the global meter
 // provider. Safe under the no-op provider.
 func NewEvictionCounter() *EvictionCounter {
 	m := otel.GetMeterProvider().Meter(appMeterName)
 	c, _ := m.Int64Counter(
-		"memsidecar.eviction.total",
+		"mindd.eviction.total",
 		metric.WithDescription("Items evicted from a namespace, by cause (e.g. ttl expiry)."),
 	)
 	return &EvictionCounter{c: c}

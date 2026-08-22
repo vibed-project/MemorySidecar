@@ -5,8 +5,8 @@ Server releases do **not** publish the SDKs — the tag prefixes are distinct.
 
 | SDK | Package | Registry | Workflow | Tag |
 |-----|---------|----------|----------|-----|
-| Python | `memsidecar` | [PyPI](https://pypi.org/project/memsidecar/) | `.github/workflows/release-python-sdk.yml` | `python-sdk-vX.Y.Z` |
-| TypeScript | `@memsidecar/client` | [npm](https://www.npmjs.com/package/@memsidecar/client) | `.github/workflows/release-typescript-sdk.yml` | `typescript-sdk-vX.Y.Z` |
+| Python | `mindd` | [PyPI](https://pypi.org/project/mindd/) | `.github/workflows/release-python-sdk.yml` | `python-sdk-vX.Y.Z` |
+| TypeScript | `@mindd/client` | [npm](https://www.npmjs.com/package/@mindd/client) | `.github/workflows/release-typescript-sdk.yml` | `typescript-sdk-vX.Y.Z` |
 
 ## One-time setup (registry side)
 
@@ -17,7 +17,7 @@ You must do this once before the first release; the workflows can't self-configu
 The Python workflow authenticates with OIDC, so there's **no API token to store**.
 On PyPI, add a *pending* Trusted Publisher (Account → Publishing) matching:
 
-- **PyPI project name:** `memsidecar`
+- **PyPI project name:** `mindd`
 - **Owner:** `vibed-project` · **Repository:** `MemorySidecar`
 - **Workflow name:** `release-python-sdk.yml`
 - **Environment:** `pypi`
@@ -30,10 +30,10 @@ Optionally create GitHub Environments named `pypi` and `testpypi`
 
 ### npm (automation token + provenance)
 
-1. Ensure the `@memsidecar` scope/org exists on npm and the release account is a
+1. Ensure the `@mindd` scope/org exists on npm and the release account is a
    publisher for it.
 2. Create an **Automation** access token (or a Granular token scoped to publish
-   `@memsidecar/*`) and add it as the repository secret **`NPM_TOKEN`**
+   `@mindd/*`) and add it as the repository secret **`NPM_TOKEN`**
    (Settings → Secrets and variables → Actions).
 3. Provenance is already wired (`publishConfig.provenance` + `id-token: write`);
    it needs no extra secret, just the OIDC permission the workflow grants.

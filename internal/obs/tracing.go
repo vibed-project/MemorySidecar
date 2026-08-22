@@ -13,11 +13,11 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 
-	"memsidecar/internal/config"
-	"memsidecar/internal/version"
+	"github.com/vibed-project/mindD/internal/config"
+	"github.com/vibed-project/mindD/internal/version"
 )
 
-const ServiceName = "memsidecar"
+const ServiceName = "mindd"
 
 // SetupTracing builds a TracerProvider, registers it globally, and returns a
 // shutdown function that flushes spans.

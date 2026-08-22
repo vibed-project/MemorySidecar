@@ -50,7 +50,7 @@ func TestNamespaceItemsGauge(t *testing.T) {
 		t.Fatalf("register: %v", err)
 	}
 
-	g, ok := findMetric(t, reader, "memsidecar.namespace.items").Data.(metricdata.Gauge[int64])
+	g, ok := findMetric(t, reader, "mindd.namespace.items").Data.(metricdata.Gauge[int64])
 	if !ok {
 		t.Fatal("namespace.items is not an int64 gauge")
 	}
@@ -73,7 +73,7 @@ func TestEvictionCounter(t *testing.T) {
 	var nilCounter *EvictionCounter
 	nilCounter.Add("kv", "x", EvictionTTL, 1) // must not panic
 
-	s, ok := findMetric(t, reader, "memsidecar.eviction.total").Data.(metricdata.Sum[int64])
+	s, ok := findMetric(t, reader, "mindd.eviction.total").Data.(metricdata.Sum[int64])
 	if !ok {
 		t.Fatal("eviction.total is not an int64 sum")
 	}

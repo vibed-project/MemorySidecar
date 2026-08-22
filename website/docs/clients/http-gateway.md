@@ -7,7 +7,7 @@ sidebar_position: 2
 
 `grpc-gateway` mirrors the gRPC services over HTTP/JSON so any HTTP client
 (curl, the browser, language stacks without a gRPC story) can talk to
-memsidecar. It runs on its own listener configured by
+mindD. It runs on its own listener configured by
 `server.http.addr`.
 
 ## URL scheme
@@ -26,7 +26,7 @@ exactly.
 The gateway forwards two incoming HTTP headers to the inner gRPC call as
 metadata:
 
-- `x-memsidecar-capability` — the bearer token (required).
+- `x-mindd-capability` — the bearer token (required).
 - `Authorization` — forwarded but currently unused; reserved for future
   use.
 
@@ -34,7 +34,7 @@ Missing or invalid tokens come back as HTTP 401 with the gRPC `code: 16`
 in the body:
 
 ```json
-{"code":16,"message":"missing x-memsidecar-capability header"}
+{"code":16,"message":"missing x-mindd-capability header"}
 ```
 
 ## Examples
@@ -42,13 +42,13 @@ in the body:
 ### KV
 
 ```bash
-curl -sS -X POST http://127.0.0.1:8080/memsidecar.kv.v1.KV/Put \
-  -H "x-memsidecar-capability: Bearer $TOKEN" \
+curl -sS -X POST http://127.0.0.1:8080/mindd.kv.v1.KV/Put \
+  -H "x-mindd-capability: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"namespace":"scratchpad","key":"hello","value":"d29ybGQ="}'
 
-curl -sS -X POST http://127.0.0.1:8080/memsidecar.kv.v1.KV/Get \
-  -H "x-memsidecar-capability: Bearer $TOKEN" \
+curl -sS -X POST http://127.0.0.1:8080/mindd.kv.v1.KV/Get \
+  -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"scratchpad","key":"hello"}'
 ```
 
@@ -58,8 +58,8 @@ curl -sS -X POST http://127.0.0.1:8080/memsidecar.kv.v1.KV/Get \
 delimited JSON envelopes**, one per event:
 
 ```bash
-curl -sS -N -X POST http://127.0.0.1:8080/memsidecar.episodic.v1.Episodic/Range \
-  -H "x-memsidecar-capability: Bearer $TOKEN" \
+curl -sS -N -X POST http://127.0.0.1:8080/mindd.episodic.v1.Episodic/Range \
+  -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"events"}'
 ```
 
@@ -71,8 +71,8 @@ curl -sS -N -X POST http://127.0.0.1:8080/memsidecar.episodic.v1.Episodic/Range 
 ### Semantic
 
 ```bash
-curl -sS -X POST http://127.0.0.1:8080/memsidecar.semantic.v1.Semantic/Search \
-  -H "x-memsidecar-capability: Bearer $TOKEN" \
+curl -sS -X POST http://127.0.0.1:8080/mindd.semantic.v1.Semantic/Search \
+  -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"notes","queryText":"apple","topK":2}'
 ```
 

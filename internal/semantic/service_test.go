@@ -13,11 +13,11 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
-	semanticv1 "memsidecar/gen/memsidecar/semantic/v1"
-	"memsidecar/internal/auth"
-	"memsidecar/internal/semantic"
-	memdrv "memsidecar/internal/semantic/drivers/memory"
-	"memsidecar/internal/semantic/embedder"
+	semanticv1 "github.com/vibed-project/mindD/gen/mindd/semantic/v1"
+	"github.com/vibed-project/mindD/internal/auth"
+	"github.com/vibed-project/mindD/internal/semantic"
+	memdrv "github.com/vibed-project/mindD/internal/semantic/drivers/memory"
+	"github.com/vibed-project/mindD/internal/semantic/embedder"
 )
 
 const testDim = 64

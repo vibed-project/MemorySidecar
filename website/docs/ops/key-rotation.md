@@ -45,7 +45,7 @@ auth:
     public_key_hex: "<new>"
 ```
 
-After each edit, `kill -HUP $(pgrep memsidecar)`.
+After each edit, `kill -HUP $(pgrep mindd)`.
 
 ## End-to-end smoke
 
@@ -82,8 +82,8 @@ auth:
   jwt:
     alg: RS256
     public_pems:
-      - /etc/memsidecar/jwt/new-key.pem
-      - /etc/memsidecar/jwt/old-key.pem
+      - /etc/mindd/jwt/new-key.pem
+      - /etc/mindd/jwt/old-key.pem
 ```
 
 `HS256` uses a single shared secret and doesn't benefit from multi-key —

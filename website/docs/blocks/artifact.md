@@ -64,7 +64,7 @@ backends:
   - name: blob-local
     driver: fs
     options:
-      base_dir: /var/lib/memsidecar/blobs
+      base_dir: /var/lib/mindd/blobs
   - name: blob-s3
     driver: s3
     options:
@@ -85,12 +85,12 @@ namespaces:
 PAYLOAD_B64=$(base64 < ./generated.png | tr -d '\n')
 
 printf '{"init":{"namespace":"blobs","id":"render-1","content_type":"image/png"}}\n{"chunk":{"data":"%s"}}\n' "$PAYLOAD_B64" | \
-  grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" -d @ \
-    127.0.0.1:7777 memsidecar.artifact.v1.Artifact/Put
+  grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" -d @ \
+    127.0.0.1:7777 mindd.artifact.v1.Artifact/Put
 
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"blobs","id":"render-1"}' \
-  127.0.0.1:7777 memsidecar.artifact.v1.Artifact/Stat
+  127.0.0.1:7777 mindd.artifact.v1.Artifact/Stat
 ```
 
 The `Put` response carries the SHA-256 the server computed while streaming

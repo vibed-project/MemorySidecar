@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"memsidecar/internal/auth"
+	"github.com/vibed-project/mindD/internal/auth"
 
-	episodicv1 "memsidecar/gen/memsidecar/episodic/v1"
+	episodicv1 "github.com/vibed-project/mindD/gen/mindd/episodic/v1"
 )
 
 const Block = "episodic"

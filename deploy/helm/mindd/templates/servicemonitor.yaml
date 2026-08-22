@@ -1,0 +1,19 @@
+{{- if and .Values.serviceMonitor.enabled (eq .Values.config.observability.metrics.exporter "prometheus") -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "mindd.fullname" . }}
+  labels:
+    {{- include "mindd.labels" . | nindent 4 }}
+    {{- with .Values.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "mindd.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: metrics
+      path: {{ .Values.config.observability.metrics.prometheus.path | default "/metrics" }}
+      interval: {{ .Values.serviceMonitor.interval }}
+{{- end }}

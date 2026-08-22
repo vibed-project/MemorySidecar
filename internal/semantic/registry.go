@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"memsidecar/internal/semantic/embedder"
+	"github.com/vibed-project/mindD/internal/semantic/embedder"
 )
 
 // BoundNamespace is the per-namespace configuration the service needs at
@@ -63,7 +63,7 @@ type namespaceSizer interface {
 }
 
 // NamespaceItems returns the record count for every bound namespace whose
-// driver can report it cheaply. Feeds the memsidecar.namespace.items gauge.
+// driver can report it cheaply. Feeds the mindd.namespace.items gauge.
 func (r *Registry) NamespaceItems(ctx context.Context) map[string]int64 {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

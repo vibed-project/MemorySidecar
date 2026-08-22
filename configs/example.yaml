@@ -1,21 +1,21 @@
-# memsidecar — example config
+# mindd — example config
 #
 # DEV KEYPAIR — DO NOT USE IN PRODUCTION.
 # Mint tokens with:
-#   export MEMSIDECAR_PASETO_SECRET_HEX=38fb82e74985d41969ce39904d7cbe01dd31ea0b573dc8fc35c5689b8212ccc961a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9
-#   memctl token issue --tenant acme --agent agent-1 --ns 'kv/scratchpad' --ops get,put,delete,scan --ttl 1h
+#   export MINDD_PASETO_SECRET_HEX=38fb82e74985d41969ce39904d7cbe01dd31ea0b573dc8fc35c5689b8212ccc961a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9
+#   mindctl token issue --tenant acme --agent agent-1 --ns 'kv/scratchpad' --ops get,put,delete,scan --ttl 1h
 
 server:
   grpc:
     tcp: "127.0.0.1:7777"
-    uds: "/tmp/memsidecar.sock"
+    uds: "/tmp/mindd.sock"
     # TLS on the TCP listener. UDS stays plaintext (filesystem permissions
     # are the authz boundary). Uncomment to enable.
     # tls:
-    #   cert_file: /etc/memsidecar/tls/server.crt
-    #   key_file: /etc/memsidecar/tls/server.key
+    #   cert_file: /etc/mindd/tls/server.crt
+    #   key_file: /etc/mindd/tls/server.key
     #   # Enable mTLS by pointing at a CA bundle every client cert chains to:
-    #   client_ca_file: /etc/memsidecar/tls/client-ca.crt
+    #   client_ca_file: /etc/mindd/tls/client-ca.crt
     #   require_client_cert: true
   http:
     # grpc-gateway: HTTP/JSON over the same services.
@@ -90,7 +90,7 @@ policy:
   # verifier: jwt
   # jwt:
   #   alg: HS256
-  #   secret_env: MEMSIDECAR_JWT_SECRET
+  #   secret_env: MINDD_JWT_SECRET
 
 # Scope every block's storage to the caller's capability tenant, so two tenants
 # sharing a namespace name get physically separate data. Off by default
@@ -104,21 +104,21 @@ backends:
   - name: blob-local
     driver: fs
     options:
-      base_dir: /tmp/memsidecar-blobs
+      base_dir: /tmp/mindd-blobs
   # - name: pg-main
   #   driver: postgres
   #   options:
-  #     dsn_env: MEMSIDECAR_PG_DSN
+  #     dsn_env: MINDD_PG_DSN
   #     max_conns: 10
   #     sweeper_interval: 5m
   # - name: blob-s3
   #   driver: s3
   #   options:
   #     endpoint: localhost:9000           # MinIO; "s3.amazonaws.com" for AWS
-  #     bucket: memsidecar
+  #     bucket: mindd
   #     use_ssl: false
-  #     access_key_env: MEMSIDECAR_S3_ACCESS_KEY
-  #     secret_key_env: MEMSIDECAR_S3_SECRET_KEY
+  #     access_key_env: MINDD_S3_ACCESS_KEY
+  #     secret_key_env: MINDD_S3_SECRET_KEY
 
 namespaces:
   - block: kv

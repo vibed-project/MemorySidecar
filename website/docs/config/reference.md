@@ -5,14 +5,14 @@ sidebar_position: 1
 
 # YAML reference
 
-memsidecar takes a single YAML file via `--config`. The example shipped at
+mindD takes a single YAML file via `--config`. The example shipped at
 `configs/example.yaml` is annotated; this page is the per-field reference.
 
-Environment variables override fields via the `MEMSIDECAR_` prefix with
+Environment variables override fields via the `MINDD_` prefix with
 double-underscore as section separator:
 
 ```bash
-MEMSIDECAR_SERVER__GRPC__TCP="0.0.0.0:9000"
+MINDD_SERVER__GRPC__TCP="0.0.0.0:9000"
 ```
 
 ## Top-level shape
@@ -44,7 +44,7 @@ sharing a namespace name get physically separate data. Off by default
 server:
   grpc:
     tcp: "127.0.0.1:7777"        # leave empty to disable
-    uds: "/tmp/memsidecar.sock"
+    uds: "/tmp/mindd.sock"
     tls:                          # optional; UDS stays plaintext either way
       cert_file: /etc/.../server.crt
       key_file:  /etc/.../server.key
@@ -100,7 +100,7 @@ auth:
       - "<old>"
   jwt:
     alg: HS256                    # HS256 | RS256
-    secret_env: MEMSIDECAR_JWT_SECRET   # HS256 only
+    secret_env: MINDD_JWT_SECRET   # HS256 only
     public_pem: /etc/.../jwt.pem        # RS256 singular
     public_pems:                        # RS256 rotation
       - /etc/.../jwt-new.pem
@@ -161,7 +161,7 @@ backends:
     driver: postgres
     options:
       dsn: "postgres://..."        # OR
-      dsn_env: MEMSIDECAR_PG_DSN
+      dsn_env: MINDD_PG_DSN
       max_conns: 10
       sweeper_interval: 5m         # kv: kv_items expiry sweep
       tail_interval: 250ms         # episodic: Tail poll cadence
@@ -169,7 +169,7 @@ backends:
   - name: blob-local
     driver: fs
     options:
-      base_dir: /var/lib/memsidecar/blobs
+      base_dir: /var/lib/mindd/blobs
   - name: blob-s3
     driver: s3
     options:
@@ -177,7 +177,7 @@ backends:
       bucket: my-bucket
       use_ssl: true
       region: eu-west-1
-      prefix: "memsidecar/"
+      prefix: "mindd/"
       access_key_env: AWS_ACCESS_KEY_ID
       secret_key_env: AWS_SECRET_ACCESS_KEY
 ```
@@ -224,7 +224,7 @@ content (same `(namespace, model, content)`) is embedded once and served from a
 bounded LRU thereafter, cutting provider calls and cost on repeated or duplicate
 text. Omit it or set `0` for the default (4096 entries); set a **negative** value
 to disable caching for the namespace. Hit/miss rates are exported as
-`memsidecar.embedder.cache.{hits,misses}` — see
+`mindd.embedder.cache.{hits,misses}` — see
 [Observability](../ops/observability.md).
 
 ## What hot-reloads

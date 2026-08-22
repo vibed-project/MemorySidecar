@@ -7,8 +7,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"memsidecar/internal/auth"
-	"memsidecar/internal/policy"
+	"github.com/vibed-project/mindD/internal/auth"
+	"github.com/vibed-project/mindD/internal/policy"
 )
 
 // methodToOp resolves a fully-qualified gRPC method name to a building-block op
@@ -18,37 +18,37 @@ var methodToOp = map[string]struct {
 	block string
 	write bool
 }{
-	"/memsidecar.kv.v1.KV/Get":                {auth.OpKVGet, "kv", false},
-	"/memsidecar.kv.v1.KV/MultiGet":           {auth.OpKVGet, "kv", false},
-	"/memsidecar.kv.v1.KV/Put":                {auth.OpKVPut, "kv", true},
-	"/memsidecar.kv.v1.KV/Delete":             {auth.OpKVDelete, "kv", true},
-	"/memsidecar.kv.v1.KV/Scan":               {auth.OpKVScan, "kv", false},
-	"/memsidecar.episodic.v1.Episodic/Append": {auth.OpEpisodicAppend, "episodic", true},
-	"/memsidecar.episodic.v1.Episodic/Range":  {auth.OpEpisodicRange, "episodic", false},
-	"/memsidecar.episodic.v1.Episodic/Tail":   {auth.OpEpisodicTail, "episodic", false},
-	"/memsidecar.episodic.v1.Episodic/Expire": {auth.OpEpisodicExpire, "episodic", true},
-	"/memsidecar.semantic.v1.Semantic/Upsert": {auth.OpSemanticUpsert, "semantic", true},
-	"/memsidecar.semantic.v1.Semantic/Search": {auth.OpSemanticSearch, "semantic", false},
-	"/memsidecar.semantic.v1.Semantic/Delete": {auth.OpSemanticDelete, "semantic", true},
-	"/memsidecar.semantic.v1.Semantic/Expire": {auth.OpSemanticExpire, "semantic", true},
-	"/memsidecar.artifact.v1.Artifact/Put":    {auth.OpArtifactPut, "artifact", true},
-	"/memsidecar.artifact.v1.Artifact/Get":    {auth.OpArtifactGet, "artifact", false},
-	"/memsidecar.artifact.v1.Artifact/Stat":   {auth.OpArtifactStat, "artifact", false},
-	"/memsidecar.artifact.v1.Artifact/Delete": {auth.OpArtifactDelete, "artifact", true},
-	"/memsidecar.artifact.v1.Artifact/List":   {auth.OpArtifactList, "artifact", false},
-	"/memsidecar.lease.v1.Lease/Acquire":      {auth.OpLeaseAcquire, "lease", true},
-	"/memsidecar.lease.v1.Lease/Renew":        {auth.OpLeaseRenew, "lease", true},
-	"/memsidecar.lease.v1.Lease/Release":      {auth.OpLeaseRelease, "lease", true},
-	"/memsidecar.lease.v1.Lease/Inspect":      {auth.OpLeaseInspect, "lease", false},
-	"/memsidecar.lease.v1.Lease/List":         {auth.OpLeaseList, "lease", false},
-	"/memsidecar.graph.v1.Graph/UpsertNodes":  {auth.OpGraphUpsert, "graph", true},
-	"/memsidecar.graph.v1.Graph/UpsertEdges":  {auth.OpGraphUpsert, "graph", true},
-	"/memsidecar.graph.v1.Graph/GetNode":      {auth.OpGraphGet, "graph", false},
-	"/memsidecar.graph.v1.Graph/Neighbors":    {auth.OpGraphQuery, "graph", false},
-	"/memsidecar.graph.v1.Graph/Traverse":     {auth.OpGraphQuery, "graph", false},
-	"/memsidecar.graph.v1.Graph/DeleteNode":   {auth.OpGraphDelete, "graph", true},
-	"/memsidecar.graph.v1.Graph/DeleteEdge":   {auth.OpGraphDelete, "graph", true},
-	"/memsidecar.admin.v1.Admin/ListNamespaces": {auth.OpAdminInspect, "admin", false},
+	"/mindd.kv.v1.KV/Get":                {auth.OpKVGet, "kv", false},
+	"/mindd.kv.v1.KV/MultiGet":           {auth.OpKVGet, "kv", false},
+	"/mindd.kv.v1.KV/Put":                {auth.OpKVPut, "kv", true},
+	"/mindd.kv.v1.KV/Delete":             {auth.OpKVDelete, "kv", true},
+	"/mindd.kv.v1.KV/Scan":               {auth.OpKVScan, "kv", false},
+	"/mindd.episodic.v1.Episodic/Append": {auth.OpEpisodicAppend, "episodic", true},
+	"/mindd.episodic.v1.Episodic/Range":  {auth.OpEpisodicRange, "episodic", false},
+	"/mindd.episodic.v1.Episodic/Tail":   {auth.OpEpisodicTail, "episodic", false},
+	"/mindd.episodic.v1.Episodic/Expire": {auth.OpEpisodicExpire, "episodic", true},
+	"/mindd.semantic.v1.Semantic/Upsert": {auth.OpSemanticUpsert, "semantic", true},
+	"/mindd.semantic.v1.Semantic/Search": {auth.OpSemanticSearch, "semantic", false},
+	"/mindd.semantic.v1.Semantic/Delete": {auth.OpSemanticDelete, "semantic", true},
+	"/mindd.semantic.v1.Semantic/Expire": {auth.OpSemanticExpire, "semantic", true},
+	"/mindd.artifact.v1.Artifact/Put":    {auth.OpArtifactPut, "artifact", true},
+	"/mindd.artifact.v1.Artifact/Get":    {auth.OpArtifactGet, "artifact", false},
+	"/mindd.artifact.v1.Artifact/Stat":   {auth.OpArtifactStat, "artifact", false},
+	"/mindd.artifact.v1.Artifact/Delete": {auth.OpArtifactDelete, "artifact", true},
+	"/mindd.artifact.v1.Artifact/List":   {auth.OpArtifactList, "artifact", false},
+	"/mindd.lease.v1.Lease/Acquire":      {auth.OpLeaseAcquire, "lease", true},
+	"/mindd.lease.v1.Lease/Renew":        {auth.OpLeaseRenew, "lease", true},
+	"/mindd.lease.v1.Lease/Release":      {auth.OpLeaseRelease, "lease", true},
+	"/mindd.lease.v1.Lease/Inspect":      {auth.OpLeaseInspect, "lease", false},
+	"/mindd.lease.v1.Lease/List":         {auth.OpLeaseList, "lease", false},
+	"/mindd.graph.v1.Graph/UpsertNodes":  {auth.OpGraphUpsert, "graph", true},
+	"/mindd.graph.v1.Graph/UpsertEdges":  {auth.OpGraphUpsert, "graph", true},
+	"/mindd.graph.v1.Graph/GetNode":      {auth.OpGraphGet, "graph", false},
+	"/mindd.graph.v1.Graph/Neighbors":    {auth.OpGraphQuery, "graph", false},
+	"/mindd.graph.v1.Graph/Traverse":     {auth.OpGraphQuery, "graph", false},
+	"/mindd.graph.v1.Graph/DeleteNode":   {auth.OpGraphDelete, "graph", true},
+	"/mindd.graph.v1.Graph/DeleteEdge":   {auth.OpGraphDelete, "graph", true},
+	"/mindd.admin.v1.Admin/ListNamespaces": {auth.OpAdminInspect, "admin", false},
 }
 
 // PolicyUnary invokes the configured policy engine for every recognized method.

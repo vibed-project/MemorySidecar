@@ -3,15 +3,15 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'memsidecar',
+  title: 'mindD',
   tagline: 'A framework-agnostic memory sidecar for agentic systems',
   favicon: 'img/favicon.svg',
 
-  url: 'https://memsidecar.dev',
+  url: 'https://mindd.dev',
   baseUrl: '/',
 
-  organizationName: 'memsidecar',
-  projectName: 'memsidecar',
+  organizationName: 'vibed-project',
+  projectName: 'mindD',
 
   onBrokenLinks: 'warn',
   markdown: {
@@ -33,7 +33,7 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           routeBasePath: '/',
           editUrl:
-            'https://github.com/m-koerbaecher/memsidecar/tree/main/website/',
+            'https://github.com/vibed-project/mindD/tree/main/website/',
         },
         blog: false,
         theme: {
@@ -50,9 +50,9 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'memsidecar',
+      title: 'mindD',
       logo: {
-        alt: 'memsidecar logo',
+        alt: 'mindD logo',
         src: 'img/favicon.svg',
       },
       items: [
@@ -63,7 +63,7 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          href: 'https://github.com/m-koerbaecher/memsidecar',
+          href: 'https://github.com/vibed-project/mindD',
           label: 'GitHub',
           position: 'right',
         },
@@ -93,11 +93,11 @@ const config: Config = {
         {
           title: 'More',
           items: [
-            {label: 'GitHub', href: 'https://github.com/m-koerbaecher/memsidecar'},
+            {label: 'GitHub', href: 'https://github.com/vibed-project/mindD'},
           ],
         },
       ],
-      copyright: `Apache 2.0 · memsidecar contributors`,
+      copyright: `Apache 2.0 · mindD contributors`,
     },
     prism: {
       theme: prismThemes.github,

@@ -11,7 +11,7 @@ Multi-stage build → distroless `nonroot`.
 
 ```bash
 make docker DOCKER_TAG=v0.1.0
-# → memsidecar:v0.1.0
+# → mindd:v0.1.0
 ```
 
 Or directly:
@@ -21,7 +21,7 @@ docker build \
   --build-arg VERSION=v0.1.0 \
   --build-arg COMMIT=$(git rev-parse --short HEAD) \
   --build-arg BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
-  -t memsidecar:v0.1.0 .
+  -t mindd:v0.1.0 .
 ```
 
 The build stage is `golang:1.26-alpine` with `CGO_ENABLED=0` and
@@ -32,13 +32,13 @@ which runs as UID/GID 65532 with no shell.
 
 | Path | Contents |
 |---|---|
-| `/usr/local/bin/memsidecar` | server binary |
-| `/usr/local/bin/memctl` | admin CLI |
-| `/etc/memsidecar/config.yaml` | **expected to be mounted** (no default ships) |
+| `/usr/local/bin/mindd` | server binary |
+| `/usr/local/bin/mindctl` | admin CLI |
+| `/etc/mindd/config.yaml` | **expected to be mounted** (no default ships) |
 | `/tmp` | writable for the UDS socket and tmp files |
 
-`ENTRYPOINT` is `/usr/local/bin/memsidecar`; `CMD` is
-`["--config", "/etc/memsidecar/config.yaml"]`.
+`ENTRYPOINT` is `/usr/local/bin/mindd`; `CMD` is
+`["--config", "/etc/mindd/config.yaml"]`.
 
 ## Exposed ports
 
@@ -53,11 +53,11 @@ which runs as UID/GID 65532 with no shell.
 ```bash
 docker run --rm \
   -p 7777:7777 -p 8080:8080 -p 9090:9090 \
-  -v $(pwd)/configs:/etc/memsidecar:ro \
-  memsidecar:v0.1.0
+  -v $(pwd)/configs:/etc/mindd:ro \
+  mindd:v0.1.0
 ```
 
-`-v $(pwd)/configs:/etc/memsidecar:ro` mounts the repo's example config.
+`-v $(pwd)/configs:/etc/mindd:ro` mounts the repo's example config.
 Override with your own config path.
 
 ## Multi-arch
@@ -66,7 +66,7 @@ The Dockerfile doesn't pin a `--platform`, so a single `docker buildx`
 invocation can target multiple architectures:
 
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t my-registry/memsidecar:v0.1.0 --push .
+docker buildx build --platform linux/amd64,linux/arm64 -t my-registry/mindd:v0.1.0 --push .
 ```
 
 ## Build args
@@ -77,7 +77,7 @@ docker buildx build --platform linux/amd64,linux/arm64 -t my-registry/memsidecar
 | `COMMIT` | `unknown` | embedded as `internal/version.Commit` |
 | `BUILD_DATE` | `unknown` | embedded as `internal/version.BuildDate` |
 
-These show up in `memsidecar --version` and in the OTel resource
+These show up in `mindd --version` and in the OTel resource
 `service.version`.
 
 ## Security posture

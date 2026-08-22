@@ -1,10 +1,10 @@
-// High-level TypeScript client for memsidecar.
+// High-level TypeScript client for mindd.
 //
 // Usage:
 //
-//   import { MemSidecar } from "@memsidecar/client";
+//   import { MindD } from "@mindd/client";
 //
-//   const m = new MemSidecar("127.0.0.1:7777", { token: process.env.MEMSIDECAR_TOKEN! });
+//   const m = new MindD("127.0.0.1:7777", { token: process.env.MINDD_TOKEN! });
 //   await m.kv.put("scratchpad", "hello", new TextEncoder().encode("world"));
 //   const rec = await m.kv.get("scratchpad", "hello");
 //   console.log(new TextDecoder().decode(rec.value));
@@ -22,19 +22,19 @@ import { createGrpcTransport } from "@connectrpc/connect-node";
 import { capabilityInterceptor } from "./auth.js";
 import { toDuration, toTimestamp, toU64 } from "./convert.js";
 
-import { KV } from "./gen/memsidecar/kv/v1/kv_pb.js";
+import { KV } from "./gen/mindd/kv/v1/kv_pb.js";
 import type {
   DeleteResponse as KVDeleteResponse,
   GetResponse as KVGetResponse,
   KVItem,
   PutResponse as KVPutResponse,
-} from "./gen/memsidecar/kv/v1/kv_pb.js";
-import { Episodic } from "./gen/memsidecar/episodic/v1/episodic_pb.js";
+} from "./gen/mindd/kv/v1/kv_pb.js";
+import { Episodic } from "./gen/mindd/episodic/v1/episodic_pb.js";
 import type {
   Event,
   ExpireAction as EpisodicExpireAction,
-} from "./gen/memsidecar/episodic/v1/episodic_pb.js";
-import { Semantic } from "./gen/memsidecar/semantic/v1/semantic_pb.js";
+} from "./gen/mindd/episodic/v1/episodic_pb.js";
+import { Semantic } from "./gen/mindd/semantic/v1/semantic_pb.js";
 import type {
   FieldPredicateSchema,
   Hit,
@@ -42,21 +42,21 @@ import type {
   SearchMode,
   ExpireAction,
   UpsertResponse,
-} from "./gen/memsidecar/semantic/v1/semantic_pb.js";
-import { Artifact } from "./gen/memsidecar/artifact/v1/artifact_pb.js";
+} from "./gen/mindd/semantic/v1/semantic_pb.js";
+import { Artifact } from "./gen/mindd/artifact/v1/artifact_pb.js";
 import type {
   ArtifactMeta,
   ArtifactRef,
   PutRequest as ArtifactPutRequest,
   StatResponse as ArtifactStatResponse,
-} from "./gen/memsidecar/artifact/v1/artifact_pb.js";
-import { PutRequestSchema as ArtifactPutRequestSchema } from "./gen/memsidecar/artifact/v1/artifact_pb.js";
-import { Lease } from "./gen/memsidecar/lease/v1/lease_pb.js";
+} from "./gen/mindd/artifact/v1/artifact_pb.js";
+import { PutRequestSchema as ArtifactPutRequestSchema } from "./gen/mindd/artifact/v1/artifact_pb.js";
+import { Lease } from "./gen/mindd/lease/v1/lease_pb.js";
 import type {
   InspectResponse as LeaseInspectResponse,
   LeaseHandle,
-} from "./gen/memsidecar/lease/v1/lease_pb.js";
-import { Graph } from "./gen/memsidecar/graph/v1/graph_pb.js";
+} from "./gen/mindd/lease/v1/lease_pb.js";
+import { Graph } from "./gen/mindd/graph/v1/graph_pb.js";
 import type {
   Direction,
   EdgeSchema,
@@ -64,9 +64,9 @@ import type {
   Node as GraphNode,
   NodeSchema,
   Subgraph,
-} from "./gen/memsidecar/graph/v1/graph_pb.js";
-import { Admin } from "./gen/memsidecar/admin/v1/admin_pb.js";
-import type { ListNamespacesResponse } from "./gen/memsidecar/admin/v1/admin_pb.js";
+} from "./gen/mindd/graph/v1/graph_pb.js";
+import { Admin } from "./gen/mindd/admin/v1/admin_pb.js";
+import type { ListNamespacesResponse } from "./gen/mindd/admin/v1/admin_pb.js";
 
 /** A caller-supplied record for `semantic.upsert`. */
 export type SemanticRecordInput = MessageInitShape<typeof RecordSchema>;
@@ -603,7 +603,7 @@ class AdminClient {
 // ---------------------------------------------------------------------------
 // Top-level client
 
-export interface MemSidecarOptions {
+export interface MindDOptions {
   /** Capability token sent on every call. */
   token: string;
   /** Use TLS (https/h2). Default false (plaintext h2c), matching a local sidecar. */
@@ -624,9 +624,9 @@ function baseUrlFor(address: string, tls: boolean): string {
  *
  * `address` is a `host:port` (or a full `http(s)://` URL). The transport speaks
  * standard gRPC over HTTP/2, so it interoperates with the same server the Go,
- * `memctl`, and Python clients use.
+ * `mindctl`, and Python clients use.
  */
-export class MemSidecar {
+export class MindD {
   readonly transport: Transport;
   readonly kv: KVClient;
   readonly episodic: EpisodicClient;
@@ -636,7 +636,7 @@ export class MemSidecar {
   readonly graph: GraphClient;
   readonly admin: AdminClient;
 
-  constructor(address: string, options: MemSidecarOptions) {
+  constructor(address: string, options: MindDOptions) {
     this.transport = createGrpcTransport({
       baseUrl: baseUrlFor(address, options.tls ?? false),
       interceptors: [capabilityInterceptor(options.token), ...(options.interceptors ?? [])],

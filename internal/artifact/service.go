@@ -11,9 +11,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"memsidecar/internal/auth"
+	"github.com/vibed-project/mindD/internal/auth"
 
-	artifactv1 "memsidecar/gen/memsidecar/artifact/v1"
+	artifactv1 "github.com/vibed-project/mindD/gen/mindd/artifact/v1"
 )
 
 const Block = "artifact"

@@ -5,9 +5,9 @@ sidebar_position: 4
 
 # MCP server
 
-`memctl mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io)
+`mindctl mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io)
 server over stdio, so an **LLM host** (Claude Desktop, Cursor, …) can call
-memsidecar's memory as tools — the "let the assistant manage its own long-term
+mindD's memory as tools — the "let the assistant manage its own long-term
 memory" pattern.
 
 It's pure protocol translation: every tool proxies to the same gRPC services
@@ -19,31 +19,31 @@ LLM-driven, no-code hosts.
 
 ## Run it
 
-The MCP server connects to a **running** memsidecar. It reads the target from
-`--addr` (or `$MEMSIDECAR_ADDR`, default `127.0.0.1:7777`) and the capability
-token from `--token` (or `$MEMSIDECAR_TOKEN`):
+The MCP server connects to a **running** mindD. It reads the target from
+`--addr` (or `$MINDD_ADDR`, default `127.0.0.1:7777`) and the capability
+token from `--token` (or `$MINDD_TOKEN`):
 
 ```bash
-export MEMSIDECAR_TOKEN=$(memctl token issue --tenant demo \
+export MINDD_TOKEN=$(mindctl token issue --tenant demo \
   --ns 'kv/*,semantic/*,episodic/*,graph/*' --ops '*' --ttl 24h)
 
-memctl mcp            # serves MCP on stdio; the host launches this for you
+mindctl mcp            # serves MCP on stdio; the host launches this for you
 ```
 
 ### Claude Desktop / Cursor
 
-Add memsidecar to the host's MCP config (Claude Desktop:
+Add mindD to the host's MCP config (Claude Desktop:
 `claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
-    "memsidecar": {
-      "command": "memctl",
+    "mindd": {
+      "command": "mindctl",
       "args": ["mcp"],
       "env": {
-        "MEMSIDECAR_ADDR": "127.0.0.1:7777",
-        "MEMSIDECAR_TOKEN": "<a capability token>"
+        "MINDD_ADDR": "127.0.0.1:7777",
+        "MINDD_TOKEN": "<a capability token>"
       }
     }
   }

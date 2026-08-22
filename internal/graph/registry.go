@@ -69,7 +69,7 @@ type namespaceSizer interface {
 
 // NamespaceItems returns the node count for every bound namespace whose driver
 // can report it cheaply. Namespaces whose driver has no Size method are omitted.
-// Feeds the memsidecar.namespace.items gauge.
+// Feeds the mindd.namespace.items gauge.
 func (r *Registry) NamespaceItems(ctx context.Context) map[string]int64 {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

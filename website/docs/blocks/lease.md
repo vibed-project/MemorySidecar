@@ -67,20 +67,20 @@ namespaces:
 
 ```bash
 # Acquire a lease.
-ACQ=$(grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+ACQ=$(grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"locks","key":"deploy","ttl":"60s"}' \
-  127.0.0.1:7777 memsidecar.lease.v1.Lease/Acquire)
+  127.0.0.1:7777 mindd.lease.v1.Lease/Acquire)
 HOLDER=$(echo "$ACQ" | jq -r '.handle.holderId')
 
 # Renew it.
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d "{\"namespace\":\"locks\",\"key\":\"deploy\",\"holder_id\":\"$HOLDER\",\"ttl\":\"300s\"}" \
-  127.0.0.1:7777 memsidecar.lease.v1.Lease/Renew
+  127.0.0.1:7777 mindd.lease.v1.Lease/Renew
 
 # Release.
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d "{\"namespace\":\"locks\",\"key\":\"deploy\",\"holder_id\":\"$HOLDER\"}" \
-  127.0.0.1:7777 memsidecar.lease.v1.Lease/Release
+  127.0.0.1:7777 mindd.lease.v1.Lease/Release
 ```
 
 ## Python example

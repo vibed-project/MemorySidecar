@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"memsidecar/internal/config"
+	"github.com/vibed-project/mindD/internal/config"
 )
 
 func TestSetupMetrics_None(t *testing.T) {

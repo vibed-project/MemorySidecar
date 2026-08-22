@@ -11,7 +11,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
-	"memsidecar/internal/semantic/embedder"
+	"github.com/vibed-project/mindD/internal/semantic/embedder"
 )
 
 // defaultEmbedCacheSize is the LRU capacity used when a semantic namespace
@@ -47,10 +47,10 @@ func NewCachingEmbedder(inner embedder.Embedder, opts CacheOptions) embedder.Emb
 	if capacity == 0 {
 		capacity = defaultEmbedCacheSize
 	}
-	m := otel.GetMeterProvider().Meter("memsidecar/semantic")
-	hits, _ := m.Int64Counter("memsidecar.embedder.cache.hits",
+	m := otel.GetMeterProvider().Meter("mindd/semantic")
+	hits, _ := m.Int64Counter("mindd.embedder.cache.hits",
 		metric.WithDescription("Embedder cache hits (text already embedded, no provider call)."))
-	misses, _ := m.Int64Counter("memsidecar.embedder.cache.misses",
+	misses, _ := m.Int64Counter("mindd.embedder.cache.misses",
 		metric.WithDescription("Embedder cache misses (text embedded via the provider)."))
 	return &cachingEmbedder{
 		inner: inner,

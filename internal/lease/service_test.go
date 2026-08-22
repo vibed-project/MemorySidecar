@@ -15,10 +15,10 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	leasev1 "memsidecar/gen/memsidecar/lease/v1"
-	"memsidecar/internal/auth"
-	"memsidecar/internal/lease"
-	memdrv "memsidecar/internal/lease/drivers/memory"
+	leasev1 "github.com/vibed-project/mindD/gen/mindd/lease/v1"
+	"github.com/vibed-project/mindD/internal/auth"
+	"github.com/vibed-project/mindD/internal/lease"
+	memdrv "github.com/vibed-project/mindD/internal/lease/drivers/memory"
 )
 
 func newTestServer(t *testing.T, cap *auth.Capability) leasev1.LeaseClient {

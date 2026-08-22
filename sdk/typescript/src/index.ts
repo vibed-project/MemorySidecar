@@ -1,7 +1,7 @@
-// @memsidecar/client — TypeScript SDK for memsidecar.
-export { MemSidecar } from "./client.js";
+// @mindd/client — TypeScript SDK for mindd.
+export { MindD } from "./client.js";
 export type {
-  MemSidecarOptions,
+  MindDOptions,
   KVPutOptions,
   KVScanOptions,
   EpisodicAppendOptions,
@@ -25,11 +25,11 @@ export type {
 export { capabilityInterceptor, CAPABILITY_HEADER } from "./auth.js";
 
 // Enums (runtime values).
-export { SearchMode, PredicateOp, ExpireAction } from "./gen/memsidecar/semantic/v1/semantic_pb.js";
+export { SearchMode, PredicateOp, ExpireAction } from "./gen/mindd/semantic/v1/semantic_pb.js";
 // Episodic Expire has its own action enum, aliased to avoid colliding with the
 // semantic one above.
-export { ExpireAction as EpisodicExpireAction } from "./gen/memsidecar/episodic/v1/episodic_pb.js";
-export { Direction } from "./gen/memsidecar/graph/v1/graph_pb.js";
+export { ExpireAction as EpisodicExpireAction } from "./gen/mindd/episodic/v1/episodic_pb.js";
+export { Direction } from "./gen/mindd/graph/v1/graph_pb.js";
 
 // Message types returned by the block clients.
 export type {
@@ -37,32 +37,32 @@ export type {
   PutResponse as KVPutResponse,
   DeleteResponse as KVDeleteResponse,
   KVItem,
-} from "./gen/memsidecar/kv/v1/kv_pb.js";
-export type { Event } from "./gen/memsidecar/episodic/v1/episodic_pb.js";
+} from "./gen/mindd/kv/v1/kv_pb.js";
+export type { Event } from "./gen/mindd/episodic/v1/episodic_pb.js";
 export type {
   Record as SemanticRecord,
   Hit,
   FieldPredicate,
   UpsertResponse,
-} from "./gen/memsidecar/semantic/v1/semantic_pb.js";
+} from "./gen/mindd/semantic/v1/semantic_pb.js";
 export type {
   ArtifactRef,
   ArtifactMeta,
   StatResponse as ArtifactStatResponse,
-} from "./gen/memsidecar/artifact/v1/artifact_pb.js";
+} from "./gen/mindd/artifact/v1/artifact_pb.js";
 export type {
   LeaseHandle,
   InspectResponse as LeaseInspectResponse,
-} from "./gen/memsidecar/lease/v1/lease_pb.js";
+} from "./gen/mindd/lease/v1/lease_pb.js";
 export type {
   Node as GraphNode,
   Edge as GraphEdge,
   Subgraph,
   NeighborsResponse,
-} from "./gen/memsidecar/graph/v1/graph_pb.js";
+} from "./gen/mindd/graph/v1/graph_pb.js";
 export type {
   ListNamespacesResponse,
   NamespaceInfo,
   ServerInfo,
   EmbedderInfo,
-} from "./gen/memsidecar/admin/v1/admin_pb.js";
+} from "./gen/mindd/admin/v1/admin_pb.js";

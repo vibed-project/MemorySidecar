@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"memsidecar/internal/kv"
+	"github.com/vibed-project/mindD/internal/kv"
 )
 
 // Driver is an in-memory KV driver. Safe for concurrent use.

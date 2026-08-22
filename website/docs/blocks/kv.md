@@ -49,7 +49,7 @@ backends:
   - name: pg-main
     driver: postgres
     options:
-      dsn_env: MEMSIDECAR_PG_DSN
+      dsn_env: MINDD_PG_DSN
       max_conns: 10
       sweeper_interval: 5m
 
@@ -82,7 +82,7 @@ namespaces:
 - **`capacity`** + **`heat_half_life_seconds`** bound a namespace's size by
   evicting the **coldest** keys first (lowest `access_count · 2^(−age/half_life)`),
   so a burst of one-shot writes can't push out actively-used entries. Capacity
-  evictions increment `memsidecar.eviction.total{cause="capacity"}`.
+  evictions increment `mindd.eviction.total{cause="capacity"}`.
 
 Durations are expressed in seconds. This policy is honoured by the `memory`
 driver only; on a Postgres-backed namespace it is ignored.
@@ -90,25 +90,25 @@ driver only; on a Postgres-backed namespace it is ignored.
 ## gRPC example
 
 ```bash
-TOKEN=$(memctl token issue --tenant acme --agent a1 \
+TOKEN=$(mindctl token issue --tenant acme --agent a1 \
   --ns 'kv/scratchpad' --ops put,get,delete,scan --ttl 1h)
 
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"scratchpad","key":"hello","value":"d29ybGQ=","ttl":"60s"}' \
-  127.0.0.1:7777 memsidecar.kv.v1.KV/Put
+  127.0.0.1:7777 mindd.kv.v1.KV/Put
 
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"scratchpad","key":"hello"}' \
-  127.0.0.1:7777 memsidecar.kv.v1.KV/Get
+  127.0.0.1:7777 mindd.kv.v1.KV/Get
 ```
 
 ## Python example
 
 ```python
 import datetime as dt
-from memsidecar import MemSidecar
+from mindd import MindD
 
-with MemSidecar("127.0.0.1:7777", token=TOKEN) as m:
+with MindD("127.0.0.1:7777", token=TOKEN) as m:
     m.kv.put("scratchpad", "hello", b"world", ttl=dt.timedelta(seconds=60))
     rec = m.kv.get("scratchpad", "hello")
     assert rec.found and rec.value == b"world"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"memsidecar/internal/semantic"
+	"github.com/vibed-project/mindD/internal/semantic"
 )
 
 func TestSizeCountsRecords(t *testing.T) {

@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 
-	"memsidecar/internal/semantic"
-	pgdrv "memsidecar/internal/semantic/drivers/postgres"
-	"memsidecar/internal/semantic/semantictest"
+	"github.com/vibed-project/mindD/internal/semantic"
+	pgdrv "github.com/vibed-project/mindD/internal/semantic/drivers/postgres"
+	"github.com/vibed-project/mindD/internal/semantic/semantictest"
 )
 
 type harness struct{}
@@ -21,7 +21,7 @@ func (harness) New(t *testing.T, dim int) semantic.Driver {
 	ctx := context.Background()
 
 	container, err := tcpostgres.Run(ctx, "pgvector/pgvector:pg16",
-		tcpostgres.WithDatabase("memsidecar_test"),
+		tcpostgres.WithDatabase("mindd_test"),
 		tcpostgres.WithUsername("test"),
 		tcpostgres.WithPassword("test"),
 		tcpostgres.BasicWaitStrategies(),

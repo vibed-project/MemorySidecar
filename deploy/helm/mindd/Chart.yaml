@@ -1,0 +1,15 @@
+apiVersion: v2
+name: mindd
+description: A self-hosted, OSS, framework-agnostic memory sidecar for agentic systems.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/vibed-project/mindD
+sources:
+  - https://github.com/vibed-project/mindD
+keywords:
+  - mindd
+  - agents
+  - memory
+  - grpc
+  - sidecar

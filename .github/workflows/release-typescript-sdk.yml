@@ -1,6 +1,6 @@
 name: Release TypeScript SDK
 
-# Publishes sdk/typescript (@memsidecar/client) to npm on a `typescript-sdk-v*`
+# Publishes sdk/typescript (@mindd/client) to npm on a `typescript-sdk-v*`
 # tag. Publishes with provenance (the `id-token: write` permission signs a
 # build-provenance attestation). Auth uses an npm automation token in the
 # `NPM_TOKEN` secret (see RELEASING.md). `workflow_dispatch` with dry_run=true

@@ -63,7 +63,7 @@ timestamps and decides what supersedes what; the sidecar never infers.
 
 ### U1 — Bitemporal validity + soft-delete on `semantic` · **L · start here**
 
-- **Proto** (`proto/memsidecar/semantic/v1/semantic.proto`): add to `Record` `google.protobuf.Timestamp valid_from`, `valid_to`, `deleted_at` (new tags). Add to `SearchRequest` `google.protobuf.Timestamp as_of` and `bool include_invalidated`. Add `bool hard_delete` to `DeleteRequest`.
+- **Proto** (`proto/mindd/semantic/v1/semantic.proto`): add to `Record` `google.protobuf.Timestamp valid_from`, `valid_to`, `deleted_at` (new tags). Add to `SearchRequest` `google.protobuf.Timestamp as_of` and `bool include_invalidated`. Add `bool hard_delete` to `DeleteRequest`.
 - **Driver** (`internal/semantic/driver.go`): mirror fields on `Record`; add `AsOf time.Time` + `IncludeInvalidated bool` to `SearchOptions`; add `Hard bool` to `DeleteOptions`.
 - **Postgres** (`drivers/postgres/postgres.go` + new migration `0002_validity.up.sql`): nullable `valid_from timestamptz default now()`, `valid_to timestamptz`, `deleted_at timestamptz`; partial index `... where deleted_at is null and (valid_to is null or valid_to > now())`. Default `Search` `WHERE` appends `valid_from <= COALESCE($as_of, now()) AND (valid_to IS NULL OR valid_to > COALESCE($as_of, now())) AND deleted_at IS NULL`, unless `include_invalidated`. `Delete` sets `deleted_at=now()` unless `hard_delete`.
 - **Memory** (`drivers/memory/memory.go`): mirror the same predicate in the search path and delete path.
@@ -100,19 +100,19 @@ run in parallel with Phase 1.
 
 ### O1 — `op.duration` histogram split write/index vs query · **M · lowest-risk high-value**
 
-- In `internal/interceptor/observability.go`, create a `Float64Histogram` `memsidecar.op.duration` (seconds) from the injected `MeterProvider`; record in `annotate()` with attrs `{block, op, op_class=write|query, namespace, code}`.
+- In `internal/interceptor/observability.go`, create a `Float64Histogram` `mindd.op.duration` (seconds) from the injected `MeterProvider`; record in `annotate()` with attrs `{block, op, op_class=write|query, namespace, code}`.
 - Source `op_class` from the existing `write` flag in `methodToOp` (`internal/interceptor/policy.go`) — lift the map to a shared lookup rather than duplicating it. Thread the meter through `ObservabilityUnary`/`Stream` constructors (`internal/server/server.go`).
 - **Acceptance:** zero behavior change; cardinality bounded (blocks × ops × namespaces × codes); the write-vs-query latency split is queryable in Prometheus.
 
 ### O2 — Backend latency + result size + `sidecar_overhead` · **M**
 
-- Service layer (results already in hand): `memsidecar.backend.duration` histogram wrapping the `Driver.<Op>` call (`{block, op, namespace}`); `memsidecar.result.size` for `Search` `len(hits)` / streamed counts for `Scan`/`Range`/`Tail`. Record `sidecar_overhead = op.duration − backend.duration` explicitly (the number RQ5 is about), and `hits[0].score` as a cheap evidence-completion proxy (F2).
+- Service layer (results already in hand): `mindd.backend.duration` histogram wrapping the `Driver.<Op>` call (`{block, op, namespace}`); `mindd.result.size` for `Search` `len(hits)` / streamed counts for `Scan`/`Range`/`Tail`. Record `sidecar_overhead = op.duration − backend.duration` explicitly (the number RQ5 is about), and `hits[0].score` as a cheap evidence-completion proxy (F2).
 - Keep to `hits[0]` + counts, not full arrays, to bound per-request cost.
 
 ### O3 — Namespace growth gauge + eviction counters · **L**
 
-- Add `Stats()`/`Size()` to each `Driver` interface (mirror across all blocks — interface-shape invariant). `ObservableGauge memsidecar.namespace.items` (memory drivers know `len`; Postgres uses `reltuples` estimate — **not** `count(*)`). **Skip a bytes gauge** — `pg_total_relation_size` is a catalog call, not cheap.
-- `Int64Counter memsidecar.eviction.total{block, namespace, cause}` incremented at KV lazy-expiry + `sweepLoop` DELETE points; `cause=consolidation` reserved for later.
+- Add `Stats()`/`Size()` to each `Driver` interface (mirror across all blocks — interface-shape invariant). `ObservableGauge mindd.namespace.items` (memory drivers know `len`; Postgres uses `reltuples` estimate — **not** `count(*)`). **Skip a bytes gauge** — `pg_total_relation_size` is a catalog call, not cheap.
+- `Int64Counter mindd.eviction.total{block, namespace, cause}` incremented at KV lazy-expiry + `sweepLoop` DELETE points; `cause=consolidation` reserved for later.
 
 ### O4 — Policy cost caps · **L · unblocks Q4 and R1**
 
@@ -170,9 +170,9 @@ The strategic bet — the paper's strongest family for cross-session aggregation
 scattered-evidence assembly. Execute ADR-0002's own delivery plan; do it **after** O4
 (traversal caps) exists. Incremental per the ADR:
 
-1. `proto/memsidecar/graph/v1/graph.proto` (`UpsertNodes`/`UpsertEdges`, `GetNode`, `Neighbors` 1-hop, `Traverse` depth/fan-out-capped) + `make proto`. **Paper refinement:** put `valid_from`/`valid_to` as first-class **edge** fields (not just props) so the graph carries F3 revisability natively.
+1. `proto/mindd/graph/v1/graph.proto` (`UpsertNodes`/`UpsertEdges`, `GetNode`, `Neighbors` 1-hop, `Traverse` depth/fan-out-capped) + `make proto`. **Paper refinement:** put `valid_from`/`valid_to` as first-class **edge** fields (not just props) so the graph carries F3 revisability natively.
 2. `internal/graph/` mirroring `internal/semantic/` (`driver.go`, `registry.go`, `service.go`, `drivers/memory/`, `graphtest/conformance.go`) + in-memory reference driver.
-3. `OpGraph*` constants + `methodToOp` (upserts/deletes = writes); wire `buildGraphRegistry` in `cmd/memsidecar/main.go` + `server.go`; `config.go` validation for `block: graph`.
+3. `OpGraph*` constants + `methodToOp` (upserts/deletes = writes); wire `buildGraphRegistry` in `cmd/mindd/main.go` + `server.go`; `config.go` validation for `block: graph`.
 4. **Traversal caps via O4** — `MaxDepth`/`MaxNodes` hard-capped server-side, surfaced as `ResourceExhausted`, integrated with the policy `rate_limit`/`max` buckets (ADR-0002 §8).
 5. One production driver + Python SDK client + `website/docs/blocks/graph.md`.
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"memsidecar/internal/semantic"
-	"memsidecar/internal/semantic/embedder"
+	"github.com/vibed-project/mindD/internal/semantic"
+	"github.com/vibed-project/mindD/internal/semantic/embedder"
 )
 
 // countingEmbedder wraps a real Fake embedder and records how many texts were

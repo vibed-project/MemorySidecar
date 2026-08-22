@@ -1,6 +1,6 @@
 # Architecture
 
-memsidecar is a co-located process exposing a small, framework-agnostic API
+mindD is a co-located process exposing a small, framework-agnostic API
 over pluggable backends for agent memory.
 
 This document describes the **implemented architecture**, which covers all six
@@ -28,9 +28,9 @@ The interceptor chain order is intentional:
 
 1. **Recovery** wraps everything so panics become `Internal` errors.
 2. **Observability** records latency + a span on the wire boundary, plus a
-   memory-aware `memsidecar.op.duration` (split by write/query op-class) and
+   memory-aware `mindd.op.duration` (split by write/query op-class) and
    per-block backend-latency / result-shape metrics.
-3. **Auth** verifies the bearer token (`x-memsidecar-capability` metadata) and
+3. **Auth** verifies the bearer token (`x-mindd-capability` metadata) and
    attaches a `*auth.Capability` to the request context.
 4. **Policy** evaluates the configured `policy.Engine`: `NoopEngine` (default,
    allow-all) when no `policy` section is present, otherwise the YAML-driven
@@ -69,8 +69,8 @@ The interceptor chain order is intentional:
 | `internal/graph/drivers/memory` | In-memory graph driver (adjacency maps, BFS traversal) |
 | `internal/obs` | OTel tracing (stdout / OTLP) + Prometheus metrics + slog bootstrap |
 | `internal/server` | Listener lifecycle, interceptor wiring, gRPC server |
-| `cmd/memsidecar` | Server binary (composition root) |
-| `cmd/memctl` | Admin CLI — currently only `token issue` and `token gen-keypair` |
+| `cmd/mindd` | Server binary (composition root) |
+| `cmd/mindctl` | Admin CLI — currently only `token issue` and `token gen-keypair` |
 
 ## Adding a new building block
 
@@ -78,12 +78,12 @@ All six blocks exist today; the most recent, `graph`, is a fully worked
 example of this recipe.
 To add the next one — call it `<block>`:
 
-1. Add `proto/memsidecar/<block>/v1/<block>.proto`, run `make proto`.
+1. Add `proto/mindd/<block>/v1/<block>.proto`, run `make proto`.
 2. Mirror `internal/kv/` under `internal/<block>/`: `driver.go`, `registry.go`,
    `service.go`, `drivers/<name>/...`, `<block>test/conformance.go`.
 3. Add the new ops to `internal/auth/capability.go` (`Op<Block>*` constants).
 4. Wire the service in `internal/server/server.go` and the registry
-   (`build<Block>Registry`) in `cmd/memsidecar/main.go`.
+   (`build<Block>Registry`) in `cmd/mindd/main.go`.
 5. Map the gRPC methods to ops in `internal/interceptor/policy.go`
    (`methodToOp`), marking writes so the op-class metric split is correct.
 6. Add a `block: <block>` clause to `internal/config/config.go` validation.
@@ -92,7 +92,7 @@ To add the next one — call it `<block>`:
 
 Pick the building block, implement its `Driver` interface, place it under
 `internal/<block>/drivers/<name>/`, and add a case to the switch in
-`cmd/memsidecar/main.go:buildKVRegistry` (or its episodic equivalent).
+`cmd/mindd/main.go:buildKVRegistry` (or its episodic equivalent).
 
 ## Transport security
 

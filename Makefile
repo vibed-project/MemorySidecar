@@ -6,42 +6,42 @@ GOBIN          := $(shell go env GOPATH)/bin
 export PATH    := $(GOBIN):$(PATH)
 
 BIN_DIR        := bin
-SERVER_BIN     := $(BIN_DIR)/memsidecar
-CTL_BIN        := $(BIN_DIR)/memctl
+SERVER_BIN     := $(BIN_DIR)/mindd
+CTL_BIN        := $(BIN_DIR)/mindctl
 
 VERSION        ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT         ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BUILD_DATE     ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS        := -ldflags "-s -w \
-	-X memsidecar/internal/version.Version=$(VERSION) \
-	-X memsidecar/internal/version.Commit=$(COMMIT) \
-	-X memsidecar/internal/version.BuildDate=$(BUILD_DATE)"
+	-X github.com/vibed-project/mindD/internal/version.Version=$(VERSION) \
+	-X github.com/vibed-project/mindD/internal/version.Commit=$(COMMIT) \
+	-X github.com/vibed-project/mindD/internal/version.BuildDate=$(BUILD_DATE)"
 
-DOCKER_IMAGE   ?= memsidecar
+DOCKER_IMAGE   ?= mindd
 DOCKER_TAG     ?= $(VERSION)
-HELM_CHART     := deploy/helm/memsidecar
+HELM_CHART     := deploy/helm/mindd
 
-.PHONY: all build server memctl proto test lint run-dev tidy clean \
+.PHONY: all build server mindctl proto test lint run-dev tidy clean \
         docker docker-multiarch helm-lint helm-template docs-dev docs-build docs-clean
 
 all: build
 
-build: server memctl
+build: server mindctl
 
 server:
 	@mkdir -p $(BIN_DIR)
-	go build $(LDFLAGS) -o $(SERVER_BIN) ./cmd/memsidecar
+	go build $(LDFLAGS) -o $(SERVER_BIN) ./cmd/mindd
 
-memctl:
+mindctl:
 	@mkdir -p $(BIN_DIR)
-	go build $(LDFLAGS) -o $(CTL_BIN) ./cmd/memctl
+	go build $(LDFLAGS) -o $(CTL_BIN) ./cmd/mindctl
 
 proto:
 	buf generate
 
 proto-python:
 	buf generate --template buf.gen.python.yaml
-	@for d in sdk/python/src/memsidecar/{,kv,kv/v1,episodic,episodic/v1,semantic,semantic/v1,artifact,artifact/v1,lease,lease/v1,graph,graph/v1,admin,admin/v1}; do \
+	@for d in sdk/python/src/mindd/{,kv,kv/v1,episodic,episodic/v1,semantic,semantic/v1,artifact,artifact/v1,lease,lease/v1,graph,graph/v1,admin,admin/v1}; do \
 		touch "$$d/__init__.py"; \
 	done
 

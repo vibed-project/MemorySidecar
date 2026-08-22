@@ -1,10 +1,10 @@
-# @memsidecar/client — TypeScript client
+# @mindd/client — TypeScript client
 
-Thin TypeScript/JavaScript client for the [memsidecar](../../README.md) agent
+Thin TypeScript/JavaScript client for the [mindD](../../README.md) agent
 memory sidecar. Wraps the generated [protobuf-es](https://github.com/bufbuild/protobuf-es)
 / [Connect](https://connectrpc.com/) stubs with idiomatic types and injects the
 capability token on every call. It speaks standard gRPC over HTTP/2, so it talks
-to the same server as the Go, `memctl`, and Python clients.
+to the same server as the Go, `mindctl`, and Python clients.
 
 ## Install
 
@@ -23,8 +23,8 @@ Assumes the sidecar is running with `configs/example.yaml` and you've minted a
 token:
 
 ```bash
-export MEMSIDECAR_PASETO_SECRET_HEX=...   # from configs/example.yaml comment
-export MEMSIDECAR_TOKEN=$(./bin/memctl token issue \
+export MINDD_PASETO_SECRET_HEX=...   # from configs/example.yaml comment
+export MINDD_TOKEN=$(./bin/mindctl token issue \
     --tenant acme --agent agent-1 \
     --ns 'kv/*,episodic/events,semantic/notes,artifact/blobs,lease/locks,graph/knowledge' \
     --ops '*' --ttl 1h)
@@ -33,9 +33,9 @@ export MEMSIDECAR_TOKEN=$(./bin/memctl token issue \
 Then:
 
 ```ts
-import { MemSidecar, SearchMode } from "@memsidecar/client";
+import { MindD, SearchMode } from "@mindd/client";
 
-const m = new MemSidecar("127.0.0.1:7777", { token: process.env.MEMSIDECAR_TOKEN! });
+const m = new MindD("127.0.0.1:7777", { token: process.env.MINDD_TOKEN! });
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
@@ -79,21 +79,21 @@ const neighbors = await m.graph.neighbors("knowledge", "a");
 Pass `tls: true` to use `https`/h2 (or give a full `https://host:port` address):
 
 ```ts
-const m = new MemSidecar("mem.internal:443", { token, tls: true });
+const m = new MindD("mem.internal:443", { token, tls: true });
 ```
 
 ## Vercel AI SDK — chat persistence
 
-`@memsidecar/client/ai` adapts memsidecar to the [Vercel AI SDK](https://ai-sdk.dev)'s
+`@mindd/client/ai` adapts mindD to the [Vercel AI SDK](https://ai-sdk.dev)'s
 chat-persistence convention: a chat is its full `UIMessage[]`, loaded by id and
 re-saved after each turn. The store keeps one kv key per chat. `ai` is an
 optional peer dependency — importing the base client never pulls it in.
 
 ```ts
-import { MemSidecar } from "@memsidecar/client";
-import { createChatStore } from "@memsidecar/client/ai";
+import { MindD } from "@mindd/client";
+import { createChatStore } from "@mindd/client/ai";
 
-const m = new MemSidecar("127.0.0.1:7777", { token });
+const m = new MindD("127.0.0.1:7777", { token });
 const store = createChatStore(m, { namespace: "chats" });
 
 // New conversation, or resume an existing one.

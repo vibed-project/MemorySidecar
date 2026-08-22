@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"memsidecar/internal/auth"
+	"github.com/vibed-project/mindD/internal/auth"
 )
 
 func cap(tenant string, ns string) *auth.Capability {

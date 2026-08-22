@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"memsidecar/internal/kv"
+	"github.com/vibed-project/mindD/internal/kv"
 )
 
 func TestSizeCountsKeysPerNamespace(t *testing.T) {

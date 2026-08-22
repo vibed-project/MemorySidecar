@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"memsidecar/internal/lease"
+	"github.com/vibed-project/mindD/internal/lease"
 )
 
 // Options configures a Driver.

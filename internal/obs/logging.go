@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"memsidecar/internal/config"
+	"github.com/vibed-project/mindD/internal/config"
 )
 
 // LoggerSetup is the result of NewLogger. The returned Level is mutable —

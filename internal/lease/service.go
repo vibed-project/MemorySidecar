@@ -8,9 +8,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"memsidecar/internal/auth"
+	"github.com/vibed-project/mindD/internal/auth"
 
-	leasev1 "memsidecar/gen/memsidecar/lease/v1"
+	leasev1 "github.com/vibed-project/mindD/gen/mindd/lease/v1"
 )
 
 const Block = "lease"

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"memsidecar/internal/semantic"
+	"github.com/vibed-project/mindD/internal/semantic"
 )
 
 func TestRRFFuse(t *testing.T) {

@@ -5,8 +5,8 @@ sidebar_position: 2
 
 # Capability tokens
 
-Every request to memsidecar carries a signed bearer token in the gRPC
-metadata key `x-memsidecar-capability` (or the HTTP header of the same
+Every request to mindD carries a signed bearer token in the gRPC
+metadata key `x-mindd-capability` (or the HTTP header of the same
 name). The token encodes **who** is allowed to do **what**:
 
 - `tenant` — top-level isolation boundary
@@ -21,11 +21,11 @@ interface.
 
 ## Issuing a token
 
-Use `memctl` for dev. In production, the issuer is your IdP — memsidecar
+Use `mindctl` for dev. In production, the issuer is your IdP — mindD
 only verifies.
 
 ```bash
-memctl token issue \
+mindctl token issue \
   --tenant acme --agent agent-1 \
   --ns 'kv/scratchpad,episodic/events' \
   --ops 'get,put,append,range' --ttl 1h

@@ -9,10 +9,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	adminv1 "memsidecar/gen/memsidecar/admin/v1"
-	"memsidecar/internal/auth"
-	"memsidecar/internal/config"
-	"memsidecar/internal/obs"
+	adminv1 "github.com/vibed-project/mindD/gen/mindd/admin/v1"
+	"github.com/vibed-project/mindD/internal/auth"
+	"github.com/vibed-project/mindD/internal/config"
+	"github.com/vibed-project/mindD/internal/obs"
 )
 
 func testConfig() *config.Config {

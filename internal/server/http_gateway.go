@@ -10,12 +10,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	artifactv1 "memsidecar/gen/memsidecar/artifact/v1"
-	episodicv1 "memsidecar/gen/memsidecar/episodic/v1"
-	kvv1 "memsidecar/gen/memsidecar/kv/v1"
-	leasev1 "memsidecar/gen/memsidecar/lease/v1"
-	semanticv1 "memsidecar/gen/memsidecar/semantic/v1"
-	"memsidecar/internal/interceptor"
+	artifactv1 "github.com/vibed-project/mindD/gen/mindd/artifact/v1"
+	episodicv1 "github.com/vibed-project/mindD/gen/mindd/episodic/v1"
+	kvv1 "github.com/vibed-project/mindD/gen/mindd/kv/v1"
+	leasev1 "github.com/vibed-project/mindD/gen/mindd/lease/v1"
+	semanticv1 "github.com/vibed-project/mindD/gen/mindd/semantic/v1"
+	"github.com/vibed-project/mindD/internal/interceptor"
 )
 
 // NewHTTPGateway builds an http.Handler that translates JSON-over-HTTP to
@@ -24,7 +24,7 @@ import (
 // request body.
 //
 // The Authorization header and the capability header
-// "x-memsidecar-capability" are forwarded as gRPC metadata so the server-side
+// "x-mindd-capability" are forwarded as gRPC metadata so the server-side
 // auth interceptor sees them.
 func NewHTTPGateway(ctx context.Context, grpcAddr string) (http.Handler, error) {
 	if grpcAddr == "" {

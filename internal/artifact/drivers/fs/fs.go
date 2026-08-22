@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"memsidecar/internal/artifact"
+	"github.com/vibed-project/mindD/internal/artifact"
 )
 
 var safeID = regexp.MustCompile(`^[a-zA-Z0-9_.-]{1,128}$`)

@@ -15,14 +15,14 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	kvv1 "memsidecar/gen/memsidecar/kv/v1"
-	"memsidecar/internal/auth"
-	"memsidecar/internal/config"
-	"memsidecar/internal/interceptor"
-	"memsidecar/internal/kv"
-	memdrv "memsidecar/internal/kv/drivers/memory"
-	"memsidecar/internal/obs"
-	"memsidecar/internal/server"
+	kvv1 "github.com/vibed-project/mindD/gen/mindd/kv/v1"
+	"github.com/vibed-project/mindD/internal/auth"
+	"github.com/vibed-project/mindD/internal/config"
+	"github.com/vibed-project/mindD/internal/interceptor"
+	"github.com/vibed-project/mindD/internal/kv"
+	memdrv "github.com/vibed-project/mindD/internal/kv/drivers/memory"
+	"github.com/vibed-project/mindD/internal/obs"
+	"github.com/vibed-project/mindD/internal/server"
 )
 
 func freePort(t *testing.T) string {

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"memsidecar/internal/kv"
+	"github.com/vibed-project/mindD/internal/kv"
 )
 
 // Harness adapts a concrete driver to the conformance suite.

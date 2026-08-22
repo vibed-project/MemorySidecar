@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A whistle-stop tour of memsidecar's building blocks, framed as one agent turn.
+"""A whistle-stop tour of mindd's building blocks, framed as one agent turn.
 
 A "research assistant" agent handles a task and uses the sidecar for every kind
 of memory it needs:
@@ -13,7 +13,7 @@ of memory it needs:
 
 Run it against a running sidecar (see examples/README.md):
 
-    export MEMSIDECAR_TOKEN=$(memctl token issue --tenant demo \
+    export MINDD_TOKEN=$(mindctl token issue --tenant demo \
         --ns 'kv/*,episodic/*,semantic/*,artifact/*,lease/*,graph/*' --ops '*')
     python examples/agent_tour.py
 
@@ -28,9 +28,9 @@ import os
 import sys
 import uuid
 
-from memsidecar import MemSidecar
-from memsidecar.semantic.v1 import semantic_pb2
-from memsidecar.graph.v1 import graph_pb2
+from mindd import MindD
+from mindd.semantic.v1 import semantic_pb2
+from mindd.graph.v1 import graph_pb2
 
 
 def h(title: str) -> None:
@@ -38,15 +38,15 @@ def h(title: str) -> None:
 
 
 def main() -> int:
-    target = os.environ.get("MEMSIDECAR_TARGET", "127.0.0.1:7777")
-    token = os.environ.get("MEMSIDECAR_TOKEN")
+    target = os.environ.get("MINDD_TARGET", "127.0.0.1:7777")
+    token = os.environ.get("MINDD_TOKEN")
     if not token:
-        print("set MEMSIDECAR_TOKEN (see examples/README.md)", file=sys.stderr)
+        print("set MINDD_TOKEN (see examples/README.md)", file=sys.stderr)
         return 2
 
     session = f"tour-{uuid.uuid4().hex[:8]}"
 
-    with MemSidecar(target, token=token) as m:
+    with MindD(target, token=token) as m:
         h("1. episodic — log what happens this session")
         # A conversation turn plus the tool call it triggered.
         m.episodic.append("events", "message", b"What's the capital of France?",
@@ -102,7 +102,7 @@ def main() -> int:
         print("   released")
 
         h("done — the agent's whole memory footprint lived in the sidecar")
-        print("   Try `memctl ns ls` to see item counts, or `memctl episodic tail events`.")
+        print("   Try `mindctl ns ls` to see item counts, or `mindctl episodic tail events`.")
     return 0
 
 

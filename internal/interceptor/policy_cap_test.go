@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"memsidecar/internal/policy"
+	"github.com/vibed-project/mindD/internal/policy"
 )
 
 type topKReq struct {
@@ -38,7 +38,7 @@ func TestPolicyUnary_CapExceeded(t *testing.T) {
 
 	call := func(topK uint32) error {
 		_, err := intercept(context.Background(), topKReq{ns: "notes", topK: topK},
-			&grpc.UnaryServerInfo{FullMethod: "/memsidecar.semantic.v1.Semantic/Search"},
+			&grpc.UnaryServerInfo{FullMethod: "/mindd.semantic.v1.Semantic/Search"},
 			func(context.Context, any) (any, error) { return "ok", nil })
 		return err
 	}

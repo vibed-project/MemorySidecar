@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"memsidecar/internal/kv"
+	"github.com/vibed-project/mindD/internal/kv"
 )
 
 // With no policy, a read must not mutate the stored record (zero write
