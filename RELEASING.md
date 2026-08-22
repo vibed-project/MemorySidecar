@@ -18,7 +18,7 @@ The Python workflow authenticates with OIDC, so there's **no API token to store*
 On PyPI, add a *pending* Trusted Publisher (Account → Publishing) matching:
 
 - **PyPI project name:** `mindd`
-- **Owner:** `vibed-project` · **Repository:** `MemorySidecar`
+- **Owner:** `vibed-project` · **Repository:** `mindD`
 - **Workflow name:** `release-python-sdk.yml`
 - **Environment:** `pypi`
 
