@@ -19,6 +19,7 @@ import (
 	arts3drv "github.com/vibed-project/mindD/internal/artifact/drivers/s3"
 	"github.com/vibed-project/mindD/internal/auth"
 	"github.com/vibed-project/mindD/internal/config"
+	"github.com/vibed-project/mindD/internal/encryption"
 	"github.com/vibed-project/mindD/internal/episodic"
 	epmemdrv "github.com/vibed-project/mindD/internal/episodic/drivers/memory"
 	eppgdrv "github.com/vibed-project/mindD/internal/episodic/drivers/postgres"
@@ -130,13 +131,18 @@ func run() error {
 
 	evict := obs.NewEvictionCounter()
 
-	kvReg, err := buildKVRegistry(cfg, evict)
+	keyring, err := buildKeyring(cfg)
+	if err != nil {
+		return fmt.Errorf("encryption: %w", err)
+	}
+
+	kvReg, err := buildKVRegistry(cfg, evict, keyring)
 	if err != nil {
 		return fmt.Errorf("kv registry: %w", err)
 	}
 	defer func() { _ = kvReg.Close() }()
 
-	epReg, err := buildEpisodicRegistry(cfg)
+	epReg, err := buildEpisodicRegistry(cfg, keyring)
 	if err != nil {
 		_ = kvReg.Close()
 		return fmt.Errorf("episodic registry: %w", err)
@@ -341,7 +347,46 @@ func findBackend(cfg *config.Config, name string) (config.BackendConfig, bool) {
 	return config.BackendConfig{}, false
 }
 
-func buildKVRegistry(cfg *config.Config, evict *obs.EvictionCounter) (*kv.Registry, error) {
+// buildKeyring resolves the configured encryption keys from the environment.
+// It returns nil when no keyring is configured, which is the signal that
+// encryption is off entirely.
+//
+// Secrets are read here rather than in config validation because the config
+// package deliberately never touches the environment — it validates shape only.
+func buildKeyring(cfg *config.Config) (*encryption.Keyring, error) {
+	if !cfg.Encryption.Enabled() {
+		return nil, nil
+	}
+	specs := make([]encryption.KeySpec, 0, len(cfg.Encryption.Keys))
+	for _, k := range cfg.Encryption.Keys {
+		raw := os.Getenv(k.SecretEnv)
+		if raw == "" {
+			return nil, fmt.Errorf("key %q: env %s is unset or empty", k.ID, k.SecretEnv)
+		}
+		secret, err := encryption.DecodeSecret(raw)
+		if err != nil {
+			return nil, fmt.Errorf("key %q (env %s): %w", k.ID, k.SecretEnv, err)
+		}
+		specs = append(specs, encryption.KeySpec{ID: k.ID, Secret: secret})
+	}
+	return encryption.NewKeyring(specs)
+}
+
+// encryptOptsFor reports whether ns opts into encryption, erroring if it does
+// but no keyring was built. Config validation already rejects that combination;
+// this is the belt-and-braces check so a wiring mistake can never silently
+// store plaintext in a namespace the operator marked encrypted.
+func encryptEnabled(ns config.NamespaceConfig, kr *encryption.Keyring) (bool, error) {
+	if !ns.Encrypt {
+		return false, nil
+	}
+	if kr == nil {
+		return false, fmt.Errorf("namespace %q: encrypt set but no encryption keys are configured", ns.Name)
+	}
+	return true, nil
+}
+
+func buildKVRegistry(cfg *config.Config, evict *obs.EvictionCounter, kr *encryption.Keyring) (*kv.Registry, error) {
 	reg := kv.NewRegistry()
 	drivers := make(map[string]kv.Driver)
 	for name := range neededBackends(cfg, "kv") {
@@ -371,6 +416,18 @@ func buildKVRegistry(cfg *config.Config, evict *obs.EvictionCounter) (*kv.Regist
 			continue
 		}
 		d := drivers[ns.Backend]
+		// Wrap per namespace, not per backend: namespaces sharing one backend
+		// can differ on encryption, and the wrapper's Close delegates so the
+		// Bind/BindShared ownership below still closes the driver exactly once.
+		encrypt, err := encryptEnabled(ns, kr)
+		if err != nil {
+			return nil, err
+		}
+		if encrypt {
+			d = kv.NewEncryptedDriver(d, kr, kv.EncryptOptions{
+				AllowPlaintextReads: cfg.Encryption.AllowPlaintextReads,
+			})
+		}
 		if used[ns.Backend] {
 			if err := reg.BindShared(ns.Name, d); err != nil {
 				return nil, err
@@ -412,7 +469,7 @@ func kvAccessPolicies(cfg *config.Config, backend string) map[string]kv.AccessPo
 	return out
 }
 
-func buildEpisodicRegistry(cfg *config.Config) (*episodic.Registry, error) {
+func buildEpisodicRegistry(cfg *config.Config, kr *encryption.Keyring) (*episodic.Registry, error) {
 	reg := episodic.NewRegistry()
 	drivers := make(map[string]episodic.Driver)
 	for name := range neededBackends(cfg, "episodic") {
@@ -439,6 +496,16 @@ func buildEpisodicRegistry(cfg *config.Config) (*episodic.Registry, error) {
 			continue
 		}
 		d := drivers[ns.Backend]
+		// Wrap per namespace — see the note in buildKVRegistry.
+		encrypt, err := encryptEnabled(ns, kr)
+		if err != nil {
+			return nil, err
+		}
+		if encrypt {
+			d = episodic.NewEncryptedDriver(d, kr, episodic.EncryptOptions{
+				AllowPlaintextReads: cfg.Encryption.AllowPlaintextReads,
+			})
+		}
 		if used[ns.Backend] {
 			if err := reg.BindShared(ns.Name, d); err != nil {
 				return nil, err

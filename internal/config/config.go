@@ -24,7 +24,42 @@ type Config struct {
 	// as before and existing data is unaffected. Enable it for multi-tenant
 	// deployments (all tokens must then carry a tenant).
 	TenantIsolation bool `koanf:"tenant_isolation"`
+	// Encryption holds the keyring for encryption at rest. Declaring keys does
+	// nothing on its own — a namespace opts in with `encrypt: true`.
+	Encryption EncryptionConfig `koanf:"encryption"`
 }
+
+// EncryptionConfig configures envelope encryption of stored values. Secrets
+// never live in YAML: each key names an env var holding 32 bytes of hex or
+// base64.
+type EncryptionConfig struct {
+	// Keys is the keyring, active key first. Keys[0] seals new writes; every
+	// key remains a decryption candidate, so rotation means prepending a new
+	// key and retiring the old one once no ciphertext still references it.
+	Keys []EncryptionKeyConfig `koanf:"keys"`
+	// AllowPlaintextReads lets a read pass through a value that is not a
+	// well-formed envelope instead of failing. It exists to migrate a namespace
+	// that already holds plaintext: enable it, let writes re-seal the data, then
+	// turn it back off. While it is on, anyone who can write to the substrate can
+	// strip an envelope and have the plaintext served back.
+	AllowPlaintextReads bool `koanf:"allow_plaintext_reads"`
+}
+
+// EncryptionKeyConfig is one keyring entry. ID is a stable label that is hashed
+// into the envelope so ciphertext names its own key; changing an id orphans
+// every value written under it.
+type EncryptionKeyConfig struct {
+	ID        string `koanf:"id"`
+	SecretEnv string `koanf:"secret_env"`
+}
+
+// Enabled reports whether a keyring was configured at all.
+func (e EncryptionConfig) Enabled() bool { return len(e.Keys) > 0 }
+
+// encryptableBlocks are the blocks whose driver has an encrypting decorator.
+// The remaining blocks are rejected at validation rather than silently storing
+// plaintext under an `encrypt: true` that looks like it worked.
+var encryptableBlocks = map[string]bool{"kv": true, "episodic": true}
 
 // PolicyConfig mirrors policy.Spec under a config-friendly tag. It is parsed
 // here so config validation can catch typos before the engine spins up.
@@ -213,6 +248,9 @@ type NamespaceConfig struct {
 	// in-memory driver. Durations are seconds (koanf here doesn't decode
 	// duration strings).
 	Access AccessConfig `koanf:"access"`
+	// Encrypt seals this namespace's stored values with the top-level
+	// encryption keyring. Supported on kv and episodic.
+	Encrypt bool `koanf:"encrypt"`
 }
 
 // AccessConfig is the per-namespace KV cache-tier policy (U5). The zero value
@@ -345,6 +383,37 @@ func (c *Config) Validate() error {
 		seen[key] = true
 		if _, ok := backendByName[ns.Backend]; !ok {
 			return fmt.Errorf("namespace %q references unknown backend %q", key, ns.Backend)
+		}
+		if ns.Encrypt {
+			if !encryptableBlocks[ns.Block] {
+				return fmt.Errorf("namespace %q: encrypt is not supported for block %q (expected kv|episodic)", key, ns.Block)
+			}
+			if !c.Encryption.Enabled() {
+				return fmt.Errorf("namespace %q: encrypt requires encryption.keys to be configured", key)
+			}
+		}
+	}
+	return c.Encryption.validate()
+}
+
+func (e EncryptionConfig) validate() error {
+	if !e.Enabled() {
+		if e.AllowPlaintextReads {
+			return fmt.Errorf("encryption.allow_plaintext_reads set without encryption.keys")
+		}
+		return nil
+	}
+	seen := make(map[string]bool, len(e.Keys))
+	for i, k := range e.Keys {
+		if k.ID == "" {
+			return fmt.Errorf("encryption.keys[%d]: id required", i)
+		}
+		if seen[k.ID] {
+			return fmt.Errorf("encryption.keys[%d]: duplicate id %q", i, k.ID)
+		}
+		seen[k.ID] = true
+		if k.SecretEnv == "" {
+			return fmt.Errorf("encryption.keys[%d] (%q): secret_env required (secrets must not live in YAML)", i, k.ID)
 		}
 	}
 	return nil

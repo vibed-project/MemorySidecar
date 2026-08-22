@@ -15,6 +15,7 @@ const sidebars: SidebarsConfig = {
         'concepts/namespaces',
         'concepts/policy',
         'concepts/tenant-isolation',
+        'concepts/encryption-at-rest',
       ],
     },
     {

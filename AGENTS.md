@@ -107,6 +107,13 @@ when you touch a postgres/s3 driver.
   option keys (e.g. `dsn_env`, `api_key_env`, `MINDD_PASETO_SECRET_HEX`) —
   never put secrets in YAML or commit them. The keypair in
   `configs/example.yaml` is dev-only.
+- **Encryption at rest is a Driver decorator**, not a driver or service change.
+  `internal/<block>/encrypted.go` wraps the block's `Driver` to seal payload
+  bytes; everything the backend queries on stays plaintext. A decorator must
+  forward the block's optional capability interfaces (`namespaceSizer.Size`,
+  artifact's `metaPatcher`) or the type assertions in `registry.go` silently
+  stop matching. Supported on `kv` and `episodic`; `config.encryptableBlocks`
+  gates the rest.
 - **Hot reload (SIGHUP)** swaps only the auth verifier, policy engine, and log
   level — via `atomic.Pointer` holders. Listeners, exporters, and driver
   registries require a full restart. Preserve this boundary; don't make a
