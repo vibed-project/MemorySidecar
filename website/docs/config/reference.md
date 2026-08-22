@@ -23,6 +23,7 @@ observability: {...}
 auth: {...}
 policy: {...}
 tenant_isolation: false   # optional; see below
+encryption: {...}         # optional; see below
 backends: [...]
 namespaces: [...]
 ```
@@ -37,6 +38,28 @@ Scopes every block's storage to the caller's capability `tenant`, so two tenants
 sharing a namespace name get physically separate data. Off by default
 (single-tenant behavior; existing data unaffected). Covers all six blocks (kv, episodic, lease, graph, artifact, semantic). Restart required to change. See
 [Tenant isolation](../concepts/tenant-isolation.md).
+
+## encryption
+
+```yaml
+encryption:
+  keys:                              # ordered; the first key is active
+    - id: primary-2026-08            # stable label, hashed into the envelope
+      secret_env: MINDD_ENC_PRIMARY
+    - id: retired-2026-02
+      secret_env: MINDD_ENC_RETIRED
+  allow_plaintext_reads: false       # default false; migration only
+```
+
+| Key | Meaning |
+|---|---|
+| `keys[].id` | Stable key label. Hashed into each envelope so ciphertext names its own key. Changing an id orphans everything sealed under it. |
+| `keys[].secret_env` | Name of an env var holding 32 bytes as hex (64 chars) or base64. Secrets must not appear in YAML. |
+| `allow_plaintext_reads` | Return values that aren't well-formed envelopes as-is, to migrate a namespace that already holds plaintext. See the warning in [Encryption at rest](../concepts/encryption-at-rest.md). |
+
+Declaring keys does nothing on its own — a namespace opts in with
+`encrypt: true`. Supported on `kv` and `episodic`; setting it on any other block
+is a config error. Restart required to change (keys are not hot-reloadable).
 
 ## server
 
@@ -219,6 +242,11 @@ In-memory `kv` namespaces may add an optional `access` block (cache-tier
 tracking, read-through TTL, and heat-based capacity eviction) — off by default.
 See [KV → cache-tier access policy](../blocks/kv.md#cache-tier-access-policy-in-memory-only).
 
+`kv` and `episodic` namespaces may set `encrypt: true` to seal stored values
+with the [`encryption`](#encryption) keyring. Namespaces sharing a backend can
+differ, so one can be encrypted while another stays plaintext. See
+[Encryption at rest](../concepts/encryption-at-rest.md).
+
 `embedder.cache_size` bounds a per-namespace **embedding cache**: identical
 content (same `(namespace, model, content)`) is embedded once and served from a
 bounded LRU thereafter, cutting provider calls and cost on repeated or duplicate
@@ -234,6 +262,6 @@ to disable caching for the namespace. Hit/miss rates are exported as
 | `auth.verifier` / keys | yes |
 | `policy.*` | yes |
 | `observability.logging.level` | yes |
-| `server.*`, `observability.tracing/metrics`, `backends`, `namespaces` | restart required |
+| `server.*`, `observability.tracing/metrics`, `backends`, `namespaces`, `encryption` | restart required |
 
 See [Hot reload](./hot-reload.md) for the contract.

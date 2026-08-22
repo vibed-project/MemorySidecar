@@ -98,6 +98,28 @@ policy:
 # graph/artifact/semantic.
 # tenant_isolation: true
 
+# Encryption at rest. Declaring keys does nothing on its own — a namespace opts
+# in with `encrypt: true` below (kv and episodic). Secrets never live in YAML:
+# each key names an env var holding 32 bytes as hex (64 chars) or base64.
+#
+# The first key is active and seals new writes; every key stays a decryption
+# candidate. Rotate by PREPENDING a new key and retiring the old one once no
+# ciphertext still references it. Changing a key's `id` orphans everything
+# written under it.
+#
+#   export MINDD_ENC_PRIMARY=$(openssl rand -hex 32)
+#
+# encryption:
+#   keys:
+#     - id: primary-2026-08
+#       secret_env: MINDD_ENC_PRIMARY
+#     - id: retired-2026-02
+#       secret_env: MINDD_ENC_RETIRED
+#   # Migration only: read values that were written before encryption was on.
+#   # Turn off once the data has been rewritten — while it is on, anyone who can
+#   # write to the substrate can strip an envelope and have plaintext served back.
+#   # allow_plaintext_reads: true
+
 backends:
   - name: mem-default
     driver: memory
@@ -127,9 +149,13 @@ namespaces:
   - block: kv
     name: tool-cache
     backend: mem-default
+    # Seal this namespace's values with the keyring above. Namespaces sharing a
+    # backend can differ, so `scratchpad` above stays plaintext.
+    # encrypt: true
   - block: episodic
     name: events
     backend: mem-default
+    # encrypt: true
   - block: semantic
     name: notes
     backend: mem-default
