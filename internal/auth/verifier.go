@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"memsidecar/internal/config"
+	"github.com/vibed-project/mindD/internal/config"
 )
 
 // TokenVerifier decodes and validates a bearer token, returning the capability.

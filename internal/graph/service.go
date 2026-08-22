@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"memsidecar/internal/auth"
+	"github.com/vibed-project/mindD/internal/auth"
 
-	graphv1 "memsidecar/gen/memsidecar/graph/v1"
+	graphv1 "github.com/vibed-project/mindD/gen/mindd/graph/v1"
 )
 
 const Block = "graph"

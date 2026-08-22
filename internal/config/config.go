@@ -236,8 +236,8 @@ type EmbedderConfig struct {
 	CacheSize int `koanf:"cache_size"`
 }
 
-// Load reads a YAML config file and overlays MEMSIDECAR_* environment vars.
-// Env vars use double-underscore as section separator: MEMSIDECAR_SERVER__GRPC__TCP=":8080".
+// Load reads a YAML config file and overlays MINDD_* environment vars.
+// Env vars use double-underscore as section separator: MINDD_SERVER__GRPC__TCP=":8080".
 func Load(path string) (*Config, error) {
 	k := koanf.New(".")
 
@@ -247,8 +247,8 @@ func Load(path string) (*Config, error) {
 		}
 	}
 
-	envProvider := env.Provider("MEMSIDECAR_", ".", func(s string) string {
-		s = strings.TrimPrefix(s, "MEMSIDECAR_")
+	envProvider := env.Provider("MINDD_", ".", func(s string) string {
+		s = strings.TrimPrefix(s, "MINDD_")
 		s = strings.ToLower(s)
 		return strings.ReplaceAll(s, "__", ".")
 	})

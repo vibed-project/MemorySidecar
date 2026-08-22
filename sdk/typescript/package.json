@@ -1,18 +1,18 @@
 {
-  "name": "@memsidecar/client",
+  "name": "@mindd/client",
   "version": "0.1.0",
-  "description": "TypeScript client for the memsidecar agent memory sidecar.",
+  "description": "TypeScript client for the mindD agent memory sidecar.",
   "license": "Apache-2.0",
-  "author": "memsidecar contributors",
-  "keywords": ["memsidecar", "agent", "memory", "grpc", "llm", "sidecar"],
-  "homepage": "https://github.com/vibed-project/MemorySidecar/tree/main/sdk/typescript#readme",
+  "author": "mindd contributors",
+  "keywords": ["mindd", "agent", "memory", "grpc", "llm", "sidecar"],
+  "homepage": "https://github.com/vibed-project/mindD/tree/main/sdk/typescript#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vibed-project/MemorySidecar.git",
+    "url": "git+https://github.com/vibed-project/mindD.git",
     "directory": "sdk/typescript"
   },
   "bugs": {
-    "url": "https://github.com/vibed-project/MemorySidecar/issues"
+    "url": "https://github.com/vibed-project/mindD/issues"
   },
   "type": "module",
   "sideEffects": false,

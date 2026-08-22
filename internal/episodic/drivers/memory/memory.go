@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"memsidecar/internal/episodic"
+	"github.com/vibed-project/mindD/internal/episodic"
 )
 
 // subscriberBufferSize bounds how far a live tailer may lag before being

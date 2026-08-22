@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"memsidecar/internal/graph"
-	memdrv "memsidecar/internal/graph/drivers/memory"
+	"github.com/vibed-project/mindD/internal/graph"
+	memdrv "github.com/vibed-project/mindD/internal/graph/drivers/memory"
 )
 
 func TestSizeCountsNodesNotEdges(t *testing.T) {

@@ -77,35 +77,35 @@ namespaces:
 ## gRPC example
 
 ```bash
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"events","type":"tool_call","payload":"aGk="}' \
-  127.0.0.1:7777 memsidecar.episodic.v1.Episodic/Append
+  127.0.0.1:7777 mindd.episodic.v1.Episodic/Append
 
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"events","after_cursor":0}' \
-  127.0.0.1:7777 memsidecar.episodic.v1.Episodic/Range
+  127.0.0.1:7777 mindd.episodic.v1.Episodic/Range
 
 # Reconstruct one conversation: all events for session "sess-1".
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"events","session_id":"sess-1"}' \
-  127.0.0.1:7777 memsidecar.episodic.v1.Episodic/Range
+  127.0.0.1:7777 mindd.episodic.v1.Episodic/Range
 
 # Retention: soft-delete everything older than cursor 1000 (up to 500 at a time).
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"events","before_cursor":1000,"action":"EXPIRE_ACTION_SOFT_DELETE","max_rows":500}' \
-  127.0.0.1:7777 memsidecar.episodic.v1.Episodic/Expire
+  127.0.0.1:7777 mindd.episodic.v1.Episodic/Expire
 
 # Live tail; new appends arrive as a server-stream.
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"events"}' \
-  127.0.0.1:7777 memsidecar.episodic.v1.Episodic/Tail
+  127.0.0.1:7777 mindd.episodic.v1.Episodic/Tail
 ```
 
 ## Python example
 
 ```python
 import datetime as dt
-from memsidecar.episodic.v1 import episodic_pb2
+from mindd.episodic.v1 import episodic_pb2
 
 # Idempotent append: retrying with the same dedup_key returns the stored event.
 ev = m.episodic.append("events", "message", b"hi",

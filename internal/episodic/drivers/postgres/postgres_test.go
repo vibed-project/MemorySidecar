@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 
-	"memsidecar/internal/episodic"
-	pgdrv "memsidecar/internal/episodic/drivers/postgres"
-	"memsidecar/internal/episodic/episodictest"
+	"github.com/vibed-project/mindD/internal/episodic"
+	pgdrv "github.com/vibed-project/mindD/internal/episodic/drivers/postgres"
+	"github.com/vibed-project/mindD/internal/episodic/episodictest"
 )
 
 const tailPollInterval = 100 * time.Millisecond
@@ -24,7 +24,7 @@ func (harness) New(t *testing.T) episodic.Driver {
 	ctx := context.Background()
 
 	container, err := tcpostgres.Run(ctx, "postgres:16-alpine",
-		tcpostgres.WithDatabase("memsidecar_test"),
+		tcpostgres.WithDatabase("mindd_test"),
 		tcpostgres.WithUsername("test"),
 		tcpostgres.WithPassword("test"),
 		tcpostgres.BasicWaitStrategies(),

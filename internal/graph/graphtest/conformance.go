@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"memsidecar/internal/graph"
+	"github.com/vibed-project/mindD/internal/graph"
 )
 
 const ns = "g"

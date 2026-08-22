@@ -1,6 +1,6 @@
-# memsidecar — Python client
+# mindD — Python client
 
-Thin Python client for the [memsidecar](../../README.md) agent memory sidecar.
+Thin Python client for the [mindD](../../README.md) agent memory sidecar.
 Wraps the gRPC stubs with idiomatic Python and injects the capability token on
 every call.
 
@@ -18,8 +18,8 @@ Assumes the sidecar is running with `configs/example.yaml` and you've minted a
 token:
 
 ```bash
-export MEMSIDECAR_PASETO_SECRET_HEX=...   # from configs/example.yaml comment
-export MEMSIDECAR_TOKEN=$(./bin/memctl token issue \
+export MINDD_PASETO_SECRET_HEX=...   # from configs/example.yaml comment
+export MINDD_TOKEN=$(./bin/mindctl token issue \
     --tenant acme --agent agent-1 \
     --ns 'kv/*,episodic/events,semantic/notes,artifact/blobs,lease/locks,graph/knowledge' \
     --ops '*' --ttl 1h)
@@ -29,11 +29,11 @@ Then:
 
 ```python
 import datetime as dt
-from memsidecar import MemSidecar
-from memsidecar.semantic.v1 import semantic_pb2
-from memsidecar.graph.v1 import graph_pb2
+from mindd import MindD
+from mindd.semantic.v1 import semantic_pb2
+from mindd.graph.v1 import graph_pb2
 
-with MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN) as m:
+with MindD("127.0.0.1:7777", token=MINDD_TOKEN) as m:
     # KV
     m.kv.put("scratchpad", "hello", b"world", ttl=dt.timedelta(minutes=5))
     rec = m.kv.get("scratchpad", "hello")
@@ -76,7 +76,7 @@ with MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN) as m:
 
 ## LangGraph checkpointer
 
-`memsidecar.ext.langgraph.MemSidecarSaver` implements LangGraph's
+`mindd.ext.langgraph.MindDSaver` implements LangGraph's
 `BaseCheckpointSaver`, so a graph gets durable, multi-tenant thread state by
 pointing at the sidecar — no bespoke persistence code. It stores checkpoints,
 per-version channel blobs, and pending writes in a single **kv** namespace,
@@ -86,18 +86,18 @@ identically (sync and async).
 Install the extra (pulls in `langgraph-checkpoint`):
 
 ```bash
-pip install "memsidecar[langgraph]"
+pip install "mindd[langgraph]"
 ```
 
 The kv namespace must exist on the server and the token must grant kv
 `get,put,delete,scan` on it:
 
 ```python
-from memsidecar import MemSidecar
-from memsidecar.ext.langgraph import MemSidecarSaver
+from mindd import MindD
+from mindd.ext.langgraph import MindDSaver
 
-client = MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN)
-saver = MemSidecarSaver(client, namespace="checkpoints")
+client = MindD("127.0.0.1:7777", token=MINDD_TOKEN)
+saver = MindDSaver(client, namespace="checkpoints")
 
 graph = builder.compile(checkpointer=saver)      # your StateGraph
 cfg = {"configurable": {"thread_id": "user-42"}}
@@ -112,14 +112,14 @@ the access pattern a checkpointer needs.
 
 ## CrewAI memory
 
-`memsidecar.ext.crewai.MemSidecarStorage` implements CrewAI's `StorageBackend`
+`mindd.ext.crewai.MindDStorage` implements CrewAI's `StorageBackend`
 protocol (the pluggable storage under CrewAI 1.x's unified `Memory`), so a
 crew's memories live on the sidecar instead of a local vector file.
 
 Install the extra (pulls in `crewai`):
 
 ```bash
-pip install "memsidecar[crewai]"
+pip install "mindd[crewai]"
 ```
 
 > **Install note.** The generated stubs require `protobuf>=7.35`, while
@@ -130,7 +130,7 @@ pip install "memsidecar[crewai]"
 > ```bash
 > pip install crewai
 > pip install "protobuf>=7.35"        # runtime-compatible; overrides the cap
-> pip install memsidecar --no-deps    # already have grpcio + protobuf
+> pip install mindd --no-deps    # already have grpcio + protobuf
 > ```
 
 Both a `semantic/<namespace>` and a `kv/<namespace>` must exist on the server
@@ -142,11 +142,11 @@ so this backend stores those vectors as-is; the **semantic namespace's
 ```python
 from crewai import Crew
 from crewai.memory.unified_memory import Memory
-from memsidecar import MemSidecar
-from memsidecar.ext.crewai import MemSidecarStorage
+from mindd import MindD
+from mindd.ext.crewai import MindDStorage
 
-client = MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN)
-memory = Memory(storage=MemSidecarStorage(client, namespace="memories"))
+client = MindD("127.0.0.1:7777", token=MINDD_TOKEN)
+memory = Memory(storage=MindDStorage(client, namespace="memories"))
 crew = Crew(agents=[...], tasks=[...], memory=memory)
 ```
 
@@ -157,7 +157,7 @@ the memory runtime performs during encode and recall.
 
 ## Regenerating proto stubs
 
-The protobuf + gRPC stubs under `src/memsidecar/{kv,episodic,...}/v1/` are
+The protobuf + gRPC stubs under `src/mindd/{kv,episodic,...}/v1/` are
 generated from `proto/` via `buf`. From the repo root:
 
 ```bash
@@ -169,7 +169,7 @@ Buf calls remote plugins (`buf.build/protocolbuffers/python` and
 
 ## Smoke test
 
-With a running sidecar and `MEMSIDECAR_TOKEN` exported, run:
+With a running sidecar and `MINDD_TOKEN` exported, run:
 
 ```bash
 .venv/bin/pytest tests/

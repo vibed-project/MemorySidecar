@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 	tcminio "github.com/testcontainers/testcontainers-go/modules/minio"
 
-	"memsidecar/internal/artifact"
-	"memsidecar/internal/artifact/artifacttest"
-	s3drv "memsidecar/internal/artifact/drivers/s3"
+	"github.com/vibed-project/mindD/internal/artifact"
+	"github.com/vibed-project/mindD/internal/artifact/artifacttest"
+	s3drv "github.com/vibed-project/mindD/internal/artifact/drivers/s3"
 )
 
 type harness struct{}

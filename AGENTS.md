@@ -5,7 +5,7 @@ the patterns below; they are load-bearing.
 
 ## What this is
 
-**memsidecar** is a self-hosted, OSS, framework-agnostic **memory sidecar for
+**mindD** is a self-hosted, OSS, framework-agnostic **memory sidecar for
 agentic systems**. It runs as a co-process to one or more agents and exposes a
 small gRPC API (with an HTTP/JSON mirror) over **pluggable backends** for the
 six kinds of memory agent stacks keep reinventing:
@@ -33,8 +33,8 @@ cache, a context-window compiler, or a vector DB. Don't add those.
 proto/         protobuf service definitions (buf)
 gen/           generated Go gRPC code — CHECKED IN, never hand-edit
 cmd/
-  memsidecar/  the server (composition root: main.go wires everything)
-  memctl/      admin CLI: `token issue`, `token gen-keypair`
+  mindd/  the server (composition root: main.go wires everything)
+  mindctl/      admin CLI: `token issue`, `token gen-keypair`
 internal/
   auth/        TokenVerifier (PASETO v4.public default + JWT), Capability scoping
   config/      koanf YAML + env loader with validation
@@ -55,7 +55,7 @@ configs/        example YAML config
 Use the Makefile. Key targets:
 
 ```bash
-make build              # builds bin/memsidecar and bin/memctl
+make build              # builds bin/mindd and bin/mindctl
 make test               # go test ./...  (unit; no Docker needed)
 make test-integration   # go test -tags=integration ./...  (needs Docker)
 make lint               # golangci-lint run
@@ -104,7 +104,7 @@ when you touch a postgres/s3 driver.
   `PermissionDenied` for scope failures, `NotFound` for missing
   namespace/record. Don't return bare errors from RPC handlers.
 - **Config is koanf-based YAML + env.** Secrets come from env via `*_env`
-  option keys (e.g. `dsn_env`, `api_key_env`, `MEMSIDECAR_PASETO_SECRET_HEX`) —
+  option keys (e.g. `dsn_env`, `api_key_env`, `MINDD_PASETO_SECRET_HEX`) —
   never put secrets in YAML or commit them. The keypair in
   `configs/example.yaml` is dev-only.
 - **Hot reload (SIGHUP)** swaps only the auth verifier, policy engine, and log
@@ -118,13 +118,13 @@ when you touch a postgres/s3 driver.
 
 Mirror `internal/kv/`, then wire it in:
 
-1. Add `proto/memsidecar/<block>/v1/<block>.proto`, run `make proto`.
+1. Add `proto/mindd/<block>/v1/<block>.proto`, run `make proto`.
 2. Create `internal/<block>/`: `driver.go`, `registry.go`, `service.go`,
    `drivers/<name>/`, `<block>test/conformance.go`.
 3. Add op constants to `internal/auth/capability.go` (`Op<Block>*`).
 4. Map each gRPC method → op in `internal/interceptor/policy.go` (`methodToOp`).
 5. Wire the service in `internal/server/server.go` and a
-   `build<Block>Registry` in `cmd/memsidecar/main.go`.
+   `build<Block>Registry` in `cmd/mindd/main.go`.
 6. Extend `internal/config/config.go` validation for `block: <block>`.
 
 ## Adding a backend driver
@@ -132,7 +132,7 @@ Mirror `internal/kv/`, then wire it in:
 Implement the block's `Driver` interface under
 `internal/<block>/drivers/<name>/`, pass the conformance suite, and add a
 `case` to the driver switch in the relevant `build*Registry` in
-`cmd/memsidecar/main.go`. Postgres/S3 drivers read connection details from
+`cmd/mindd/main.go`. Postgres/S3 drivers read connection details from
 `config.BackendConfig.Options` via the `stringOpt`/`intOpt`/`durationOpt`
 helpers in `main.go`.
 

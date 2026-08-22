@@ -1,10 +1,10 @@
-"""Integration tests for the CrewAI storage backend (memsidecar.ext.crewai).
+"""Integration tests for the CrewAI storage backend (mindd.ext.crewai).
 
 Exercises the StorageBackend contract directly (supplying embeddings + query
-vectors, so no LLM is needed). Needs a running memsidecar with a semantic and a
+vectors, so no LLM is needed). Needs a running mindd with a semantic and a
 kv namespace of the same name, whose semantic embedder dimension is 8, and a
-token granting semantic + kv ops on them. Set MEMSIDECAR_TOKEN (and optionally
-MEMSIDECAR_ADDR, MEMSIDECAR_MEM_NS); the tests skip otherwise.
+token granting semantic + kv ops on them. Set MINDD_TOKEN (and optionally
+MINDD_ADDR, MINDD_MEM_NS); the tests skip otherwise.
 """
 import asyncio
 import os
@@ -14,8 +14,8 @@ from datetime import datetime, timezone
 import pytest
 
 pytestmark = pytest.mark.skipif(
-    not os.getenv("MEMSIDECAR_TOKEN"),
-    reason="needs a running memsidecar (set MEMSIDECAR_TOKEN)",
+    not os.getenv("MINDD_TOKEN"),
+    reason="needs a running mindd (set MINDD_TOKEN)",
 )
 
 DIM = 8
@@ -29,14 +29,14 @@ def _vec(i: float, at: int = 0) -> list[float]:
 
 @pytest.fixture
 def storage():
-    from memsidecar import MemSidecar
-    from memsidecar.ext.crewai import MemSidecarStorage
+    from mindd import MindD
+    from mindd.ext.crewai import MindDStorage
 
-    addr = os.getenv("MEMSIDECAR_ADDR", "127.0.0.1:7777")
-    ns = os.getenv("MEMSIDECAR_MEM_NS", "memories")
-    client = MemSidecar(addr, token=os.environ["MEMSIDECAR_TOKEN"])
+    addr = os.getenv("MINDD_ADDR", "127.0.0.1:7777")
+    ns = os.getenv("MINDD_MEM_NS", "memories")
+    client = MindD(addr, token=os.environ["MINDD_TOKEN"])
     try:
-        yield MemSidecarStorage(client, namespace=ns)
+        yield MindDStorage(client, namespace=ns)
     finally:
         client.close()
 

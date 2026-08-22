@@ -23,7 +23,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
-	"memsidecar/internal/semantic"
+	"github.com/vibed-project/mindD/internal/semantic"
 )
 
 // Options configures a Driver.

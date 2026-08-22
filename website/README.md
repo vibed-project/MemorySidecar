@@ -1,6 +1,6 @@
-# memsidecar docs site
+# mindD docs site
 
-[Docusaurus](https://docusaurus.io) site for memsidecar.
+[Docusaurus](https://docusaurus.io) site for mindD.
 
 ## Develop
 

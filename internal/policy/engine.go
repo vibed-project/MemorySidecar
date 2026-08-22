@@ -3,7 +3,7 @@ package policy
 import (
 	"context"
 
-	"memsidecar/internal/auth"
+	"github.com/vibed-project/mindD/internal/auth"
 )
 
 // HookCtx carries the contextual data a policy evaluator needs.

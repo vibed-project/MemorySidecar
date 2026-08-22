@@ -8,15 +8,15 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
-  MemSidecar,
+  MindD,
   capabilityInterceptor,
   CAPABILITY_HEADER,
   SearchMode,
   Direction,
 } from "../dist/index.js";
 
-test("MemSidecar exposes all six block clients", () => {
-  const m = new MemSidecar("127.0.0.1:7777", { token: "test-token" });
+test("MindD exposes all six block clients", () => {
+  const m = new MindD("127.0.0.1:7777", { token: "test-token" });
   for (const block of ["kv", "episodic", "semantic", "artifact", "lease", "graph"]) {
     assert.equal(typeof m[block], "object", `missing block: ${block}`);
   }
@@ -24,12 +24,12 @@ test("MemSidecar exposes all six block clients", () => {
 });
 
 test("full http(s) URLs are accepted as the address", () => {
-  assert.doesNotThrow(() => new MemSidecar("https://mem.internal:443", { token: "t", tls: true }));
+  assert.doesNotThrow(() => new MindD("https://mem.internal:443", { token: "t", tls: true }));
 });
 
 test("an empty token is rejected", () => {
   assert.throws(() => capabilityInterceptor(""), /must not be empty/);
-  assert.throws(() => new MemSidecar("127.0.0.1:7777", { token: "" }), /must not be empty/);
+  assert.throws(() => new MindD("127.0.0.1:7777", { token: "" }), /must not be empty/);
 });
 
 test("capability interceptor stamps the header", async () => {

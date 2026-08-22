@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 
-	"memsidecar/internal/lease"
-	pgdrv "memsidecar/internal/lease/drivers/postgres"
-	"memsidecar/internal/lease/leasetest"
+	"github.com/vibed-project/mindD/internal/lease"
+	pgdrv "github.com/vibed-project/mindD/internal/lease/drivers/postgres"
+	"github.com/vibed-project/mindD/internal/lease/leasetest"
 )
 
 type harness struct{}
@@ -21,7 +21,7 @@ func (harness) New(t *testing.T) lease.Driver {
 	t.Helper()
 	ctx := context.Background()
 	c, err := tcpostgres.Run(ctx, "postgres:16-alpine",
-		tcpostgres.WithDatabase("memsidecar_test"),
+		tcpostgres.WithDatabase("mindd_test"),
 		tcpostgres.WithUsername("test"),
 		tcpostgres.WithPassword("test"),
 		tcpostgres.BasicWaitStrategies(),

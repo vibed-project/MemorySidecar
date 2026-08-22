@@ -1,4 +1,4 @@
-# Audit — memsidecar against "Are We Ready For An Agent-Native Memory System?"
+# Audit — mindD against "Are We Ready For An Agent-Native Memory System?"
 
 > **Type:** Analysis / design input (not an ADR — no decision is made here)
 > **Source paper:** Zhou et al., *Are We Ready For An Agent-Native Memory System?*, arXiv:2606.24775v1
@@ -29,9 +29,9 @@ system into a tuple `M_sys = ⟨R, S, Q, U⟩`:
 - **F8 Retrieval strategy:** moderate hybrid dense+sparse fusion beats sparse-leaning; light query planning helps; extra reflection adds cost without gain.
 - **F9 Maintenance design:** conservative consolidation is the best default; delayed flushing fragments evidence; overly coarse summarization obscures cues.
 
-### How memsidecar sits inside the lens
+### How mindD sits inside the lens
 
-memsidecar is intentionally the **substrate** half of `⟨R, S, Q, U⟩`. It owns the physical
+mindD is intentionally the **substrate** half of `⟨R, S, Q, U⟩`. It owns the physical
 side of `R`, the lifecycle side of `U`, and the primitive side of `Q`; it deliberately
 leaves `S` (extraction) and the *orchestration* of `Q` (hybrid recall assembly, prompt
 construction) to the agent — consistent with the ADR-0001/0002 non-goals ("not an agent
@@ -39,10 +39,10 @@ framework, not a vector/graph DB, not an inference cache, not a context-window c
 
 The consequence that drives this whole audit: **the paper's two most-emphasized failure
 modes — F3 (stale facts) and F5 (cost = maintenance scope, measured as construction vs.
-query) — fall squarely on the two layers memsidecar owns and is currently thinnest in:
+query) — fall squarely on the two layers mindD owns and is currently thinnest in:
 `U` and observability.**
 
-## 2. Where memsidecar already aligns
+## 2. Where mindD already aligns
 
 Stated first, because the paper rewards these and they should not be disturbed:
 
@@ -154,7 +154,7 @@ ADR-0002 non-goal), and continuous parametric optimization (offline model traini
 
 ## 6. One-line verdict
 
-memsidecar is directionally right and already strong on trace preservation, engine-fronting,
+mindD is directionally right and already strong on trace preservation, engine-fronting,
 and the auth/policy/observability story. Against the paper it is thin in exactly two owned
 layers — **`U` (lifecycle/revisability, F3)** and **cost observability (F5)** — plus a
 retrieval substrate that stops at dense KNN. Closing `U` + observability is cheap, scope-clean,

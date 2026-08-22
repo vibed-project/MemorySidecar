@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"memsidecar/internal/graph"
+	"github.com/vibed-project/mindD/internal/graph"
 )
 
 // nsData holds one namespace's nodes, edges, and adjacency. out[n] is the set

@@ -1,10 +1,10 @@
-# One-command local memsidecar with a real backend stack: Postgres (pgvector,
+# One-command local mindd with a real backend stack: Postgres (pgvector,
 # so the semantic block works) + MinIO (S3-compatible artifacts).
 #
 #   docker compose up --build            # start the stack
 #   TOKEN=$(docker compose run --rm token)   # mint a dev capability token
-#   docker compose run --rm memctl kv put scratchpad hello world --token "$TOKEN"
-#   docker compose run --rm memctl ns ls --token "$TOKEN"
+#   docker compose run --rm mindctl kv put scratchpad hello world --token "$TOKEN"
+#   docker compose run --rm mindctl ns ls --token "$TOKEN"
 #
 # The gRPC API is on localhost:7777, the HTTP/JSON gateway on :8080, and
 # Prometheus metrics on :9090. DEV CREDENTIALS ONLY — the PASETO keypair below
@@ -16,11 +16,11 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_USER: memsidecar
-      POSTGRES_PASSWORD: memsidecar
-      POSTGRES_DB: memsidecar
+      POSTGRES_USER: mindd
+      POSTGRES_PASSWORD: mindd
+      POSTGRES_DB: mindd
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U memsidecar -d memsidecar"]
+      test: ["CMD-SHELL", "pg_isready -U mindd -d mindd"]
       interval: 2s
       timeout: 3s
       retries: 20
@@ -42,7 +42,7 @@ services:
       - "9000:9000"
       - "9001:9001"
 
-  # One-shot: create the bucket memsidecar expects, then exit.
+  # One-shot: create the bucket mindd expects, then exit.
   minio-setup:
     image: minio/mc:latest
     depends_on:
@@ -51,11 +51,11 @@ services:
     entrypoint: >
       /bin/sh -c "
         mc alias set local http://minio:9000 minioadmin minioadmin &&
-        mc mb --ignore-existing local/memsidecar &&
+        mc mb --ignore-existing local/mindd &&
         echo 'bucket ready'
       "
 
-  memsidecar:
+  mindd:
     build:
       context: .
     depends_on:
@@ -64,17 +64,17 @@ services:
       minio-setup:
         condition: service_completed_successfully
     environment:
-      MEMSIDECAR_PG_DSN: "postgres://memsidecar:memsidecar@postgres:5432/memsidecar?sslmode=disable"
-      MEMSIDECAR_S3_ACCESS_KEY: minioadmin
-      MEMSIDECAR_S3_SECRET_KEY: minioadmin
+      MINDD_PG_DSN: "postgres://mindd:mindd@postgres:5432/mindd?sslmode=disable"
+      MINDD_S3_ACCESS_KEY: minioadmin
+      MINDD_S3_SECRET_KEY: minioadmin
     volumes:
-      - ./configs/compose.yaml:/etc/memsidecar/config.yaml:ro
+      - ./configs/compose.yaml:/etc/mindd/config.yaml:ro
     ports:
       - "7777:7777" # gRPC
       - "8080:8080" # HTTP/JSON gateway
       - "9090:9090" # Prometheus metrics
     healthcheck:
-      test: ["CMD", "/usr/local/bin/memsidecar", "--version"]
+      test: ["CMD", "/usr/local/bin/mindd", "--version"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -85,20 +85,20 @@ services:
   token:
     build:
       context: .
-    entrypoint: ["/usr/local/bin/memctl"]
+    entrypoint: ["/usr/local/bin/mindctl"]
     command: ["token", "issue", "--tenant", "dev", "--agent", "compose",
               "--ns", "kv/*,episodic/*,semantic/*,artifact/*,lease/*,graph/*",
               "--ops", "*", "--ttl", "24h"]
     environment:
-      MEMSIDECAR_PASETO_SECRET_HEX: *paseto_secret
+      MINDD_PASETO_SECRET_HEX: *paseto_secret
     profiles: ["tools"]
 
-  # Helper: run memctl data-plane verbs against the running server.
-  #   docker compose run --rm memctl ns ls --token "$TOKEN"
-  memctl:
+  # Helper: run mindctl data-plane verbs against the running server.
+  #   docker compose run --rm mindctl ns ls --token "$TOKEN"
+  mindctl:
     build:
       context: .
-    entrypoint: ["/usr/local/bin/memctl"]
+    entrypoint: ["/usr/local/bin/mindctl"]
     environment:
-      MEMSIDECAR_ADDR: "memsidecar:7777"
+      MINDD_ADDR: "mindd:7777"
     profiles: ["tools"]

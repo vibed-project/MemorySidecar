@@ -55,7 +55,7 @@ Enable it from the start of a multi-tenant deployment, or migrate deliberately.
 The `tenant` comes from the capability token, so issue every token with one:
 
 ```bash
-memctl token issue --tenant acme --agent a1 --ns 'kv/*' --ops '*'
+mindctl token issue --tenant acme --agent a1 --ns 'kv/*' --ops '*'
 ```
 
 See [Capabilities](./capabilities.md) for how tokens carry the tenant.

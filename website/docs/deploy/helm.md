@@ -5,19 +5,19 @@ sidebar_position: 2
 
 # Helm chart
 
-The chart at `deploy/helm/memsidecar/` installs memsidecar into
+The chart at `deploy/helm/mindd/` installs mindD into
 Kubernetes with sensible defaults: Deployment + Service + ConfigMap +
 ServiceAccount, optional Secret (TLS) and ServiceMonitor.
 
 ## Install
 
 ```bash
-helm install msc deploy/helm/memsidecar \
-  --set image.repository=ghcr.io/your-org/memsidecar \
+helm install msc deploy/helm/mindd \
+  --set image.repository=ghcr.io/your-org/mindd \
   --set image.tag=v0.1.0
 ```
 
-Default `image.repository` is `memsidecar`; default tag is the chart's
+Default `image.repository` is `mindd`; default tag is the chart's
 `appVersion`. You'll almost always want to point this at your own
 registry.
 
@@ -38,7 +38,7 @@ registry.
 - `readOnlyRootFilesystem: true`, no privilege escalation, all
   capabilities dropped — matches the restricted Pod Security Standard
 - gRPC liveness + readiness probes on port 7777 (readiness aimed at the
-  `memsidecar.kv.v1.KV` service)
+  `mindd.kv.v1.KV` service)
 - `checksum/config` annotation on the pod template, so `helm upgrade`
   re-rolls the pod automatically on any ConfigMap change
 
@@ -49,10 +49,10 @@ registry.
 ```yaml
 # values.yaml
 env:
-  - name: MEMSIDECAR_PG_DSN
+  - name: MINDD_PG_DSN
     valueFrom:
       secretKeyRef:
-        name: memsidecar-pg
+        name: mindd-pg
         key: dsn
 
 config:
@@ -60,7 +60,7 @@ config:
     - name: pg-main
       driver: postgres
       options:
-        dsn_env: MEMSIDECAR_PG_DSN
+        dsn_env: MINDD_PG_DSN
   namespaces:
     - { block: kv, name: scratchpad, backend: pg-main }
 ```
@@ -71,23 +71,23 @@ config:
 # values.yaml
 tls:
   enabled: true
-  existingSecret: memsidecar-server-tls   # populated by a Certificate resource
+  existingSecret: mindd-server-tls   # populated by a Certificate resource
 
-# Also tell the inner memsidecar config to actually use those mounted files:
+# Also tell the inner mindd config to actually use those mounted files:
 config:
   server:
     grpc:
       tls:
-        cert_file: /etc/memsidecar/tls/tls.crt
-        key_file:  /etc/memsidecar/tls/tls.key
+        cert_file: /etc/mindd/tls/tls.crt
+        key_file:  /etc/mindd/tls/tls.key
 ```
 
-The chart mounts the named Secret at `/etc/memsidecar/tls/`. cert-manager
+The chart mounts the named Secret at `/etc/mindd/tls/`. cert-manager
 produces Secrets in exactly the same `kubernetes.io/tls` shape.
 
 ### Multiple replicas
 
-memsidecar is stateless (state lives in the backends). For HA, scale up:
+mindD is stateless (state lives in the backends). For HA, scale up:
 
 ```yaml
 replicaCount: 3
@@ -121,5 +121,5 @@ startup. Use that as your rollout signal.
 - **Configure the gateway with TLS.** Terminate TLS on the gateway port
   at your ingress.
 
-See [`deploy/helm/memsidecar/README.md`](https://github.com/vibed-project/MemorySidecar/blob/main/deploy/helm/memsidecar/README.md) for
+See [`deploy/helm/mindd/README.md`](https://github.com/vibed-project/mindD/blob/main/deploy/helm/mindd/README.md) for
 the full values reference.

@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"memsidecar/internal/artifact"
+	"github.com/vibed-project/mindD/internal/artifact"
 )
 
 type stored struct {

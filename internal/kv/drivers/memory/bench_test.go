@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"memsidecar/internal/kv"
+	"github.com/vibed-project/mindD/internal/kv"
 )
 
 // BenchmarkPut measures the write path (O5 construction-vs-query).

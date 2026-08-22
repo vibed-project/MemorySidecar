@@ -164,12 +164,12 @@ Each namespace keeps a bounded **embedding cache** in front of its embedder:
 identical content is embedded once and reused, so re-indexing the same text or
 running a repeated `query_text` skips the provider round-trip. Tune it with
 `embedder.cache_size` (omit/`0` = default 4096 entries; negative = disabled);
-effectiveness shows up as `memsidecar.embedder.cache.{hits,misses}`.
+effectiveness shows up as `mindd.embedder.cache.{hits,misses}`.
 
 ## gRPC example
 
 ```bash
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{
     "namespace":"notes",
     "records":[
@@ -177,29 +177,29 @@ grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
       {"id":"b","content":"how to debug a Go panic","metadata":{"topic":"code"}}
     ]
   }' \
-  127.0.0.1:7777 memsidecar.semantic.v1.Semantic/Upsert
+  127.0.0.1:7777 mindd.semantic.v1.Semantic/Upsert
 
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"notes","query_text":"apple","top_k":2}' \
-  127.0.0.1:7777 memsidecar.semantic.v1.Semantic/Search
+  127.0.0.1:7777 mindd.semantic.v1.Semantic/Search
 
 # Revise a fact: "b" supersedes "a" — "a" is invalidated as of the new record.
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"notes","records":[
         {"id":"c","content":"how to debug a Go race","supersedes":["b"]}]}' \
-  127.0.0.1:7777 memsidecar.semantic.v1.Semantic/Upsert
+  127.0.0.1:7777 mindd.semantic.v1.Semantic/Upsert
 
 # Soft-delete every record tagged topic=food, in one bounded op.
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"notes","filter":{"topic":"food"},
        "action":"EXPIRE_ACTION_SOFT_DELETE","max_rows":100}' \
-  127.0.0.1:7777 memsidecar.semantic.v1.Semantic/Expire
+  127.0.0.1:7777 mindd.semantic.v1.Semantic/Expire
 ```
 
 ## Python example
 
 ```python
-from memsidecar.semantic.v1 import semantic_pb2
+from mindd.semantic.v1 import semantic_pb2
 
 resp = m.semantic.upsert("notes", [
     semantic_pb2.Record(id="a", content="apple pie recipe"),
@@ -241,7 +241,7 @@ n = m.semantic.expire("notes", filter={"topic": "food"},
   Memory driver's normalisation may overshoot 1.0 by ~1e-6 due to float32
   precision; pgvector clamps server-side.
 - Records can carry a pre-computed `vector` instead of `content` — useful
-  when you embed offline and only use memsidecar for storage + search.
+  when you embed offline and only use mindD for storage + search.
 - `filter` is exact-match (AND of equalities); `predicates` adds ranges and
   set membership. `EQ`/`NEQ`/`IN` compare metadata values as strings;
   `GT`/`GTE`/`LT`/`LTE` compare **numerically** — the predicate value must

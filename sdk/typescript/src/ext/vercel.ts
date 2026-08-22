@@ -1,14 +1,14 @@
-// Vercel AI SDK adapter — chat message persistence backed by memsidecar.
+// Vercel AI SDK adapter — chat message persistence backed by mindd.
 //
 // The AI SDK persists a chat as its full `UIMessage[]`, loaded by id at the
 // start of a request and re-saved after each turn. This adapter implements that
 // convention on the kv block: one key per chat holding the JSON message array.
 // Import it from the "/ai" subpath so the base client never pulls in `ai`:
 //
-//   import { MemSidecar } from "@memsidecar/client";
-//   import { createChatStore } from "@memsidecar/client/ai";
+//   import { MindD } from "@mindd/client";
+//   import { createChatStore } from "@mindd/client/ai";
 //
-//   const store = createChatStore(new MemSidecar(addr, { token }));
+//   const store = createChatStore(new MindD(addr, { token }));
 //   const chatId = await store.createChat();
 //   const messages = await store.loadChat(chatId);
 //
@@ -23,8 +23,8 @@ import { randomUUID } from "node:crypto";
 import type { UIMessage } from "ai";
 
 /**
- * The subset of a `MemSidecar` client this store uses — its `kv` block. A full
- * `MemSidecar` instance satisfies it structurally, and it keeps the store easy
+ * The subset of a `MindD` client this store uses — its `kv` block. A full
+ * `MindD` instance satisfies it structurally, and it keeps the store easy
  * to unit-test with a fake.
  */
 export interface ChatStoreClient {
@@ -41,7 +41,7 @@ export interface ChatStoreClient {
   };
 }
 
-export interface MemSidecarChatStoreOptions {
+export interface MindDChatStoreOptions {
   /** kv namespace holding the chats. Default "chats". */
   namespace?: string;
   /** New-chat id generator. Default `crypto.randomUUID()`. */
@@ -52,7 +52,7 @@ export interface MemSidecarChatStoreOptions {
  * A chat store shaped for the AI SDK's persistence points: `loadChat`/`saveChat`
  * match its convention, plus `createChat`/`deleteChat`/`listChats`.
  */
-export interface MemSidecarChatStore {
+export interface MindDChatStore {
   /** Create an empty chat and return its id. */
   createChat(): Promise<string>;
   /** Load a chat's messages; returns [] for an unknown/empty chat. */
@@ -68,11 +68,11 @@ export interface MemSidecarChatStore {
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
-/** Build a memsidecar-backed AI SDK chat store over the kv block. */
+/** Build a mindd-backed AI SDK chat store over the kv block. */
 export function createChatStore(
   client: ChatStoreClient,
-  opts: MemSidecarChatStoreOptions = {},
-): MemSidecarChatStore {
+  opts: MindDChatStoreOptions = {},
+): MindDChatStore {
   const namespace = opts.namespace ?? "chats";
   const generateId = opts.generateId ?? defaultId;
 

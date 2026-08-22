@@ -11,7 +11,7 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 
-	semanticv1 "memsidecar/gen/memsidecar/semantic/v1"
+	semanticv1 "github.com/vibed-project/mindD/gen/mindd/semantic/v1"
 )
 
 // TestService_O2Instruments verifies the service records backend.duration,
@@ -50,14 +50,14 @@ func TestService_O2Instruments(t *testing.T) {
 	}
 
 	// backend.duration recorded for both the upsert and the search.
-	bd, ok := metrics["memsidecar.backend.duration"]
+	bd, ok := metrics["mindd.backend.duration"]
 	require.True(t, ok, "backend.duration must be recorded")
 	ops := opsWithLabel[float64](bd.Data.(metricdata.Histogram[float64]).DataPoints, "op")
 	assert.Contains(t, ops, "semantic.upsert")
 	assert.Contains(t, ops, "semantic.search")
 
 	// result.size recorded; the search returned at least one hit.
-	rs, ok := metrics["memsidecar.result.size"]
+	rs, ok := metrics["mindd.result.size"]
 	require.True(t, ok, "result.size must be recorded")
 	var searchSize int64 = -1
 	for _, dp := range rs.Data.(metricdata.Histogram[int64]).DataPoints {
@@ -70,7 +70,7 @@ func TestService_O2Instruments(t *testing.T) {
 	assert.GreaterOrEqual(t, searchSize, int64(1))
 
 	// top_score recorded for the search.
-	_, ok = metrics["memsidecar.result.top_score"]
+	_, ok = metrics["mindd.result.top_score"]
 	assert.True(t, ok, "result.top_score must be recorded")
 }
 

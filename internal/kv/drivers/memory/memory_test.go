@@ -3,9 +3,9 @@ package memory_test
 import (
 	"testing"
 
-	"memsidecar/internal/kv"
-	"memsidecar/internal/kv/drivers/memory"
-	"memsidecar/internal/kv/kvtest"
+	"github.com/vibed-project/mindD/internal/kv"
+	"github.com/vibed-project/mindD/internal/kv/drivers/memory"
+	"github.com/vibed-project/mindD/internal/kv/kvtest"
 )
 
 type harness struct{}

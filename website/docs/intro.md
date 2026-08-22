@@ -4,9 +4,9 @@ sidebar_position: 1
 title: Overview
 ---
 
-# memsidecar
+# mindD
 
-memsidecar is a **self-hosted, OSS, framework-agnostic memory sidecar for
+mindD is a **self-hosted, OSS, framework-agnostic memory sidecar for
 agentic systems**. It runs as a co-process to one or more agents and exposes
 a small, opinionated gRPC API over **pluggable backends** for the kinds
 of memory every agent stack ends up reinventing:
@@ -37,7 +37,7 @@ up tightly coupled to specific backends, multi-agent memory sharing is
 ad-hoc, access control is either absent or framework-specific, and swapping
 Pinecone for Qdrant — or Redis for Postgres — means rewriting agent code.
 
-memsidecar moves that plumbing out of the agent and into a sidecar with:
+mindD moves that plumbing out of the agent and into a sidecar with:
 
 - **One protocol** (gRPC, with an HTTP/JSON gateway for everything that
   isn't gRPC-native).
@@ -54,7 +54,7 @@ memsidecar moves that plumbing out of the agent and into a sidecar with:
 
 ## What's in the box
 
-- A single static Go binary (`memsidecar`) plus an admin CLI (`memctl`).
+- A single static Go binary (`mindd`) plus an admin CLI (`mindctl`).
 - Drivers for in-memory, Postgres / pgvector, local filesystem, S3 / MinIO.
 - A [Python SDK](./clients/python.md) that wraps the gRPC stubs and handles
   capability headers for you.
@@ -63,7 +63,7 @@ memsidecar moves that plumbing out of the agent and into a sidecar with:
 
 ## Where to go from here
 
-- New to memsidecar? Start with the [Quickstart](./quickstart.md).
+- New to mindD? Start with the [Quickstart](./quickstart.md).
 - Wondering what it's *for*? Skim the [Use cases](./guides/use-cases.md) —
   problem-first recipes that map real agent needs onto the blocks.
 - Want to understand the model? Read the

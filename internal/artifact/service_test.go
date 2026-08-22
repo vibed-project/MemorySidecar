@@ -17,10 +17,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
-	artifactv1 "memsidecar/gen/memsidecar/artifact/v1"
-	"memsidecar/internal/artifact"
-	memdrv "memsidecar/internal/artifact/drivers/memory"
-	"memsidecar/internal/auth"
+	artifactv1 "github.com/vibed-project/mindD/gen/mindd/artifact/v1"
+	"github.com/vibed-project/mindD/internal/artifact"
+	memdrv "github.com/vibed-project/mindD/internal/artifact/drivers/memory"
+	"github.com/vibed-project/mindD/internal/auth"
 )
 
 func newTestServer(t *testing.T, cap *auth.Capability) artifactv1.ArtifactClient {

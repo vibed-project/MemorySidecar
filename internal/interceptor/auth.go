@@ -10,11 +10,11 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"memsidecar/internal/auth"
+	"github.com/vibed-project/mindD/internal/auth"
 )
 
 // CapabilityHeader is the gRPC metadata key carrying the bearer token.
-const CapabilityHeader = "x-memsidecar-capability"
+const CapabilityHeader = "x-mindd-capability"
 
 // AuthUnary builds a unary interceptor that verifies the bearer token in the
 // capability header and attaches the parsed Capability to the request context.

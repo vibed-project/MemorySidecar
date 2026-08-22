@@ -61,7 +61,7 @@ type namespaceSizer interface {
 // NamespaceItems returns the current item count for every bound namespace whose
 // driver can report it cheaply. Object-store drivers (fs, s3) don't implement
 // Size — counting objects there isn't cheap — so those namespaces are omitted.
-// Feeds the memsidecar.namespace.items gauge.
+// Feeds the mindd.namespace.items gauge.
 func (r *Registry) NamespaceItems(ctx context.Context) map[string]int64 {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

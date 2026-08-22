@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"memsidecar/internal/auth"
+	"github.com/vibed-project/mindD/internal/auth"
 
-	semanticv1 "memsidecar/gen/memsidecar/semantic/v1"
+	semanticv1 "github.com/vibed-project/mindD/gen/mindd/semantic/v1"
 )
 
 const Block = "semantic"

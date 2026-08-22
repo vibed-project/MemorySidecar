@@ -12,21 +12,21 @@ Lease, and Graph — over gRPC and HTTP — in a couple of minutes. Two paths:
 
 ## Fastest: Docker Compose
 
-Brings up memsidecar backed by Postgres (pgvector) and MinIO (S3), with helpers
+Brings up mindD backed by Postgres (pgvector) and MinIO (S3), with helpers
 to mint a token and drive the data plane. No Go/buf toolchain needed.
 
 ```bash
-git clone https://github.com/vibed-project/MemorySidecar.git
-cd memsidecar
+git clone https://github.com/vibed-project/mindD.git
+cd mindd
 docker compose up --build -d           # gRPC :7777, HTTP :8080, metrics :9090
 
 # Mint a dev capability token (‑T keeps the output clean).
-export MEMSIDECAR_TOKEN=$(docker compose run --rm -T token)
+export MINDD_TOKEN=$(docker compose run --rm -T token)
 
-# Talk to it — no grpcurl, just memctl:
-docker compose run --rm -T memctl kv put scratchpad hello world --token "$MEMSIDECAR_TOKEN"
-docker compose run --rm -T memctl kv get scratchpad hello       --token "$MEMSIDECAR_TOKEN"
-docker compose run --rm -T memctl ns ls                         --token "$MEMSIDECAR_TOKEN"
+# Talk to it — no grpcurl, just mindctl:
+docker compose run --rm -T mindctl kv put scratchpad hello world --token "$MINDD_TOKEN"
+docker compose run --rm -T mindctl kv get scratchpad hello       --token "$MINDD_TOKEN"
+docker compose run --rm -T mindctl ns ls                         --token "$MINDD_TOKEN"
 ```
 
 `docker compose down -v` tears it all down. The `token` service uses the public
@@ -47,10 +47,10 @@ brew install bufbuild/buf/buf
 ### Build & run
 
 ```bash
-git clone https://github.com/m-koerbaecher/memsidecar.git
-cd memsidecar
-make build                              # produces bin/memsidecar and bin/memctl
-./bin/memsidecar --config configs/example.yaml
+git clone https://github.com/vibed-project/mindD.git
+cd mindd
+make build                              # produces bin/mindd and bin/mindctl
+./bin/mindd --config configs/example.yaml
 ```
 
 You'll see structured JSON logs reporting each listener:
@@ -58,7 +58,7 @@ You'll see structured JSON logs reporting each listener:
 ```json
 {"msg":"listening","transport":"tcp","addr":"127.0.0.1:7777","security":"plaintext"}
 {"msg":"listening","transport":"http","purpose":"gateway","addr":"127.0.0.1:8080"}
-{"msg":"memsidecar ready"}
+{"msg":"mindd ready"}
 ```
 
 ### Mint a capability token
@@ -66,29 +66,29 @@ You'll see structured JSON logs reporting each listener:
 The dev keypair shipped in `configs/example.yaml` is for local use only.
 
 ```bash
-export MEMSIDECAR_PASETO_SECRET_HEX=38fb82e74985d41969ce39904d7cbe01dd31ea0b573dc8fc35c5689b8212ccc961a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9
+export MINDD_PASETO_SECRET_HEX=38fb82e74985d41969ce39904d7cbe01dd31ea0b573dc8fc35c5689b8212ccc961a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9
 
-export MEMSIDECAR_TOKEN=$(./bin/memctl token issue \
+export MINDD_TOKEN=$(./bin/mindctl token issue \
   --tenant acme --agent agent-1 \
   --ns 'kv/*,episodic/events,semantic/notes,artifact/blobs,lease/locks,graph/knowledge' \
   --ops '*' --ttl 1h)
 ```
 
 For real deployments, generate a fresh keypair with
-`./bin/memctl token gen-keypair` and put the **public** half in your config.
+`./bin/mindctl token gen-keypair` and put the **public** half in your config.
 
-## Talk to it with `memctl`
+## Talk to it with `mindctl`
 
-`memctl` speaks the data plane too, using the token you just issued — it reads
-`$MEMSIDECAR_TOKEN` and `$MEMSIDECAR_ADDR` (default `127.0.0.1:7777`) by default:
+`mindctl` speaks the data plane too, using the token you just issued — it reads
+`$MINDD_TOKEN` and `$MINDD_ADDR` (default `127.0.0.1:7777`) by default:
 
 ```bash
-memctl kv put scratchpad hello world --ttl 5m
-memctl kv get scratchpad hello
-memctl semantic search notes "capital of France" --top-k 3
-memctl graph neighbors knowledge paris
-memctl episodic tail events --historical      # live stream; Ctrl-C to stop
-memctl ns ls                                  # namespaces + live item counts
+mindctl kv put scratchpad hello world --ttl 5m
+mindctl kv get scratchpad hello
+mindctl semantic search notes "capital of France" --top-k 3
+mindctl graph neighbors knowledge paris
+mindctl episodic tail events --historical      # live stream; Ctrl-C to stop
+mindctl ns ls                                  # namespaces + live item counts
 ```
 
 ### HTTP/JSON gateway
@@ -96,8 +96,8 @@ memctl ns ls                                  # namespaces + live item counts
 Every unary RPC is also reachable over HTTP — same service, different transport:
 
 ```bash
-curl -sS -X POST http://127.0.0.1:8080/memsidecar.kv.v1.KV/Put \
-  -H "x-memsidecar-capability: Bearer $MEMSIDECAR_TOKEN" \
+curl -sS -X POST http://127.0.0.1:8080/mindd.kv.v1.KV/Put \
+  -H "x-mindd-capability: Bearer $MINDD_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"namespace":"scratchpad","key":"hello","value":"d29ybGQ="}'
 ```
@@ -106,9 +106,9 @@ curl -sS -X POST http://127.0.0.1:8080/memsidecar.kv.v1.KV/Put \
 
 ```python
 import datetime as dt
-from memsidecar import MemSidecar
+from mindd import MindD
 
-with MemSidecar("127.0.0.1:7777", token=TOKEN) as m:
+with MindD("127.0.0.1:7777", token=TOKEN) as m:
     m.kv.put("scratchpad", "hello", b"world", ttl=dt.timedelta(minutes=5))
     print(m.kv.get("scratchpad", "hello").value)  # b"world"
 ```
@@ -119,7 +119,7 @@ Install the SDK with `pip install ./sdk/python`, then take the whole tour:
 python examples/agent_tour.py     # exercises every block as one agent turn
 ```
 
-See [`examples/`](https://github.com/m-koerbaecher/memsidecar/tree/main/examples).
+See [`examples/`](https://github.com/vibed-project/mindD/tree/main/examples).
 
 ## What just happened
 

@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"memsidecar/internal/artifact"
-	"memsidecar/internal/artifact/artifacttest"
+	"github.com/vibed-project/mindD/internal/artifact"
+	"github.com/vibed-project/mindD/internal/artifact/artifacttest"
 )
 
 type harness struct{}

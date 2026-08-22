@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"memsidecar/internal/auth"
+	"github.com/vibed-project/mindD/internal/auth"
 
-	kvv1 "memsidecar/gen/memsidecar/kv/v1"
+	kvv1 "github.com/vibed-project/mindD/gen/mindd/kv/v1"
 )
 
 const Block = "kv"

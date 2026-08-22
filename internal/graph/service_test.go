@@ -13,10 +13,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
-	graphv1 "memsidecar/gen/memsidecar/graph/v1"
-	"memsidecar/internal/auth"
-	"memsidecar/internal/graph"
-	memdrv "memsidecar/internal/graph/drivers/memory"
+	graphv1 "github.com/vibed-project/mindD/gen/mindd/graph/v1"
+	"github.com/vibed-project/mindD/internal/auth"
+	"github.com/vibed-project/mindD/internal/graph"
+	memdrv "github.com/vibed-project/mindD/internal/graph/drivers/memory"
 )
 
 func newTestServer(t *testing.T, cap *auth.Capability) graphv1.GraphClient {

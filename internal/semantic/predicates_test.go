@@ -3,7 +3,7 @@ package semantic_test
 import (
 	"testing"
 
-	"memsidecar/internal/semantic"
+	"github.com/vibed-project/mindD/internal/semantic"
 )
 
 func TestFieldPredicateValidate(t *testing.T) {

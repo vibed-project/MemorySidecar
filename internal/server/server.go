@@ -19,24 +19,24 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	adminv1 "memsidecar/gen/memsidecar/admin/v1"
-	artifactv1 "memsidecar/gen/memsidecar/artifact/v1"
-	episodicv1 "memsidecar/gen/memsidecar/episodic/v1"
-	graphv1 "memsidecar/gen/memsidecar/graph/v1"
-	kvv1 "memsidecar/gen/memsidecar/kv/v1"
-	leasev1 "memsidecar/gen/memsidecar/lease/v1"
-	semanticv1 "memsidecar/gen/memsidecar/semantic/v1"
-	"memsidecar/internal/admin"
-	"memsidecar/internal/artifact"
-	"memsidecar/internal/auth"
-	"memsidecar/internal/config"
-	"memsidecar/internal/episodic"
-	"memsidecar/internal/graph"
-	"memsidecar/internal/interceptor"
-	"memsidecar/internal/kv"
-	"memsidecar/internal/lease"
-	"memsidecar/internal/policy"
-	"memsidecar/internal/semantic"
+	adminv1 "github.com/vibed-project/mindD/gen/mindd/admin/v1"
+	artifactv1 "github.com/vibed-project/mindD/gen/mindd/artifact/v1"
+	episodicv1 "github.com/vibed-project/mindD/gen/mindd/episodic/v1"
+	graphv1 "github.com/vibed-project/mindD/gen/mindd/graph/v1"
+	kvv1 "github.com/vibed-project/mindD/gen/mindd/kv/v1"
+	leasev1 "github.com/vibed-project/mindD/gen/mindd/lease/v1"
+	semanticv1 "github.com/vibed-project/mindD/gen/mindd/semantic/v1"
+	"github.com/vibed-project/mindD/internal/admin"
+	"github.com/vibed-project/mindD/internal/artifact"
+	"github.com/vibed-project/mindD/internal/auth"
+	"github.com/vibed-project/mindD/internal/config"
+	"github.com/vibed-project/mindD/internal/episodic"
+	"github.com/vibed-project/mindD/internal/graph"
+	"github.com/vibed-project/mindD/internal/interceptor"
+	"github.com/vibed-project/mindD/internal/kv"
+	"github.com/vibed-project/mindD/internal/lease"
+	"github.com/vibed-project/mindD/internal/policy"
+	"github.com/vibed-project/mindD/internal/semantic"
 )
 
 // Deps is everything Server needs that lives outside its lifetime.
@@ -128,24 +128,24 @@ func New(cfg config.ServerConfig, deps Deps) (*Server, error) {
 	}
 
 	hs := health.NewServer()
-	hs.SetServingStatus("memsidecar.kv.v1.KV", healthpb.HealthCheckResponse_SERVING)
+	hs.SetServingStatus("mindd.kv.v1.KV", healthpb.HealthCheckResponse_SERVING)
 	if deps.Episodic != nil {
-		hs.SetServingStatus("memsidecar.episodic.v1.Episodic", healthpb.HealthCheckResponse_SERVING)
+		hs.SetServingStatus("mindd.episodic.v1.Episodic", healthpb.HealthCheckResponse_SERVING)
 	}
 	if deps.Semantic != nil {
-		hs.SetServingStatus("memsidecar.semantic.v1.Semantic", healthpb.HealthCheckResponse_SERVING)
+		hs.SetServingStatus("mindd.semantic.v1.Semantic", healthpb.HealthCheckResponse_SERVING)
 	}
 	if deps.Artifact != nil {
-		hs.SetServingStatus("memsidecar.artifact.v1.Artifact", healthpb.HealthCheckResponse_SERVING)
+		hs.SetServingStatus("mindd.artifact.v1.Artifact", healthpb.HealthCheckResponse_SERVING)
 	}
 	if deps.Lease != nil {
-		hs.SetServingStatus("memsidecar.lease.v1.Lease", healthpb.HealthCheckResponse_SERVING)
+		hs.SetServingStatus("mindd.lease.v1.Lease", healthpb.HealthCheckResponse_SERVING)
 	}
 	if deps.Graph != nil {
-		hs.SetServingStatus("memsidecar.graph.v1.Graph", healthpb.HealthCheckResponse_SERVING)
+		hs.SetServingStatus("mindd.graph.v1.Graph", healthpb.HealthCheckResponse_SERVING)
 	}
 	if deps.Admin != nil {
-		hs.SetServingStatus("memsidecar.admin.v1.Admin", healthpb.HealthCheckResponse_SERVING)
+		hs.SetServingStatus("mindd.admin.v1.Admin", healthpb.HealthCheckResponse_SERVING)
 	}
 	hs.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(grpcSrv, hs)

@@ -6,7 +6,7 @@ import (
 	"math"
 	"testing"
 
-	"memsidecar/internal/semantic"
+	"github.com/vibed-project/mindD/internal/semantic"
 )
 
 const benchDim = 128

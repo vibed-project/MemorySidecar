@@ -12,18 +12,18 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 
-	"memsidecar/internal/auth"
+	"github.com/vibed-project/mindD/internal/auth"
 )
 
-// opDurationHistogram builds the memsidecar.op.duration histogram (seconds)
+// opDurationHistogram builds the mindd.op.duration histogram (seconds)
 // from mp, falling back to the global meter provider when mp is nil. It returns
 // nil only on construction error, which makes recording a no-op.
 func opDurationHistogram(mp metric.MeterProvider) metric.Float64Histogram {
 	if mp == nil {
 		mp = otel.GetMeterProvider()
 	}
-	h, err := mp.Meter("memsidecar/interceptor").Float64Histogram(
-		"memsidecar.op.duration",
+	h, err := mp.Meter("mindd/interceptor").Float64Histogram(
+		"mindd.op.duration",
 		metric.WithUnit("s"),
 		metric.WithDescription("Server-side RPC duration by building block and op class (write vs query)."),
 	)
@@ -62,13 +62,13 @@ func ObservabilityStream(log *slog.Logger, mp metric.MeterProvider) grpc.StreamS
 func annotate(ctx context.Context, method, namespace string, latency time.Duration, callErr error, log *slog.Logger, hist metric.Float64Histogram) {
 	span := trace.SpanFromContext(ctx)
 	attrs := []attribute.KeyValue{
-		attribute.String("memsidecar.method", method),
+		attribute.String("mindd.method", method),
 	}
 	if cap, ok := auth.FromContext(ctx); ok {
 		attrs = append(
 			attrs,
-			attribute.String("memsidecar.tenant", cap.Scope.Tenant),
-			attribute.String("memsidecar.agent", cap.Scope.Agent),
+			attribute.String("mindd.tenant", cap.Scope.Tenant),
+			attribute.String("mindd.agent", cap.Scope.Agent),
 		)
 	}
 	span.SetAttributes(attrs...)

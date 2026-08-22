@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"memsidecar/internal/kv"
-	kvmem "memsidecar/internal/kv/drivers/memory"
+	"github.com/vibed-project/mindD/internal/kv"
+	kvmem "github.com/vibed-project/mindD/internal/kv/drivers/memory"
 )
 
 // noSizeDriver satisfies kv.Driver but does NOT implement a Size method, so

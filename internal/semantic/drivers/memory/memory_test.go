@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"memsidecar/internal/semantic"
-	"memsidecar/internal/semantic/semantictest"
+	"github.com/vibed-project/mindD/internal/semantic"
+	"github.com/vibed-project/mindD/internal/semantic/semantictest"
 )
 
 type harness struct{}

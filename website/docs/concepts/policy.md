@@ -9,7 +9,7 @@ The policy engine sits in the interceptor chain right after auth. Its job
 is to decide whether a call that's correctly scoped should still be
 allowed — and, optionally, rate-limited or cost-capped.
 
-memsidecar ships two engines:
+mindD ships two engines:
 
 - `NoopEngine` — allows everything. The default when `policy:` is omitted.
 - `RuleEngine` — driven by declarative YAML rules, hot-reloadable.
@@ -88,7 +88,7 @@ ruleset.
 ## Hot reload
 
 A `SIGHUP` re-reads the policy section and atomically swaps the active
-engine via [`policy.Holder`](https://github.com/vibed-project/MemorySidecar/blob/main/internal/policy/holder.go).
+engine via [`policy.Holder`](https://github.com/vibed-project/mindD/blob/main/internal/policy/holder.go).
 In-flight requests keep using the engine they were dispatched under; the
 next request after the SIGHUP sees the new rules.
 
@@ -99,5 +99,5 @@ See [Hot reload](../config/hot-reload.md) for the full reload contract.
 The policy engine handles **access and cost decisions** —
 allow / deny / rate-limit / cost-cap. A larger policy story (PII redaction,
 post-read transforms, retention enforcement) is intentionally deferred;
-the [HookCtx](https://github.com/vibed-project/MemorySidecar/blob/main/internal/policy/engine.go)
+the [HookCtx](https://github.com/vibed-project/mindD/blob/main/internal/policy/engine.go)
 type already carries the fields a richer engine would need.

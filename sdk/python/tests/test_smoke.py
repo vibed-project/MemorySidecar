@@ -1,4 +1,4 @@
-"""End-to-end smoke test against a running memsidecar.
+"""End-to-end smoke test against a running mindd.
 
 Requires the server to be running locally at 127.0.0.1:7777 with the dev
 config (configs/example.yaml). Driven by the SDK README quickstart.
@@ -12,19 +12,19 @@ import uuid
 
 import pytest
 
-from memsidecar import MemSidecar
+from mindd import MindD
 
 
-TARGET = os.environ.get("MEMSIDECAR_TARGET", "127.0.0.1:7777")
-TOKEN = os.environ.get("MEMSIDECAR_TOKEN")
+TARGET = os.environ.get("MINDD_TARGET", "127.0.0.1:7777")
+TOKEN = os.environ.get("MINDD_TOKEN")
 
 
-pytestmark = pytest.mark.skipif(not TOKEN, reason="MEMSIDECAR_TOKEN not set")
+pytestmark = pytest.mark.skipif(not TOKEN, reason="MINDD_TOKEN not set")
 
 
 @pytest.fixture
 def client():
-    with MemSidecar(TARGET, token=TOKEN) as m:
+    with MindD(TARGET, token=TOKEN) as m:
         yield m
 
 
@@ -45,7 +45,7 @@ def test_episodic_append_range(client):
 
 
 def test_semantic_upsert_search(client):
-    from memsidecar.semantic.v1 import semantic_pb2
+    from mindd.semantic.v1 import semantic_pb2
     rid = f"smoke-{uuid.uuid4()}"
     client.semantic.upsert("notes", [
         semantic_pb2.Record(id=rid, content="banana split"),

@@ -22,7 +22,7 @@ func TestLoad_Valid(t *testing.T) {
 server:
   grpc:
     tcp: "127.0.0.1:7777"
-    uds: "/tmp/memsidecar.sock"
+    uds: "/tmp/mindd.sock"
 
 auth:
   verifier: paseto
@@ -40,7 +40,7 @@ namespaces:
 `))
 	require.NoError(t, err)
 	assert.Equal(t, "127.0.0.1:7777", cfg.Server.GRPC.TCP)
-	assert.Equal(t, "/tmp/memsidecar.sock", cfg.Server.GRPC.UDS)
+	assert.Equal(t, "/tmp/mindd.sock", cfg.Server.GRPC.UDS)
 	require.Len(t, cfg.Backends, 1)
 	require.Len(t, cfg.Namespaces, 1)
 	assert.Equal(t, "scratchpad", cfg.Namespaces[0].Name)
@@ -208,7 +208,7 @@ namespaces:
 }
 
 func TestLoad_EnvOverride(t *testing.T) {
-	t.Setenv("MEMSIDECAR_SERVER__GRPC__TCP", "0.0.0.0:9999")
+	t.Setenv("MINDD_SERVER__GRPC__TCP", "0.0.0.0:9999")
 	cfg, err := Load(writeTemp(t, `
 auth:
   verifier: paseto

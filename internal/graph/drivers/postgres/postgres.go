@@ -18,7 +18,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"memsidecar/internal/graph"
+	"github.com/vibed-project/mindD/internal/graph"
 )
 
 // Options configures a Driver.

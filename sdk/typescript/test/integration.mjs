@@ -1,21 +1,21 @@
-// Live integration test against a running memsidecar (configs/example.yaml,
+// Live integration test against a running mindd (configs/example.yaml,
 // all in-memory backends + the fake embedder). Not part of `npm test` — it
 // needs a server. Point it at one and mint a token:
 //
-//   MEMSIDECAR_ADDR=127.0.0.1:7777 MEMSIDECAR_TOKEN=$(memctl token issue ...) \
+//   MINDD_ADDR=127.0.0.1:7777 MINDD_TOKEN=$(mindctl token issue ...) \
 //     node --test test/integration.mjs
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { MemSidecar } from "../dist/index.js";
+import { MindD } from "../dist/index.js";
 
-const addr = process.env.MEMSIDECAR_ADDR ?? "127.0.0.1:7777";
-const token = process.env.MEMSIDECAR_TOKEN;
+const addr = process.env.MINDD_ADDR ?? "127.0.0.1:7777";
+const token = process.env.MINDD_TOKEN;
 if (!token) {
-  throw new Error("set MEMSIDECAR_TOKEN");
+  throw new Error("set MINDD_TOKEN");
 }
 
-const m = new MemSidecar(addr, { token });
+const m = new MindD(addr, { token });
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 

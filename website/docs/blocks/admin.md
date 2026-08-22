@@ -32,7 +32,7 @@ message NamespaceInfo {
 - `ListNamespaces` returns every configured namespace (ordered by
   `(block, name)`) plus a `ServerInfo` with the server `version` / `commit`.
 - `item_count` reuses each block registry's cheap per-namespace count — the same
-  source that feeds the `memsidecar.namespace.items` gauge (O3). Drivers with no
+  source that feeds the `mindd.namespace.items` gauge (O3). Drivers with no
   cheap size (the `fs` / `s3` artifact drivers) report **`has_count = false`**
   rather than paying a `count(*)`; treat `item_count` as valid only when
   `has_count` is true.
@@ -46,7 +46,7 @@ message NamespaceInfo {
 (`admin.inspect`, the verb-only `inspect`, or `*`). Issue an admin token with:
 
 ```bash
-memctl token issue --tenant acme --agent ops --ops admin.inspect --ttl 1h
+mindctl token issue --tenant acme --agent ops --ops admin.inspect --ttl 1h
 ```
 
 The service is optional in the server wiring: when it isn't registered the RPC
@@ -55,8 +55,8 @@ simply isn't served.
 ## gRPC example
 
 ```bash
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
-  -d '{}' 127.0.0.1:7777 memsidecar.admin.v1.Admin/ListNamespaces
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
+  -d '{}' 127.0.0.1:7777 mindd.admin.v1.Admin/ListNamespaces
 ```
 
 ## Python example

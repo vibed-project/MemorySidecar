@@ -30,9 +30,9 @@ server:
   grpc:
     tcp: "0.0.0.0:7777"
     tls:
-      cert_file: /etc/memsidecar/tls/server.crt
-      key_file:  /etc/memsidecar/tls/server.key
-      client_ca_file: /etc/memsidecar/tls/client-ca.crt
+      cert_file: /etc/mindd/tls/server.crt
+      key_file:  /etc/mindd/tls/server.key
+      client_ca_file: /etc/mindd/tls/client-ca.crt
       require_client_cert: true
 ```
 
@@ -85,9 +85,9 @@ Then dial with `grpcurl`:
 
 ```bash
 grpcurl -cacert server.crt -authority localhost \
-  -H "x-memsidecar-capability: Bearer $TOKEN" \
+  -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"scratchpad","key":"hello"}' \
-  127.0.0.1:7777 memsidecar.kv.v1.KV/Get
+  127.0.0.1:7777 mindd.kv.v1.KV/Get
 ```
 
 ## In Kubernetes
@@ -99,10 +99,10 @@ The Helm chart accepts either an inline cert + key (rendered into a
 # values.yaml
 tls:
   enabled: true
-  existingSecret: memsidecar-server-tls   # managed by cert-manager
+  existingSecret: mindd-server-tls   # managed by cert-manager
 ```
 
-The Deployment mounts that Secret at `/etc/memsidecar/tls`, where the
+The Deployment mounts that Secret at `/etc/mindd/tls`, where the
 referenced `cert_file` / `key_file` live.
 
 ## TLS and capability tokens are orthogonal

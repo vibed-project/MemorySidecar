@@ -8,10 +8,10 @@ import (
 
 	"aidanwoods.dev/go-paseto"
 
-	"memsidecar/internal/config"
+	"github.com/vibed-project/mindD/internal/config"
 )
 
-const tokenIssuer = "memsidecar"
+const tokenIssuer = "mindd"
 
 type pasetoVerifier struct {
 	pubs []paseto.V4AsymmetricPublicKey

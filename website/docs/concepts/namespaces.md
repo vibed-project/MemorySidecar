@@ -5,7 +5,7 @@ sidebar_position: 3
 
 # Namespaces & backends
 
-memsidecar's data plane is configured around three concepts:
+mindD's data plane is configured around three concepts:
 
 | Concept | Definition |
 |---|---|
@@ -22,7 +22,7 @@ backends:
   - name: pg-main
     driver: postgres
     options:
-      dsn_env: MEMSIDECAR_PG_DSN
+      dsn_env: MINDD_PG_DSN
 
 namespaces:
   - { block: kv,       name: scratchpad,  backend: mem-default }

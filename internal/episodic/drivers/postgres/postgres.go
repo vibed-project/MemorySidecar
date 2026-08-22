@@ -25,7 +25,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"memsidecar/internal/episodic"
+	"github.com/vibed-project/mindD/internal/episodic"
 )
 
 //go:embed migrations/*.sql

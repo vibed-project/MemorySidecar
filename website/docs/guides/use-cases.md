@@ -41,8 +41,8 @@ namespaces:
 
 Hot keys stay resident because every read slides their TTL; cold keys age out
 and, over capacity, are evicted by heat (`access_count · 2^(−age/half_life)`)
-rather than blindly by age. `memsidecar.namespace.items` and
-`memsidecar.eviction.total{cause="capacity"}` let you watch the tier work.
+rather than blindly by age. `mindd.namespace.items` and
+`mindd.eviction.total{cause="capacity"}` let you watch the tier work.
 See [KV → cache-tier access policy](../blocks/kv.md#cache-tier-access-policy-in-memory-only).
 
 ---
@@ -207,7 +207,7 @@ precisely because it sits on the request path.
   the cap surfaces as `ResourceExhausted` so clients back off.
 - **Rate-limit** abusive callers with token-bucket rules, keyed per
   tenant/agent/namespace/op.
-- **See where the cost goes**: `memsidecar_op_duration_seconds` splits
+- **See where the cost goes**: `mindd_op_duration_seconds` splits
   **write/index time from query time** — the distinction the memory
   literature centres on — and `backend.duration` isolates the engine's share
   from the sidecar's overhead. The embedding cache's hit/miss rates show

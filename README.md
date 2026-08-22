@@ -1,4 +1,4 @@
-# memsidecar
+# mindD
 
 > A self-hosted, OSS, framework-agnostic **memory sidecar for agentic systems**.
 
@@ -6,7 +6,7 @@
 [![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](go.mod)
 [![Status](https://img.shields.io/badge/status-pre--release-blue)](#status)
 
-memsidecar runs as a co-process to one or more agents and exposes a small,
+mindD runs as a co-process to one or more agents and exposes a small,
 opinionated gRPC API over **pluggable backends** for the kinds of memory
 every agent stack ends up reinventing. Agents talk to the sidecar; the
 sidecar talks to the substrate.
@@ -21,7 +21,7 @@ sidecar talks to the substrate.
 | **graph** | Typed nodes/edges with bounded traversal — bitemporal, as-of queryable | in-memory, Postgres |
 
 Every popular agent framework (LangGraph, CrewAI, Autogen, …) re-implements
-this plumbing in incompatible ways. memsidecar moves it out of the agent
+this plumbing in incompatible ways. mindD moves it out of the agent
 and into a sidecar with one protocol, one auth model, one policy surface,
 one observability story.
 
@@ -79,27 +79,27 @@ make proto
 make build
 
 # 3. run
-./bin/memsidecar --config configs/example.yaml
+./bin/mindd --config configs/example.yaml
 ```
 
 In another shell, mint a token and talk to it:
 
 ```bash
 # The dev keypair in configs/example.yaml is for local use only.
-export MEMSIDECAR_PASETO_SECRET_HEX=38fb82e74985d41969ce39904d7cbe01dd31ea0b573dc8fc35c5689b8212ccc961a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9
+export MINDD_PASETO_SECRET_HEX=38fb82e74985d41969ce39904d7cbe01dd31ea0b573dc8fc35c5689b8212ccc961a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9
 
-TOKEN=$(./bin/memctl token issue --tenant acme --agent agent-1 \
+TOKEN=$(./bin/mindctl token issue --tenant acme --agent agent-1 \
         --ns 'kv/scratchpad,episodic/events,semantic/notes' \
         --ops '*' --ttl 1h)
 
 # KV over gRPC
-grpcurl -plaintext -H "x-memsidecar-capability: Bearer $TOKEN" \
+grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"scratchpad","key":"hello","value":"d29ybGQ="}' \
-  127.0.0.1:7777 memsidecar.kv.v1.KV/Put
+  127.0.0.1:7777 mindd.kv.v1.KV/Put
 
 # Or via the HTTP/JSON gateway
-curl -sS -X POST http://127.0.0.1:8080/memsidecar.kv.v1.KV/Put \
-  -H "x-memsidecar-capability: Bearer $TOKEN" \
+curl -sS -X POST http://127.0.0.1:8080/mindd.kv.v1.KV/Put \
+  -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"scratchpad","key":"hello","value":"d29ybGQ="}'
 ```
 
@@ -110,9 +110,9 @@ blocks and the Python SDK.
 
 ```python
 import datetime as dt
-from memsidecar import MemSidecar
+from mindd import MindD
 
-with MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN) as m:
+with MindD("127.0.0.1:7777", token=MINDD_TOKEN) as m:
     m.kv.put("scratchpad", "hello", b"world", ttl=dt.timedelta(minutes=5))
     print(m.kv.get("scratchpad", "hello").value)
 ```
@@ -126,7 +126,7 @@ cd sdk/python && pip install -e ".[dev]"
 ```bash
 make docker DOCKER_TAG=v0.1.0
 docker run --rm -p 7777:7777 -p 8080:8080 -p 9090:9090 \
-  -v $(pwd)/configs:/etc/memsidecar:ro memsidecar:v0.1.0
+  -v $(pwd)/configs:/etc/mindd:ro mindd:v0.1.0
 ```
 
 Multi-stage build, distroless `nonroot` runtime — no shell, no package
@@ -135,15 +135,15 @@ manager, UID 65532.
 ## Kubernetes
 
 ```bash
-helm install msc deploy/helm/memsidecar \
-  --set image.repository=ghcr.io/your-org/memsidecar \
+helm install msc deploy/helm/mindd \
+  --set image.repository=ghcr.io/your-org/mindd \
   --set image.tag=v0.1.0
 ```
 
 The chart applies the restricted Pod Security Standard, mounts the YAML
 config from a `ConfigMap`, exposes gRPC + HTTP + metrics ports, and uses
 gRPC-native liveness/readiness probes. See
-[`deploy/helm/memsidecar/README.md`](deploy/helm/memsidecar/README.md) for
+[`deploy/helm/mindd/README.md`](deploy/helm/mindd/README.md) for
 overrides (TLS/mTLS, Postgres backend, ServiceMonitor, …).
 
 ## Documentation
@@ -172,8 +172,8 @@ Highlights:
 proto/         protobuf service definitions
 gen/           generated protobuf Go code (checked in)
 cmd/
-  memsidecar/  the server
-  memctl/      admin CLI (token issue, gen-keypair)
+  mindd/  the server
+  mindctl/      admin CLI (token issue, gen-keypair)
 internal/      everything else
   auth/        TokenVerifier (PASETO + JWT, multi-key)
   config/      koanf-based YAML config + validation
@@ -212,7 +212,7 @@ Contributions welcome via GitHub Issues and Pull Requests. Please:
   on scope.
 - Keep PRs focused — one logical change per PR.
 - Run `make test`, `go vet ./...`, `buf lint`, and `helm lint
-  deploy/helm/memsidecar` before opening a PR.
+  deploy/helm/mindd` before opening a PR.
 - By submitting a contribution you agree to license it under the project
   license (Apache 2.0) per the inbound-equals-outbound model.
 
@@ -222,7 +222,7 @@ boundaries.
 
 ## License
 
-memsidecar is licensed under the [Apache License 2.0](LICENSE).
+mindD is licensed under the [Apache License 2.0](LICENSE).
 
 Third-party components and their licenses are listed in [NOTICE](NOTICE).
 

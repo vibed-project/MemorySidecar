@@ -21,7 +21,7 @@ import (
 	miniogo "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
-	"memsidecar/internal/artifact"
+	"github.com/vibed-project/mindD/internal/artifact"
 )
 
 // Options configures a Driver.
@@ -30,7 +30,7 @@ type Options struct {
 	UseSSL    bool
 	Region    string
 	Bucket    string
-	Prefix    string // object-key prefix (e.g. "memsidecar/")
+	Prefix    string // object-key prefix (e.g. "mindd/")
 	AccessKey string
 	SecretKey string
 	NowFunc   func() time.Time
@@ -86,10 +86,10 @@ func (d *Driver) key(namespace, id string) string {
 }
 
 const (
-	metaSHA256      = "x-amz-meta-memsidecar-sha256"
-	metaContentType = "x-amz-meta-memsidecar-content-type"
-	metaCreatedAt   = "x-amz-meta-memsidecar-created-at"
-	userMetaPrefix  = "memsidecar-user-"
+	metaSHA256      = "x-amz-meta-mindd-sha256"
+	metaContentType = "x-amz-meta-mindd-content-type"
+	metaCreatedAt   = "x-amz-meta-mindd-created-at"
+	userMetaPrefix  = "mindd-user-"
 )
 
 func (d *Driver) Put(ctx context.Context, namespace string, header artifact.PutHeader, r io.Reader) (artifact.Meta, error) {
@@ -100,9 +100,9 @@ func (d *Driver) Put(ctx context.Context, namespace string, header artifact.PutH
 	created := d.now().UTC()
 
 	userMeta := map[string]string{
-		"memsidecar-sha256":       header.SHA256,
-		"memsidecar-content-type": header.ContentType,
-		"memsidecar-created-at":   created.Format(time.RFC3339Nano),
+		"mindd-sha256":       header.SHA256,
+		"mindd-content-type": header.ContentType,
+		"mindd-created-at":   created.Format(time.RFC3339Nano),
 	}
 	for k, v := range header.Metadata {
 		userMeta[userMetaPrefix+k] = v
@@ -173,13 +173,13 @@ func (d *Driver) Stat(ctx context.Context, namespace, id string) (artifact.Meta,
 	for k, v := range info.UserMetadata {
 		lk := strings.ToLower(k)
 		switch lk {
-		case "memsidecar-sha256":
+		case "mindd-sha256":
 			meta.SHA256 = v
-		case "memsidecar-content-type":
+		case "mindd-content-type":
 			if meta.ContentType == "" {
 				meta.ContentType = v
 			}
-		case "memsidecar-created-at":
+		case "mindd-created-at":
 			if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
 				meta.CreatedAt = t
 			}

@@ -27,25 +27,25 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     set -eux; \
     LDFLAGS="-s -w \
-      -X memsidecar/internal/version.Version=${VERSION} \
-      -X memsidecar/internal/version.Commit=${COMMIT} \
-      -X memsidecar/internal/version.BuildDate=${BUILD_DATE}"; \
+      -X github.com/vibed-project/mindD/internal/version.Version=${VERSION} \
+      -X github.com/vibed-project/mindD/internal/version.Commit=${COMMIT} \
+      -X github.com/vibed-project/mindD/internal/version.BuildDate=${BUILD_DATE}"; \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -trimpath -ldflags "${LDFLAGS}" -o /out/memsidecar ./cmd/memsidecar; \
+    go build -trimpath -ldflags "${LDFLAGS}" -o /out/mindd ./cmd/mindd; \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -trimpath -ldflags "${LDFLAGS}" -o /out/memctl    ./cmd/memctl
+    go build -trimpath -ldflags "${LDFLAGS}" -o /out/mindctl    ./cmd/mindctl
 
 # --- runtime stage ------------------------------------------------------------
 FROM gcr.io/distroless/static:nonroot
 
 # Distroless `static:nonroot` runs as UID/GID 65532. /tmp is writable for the
-# UDS socket; configs are expected at /etc/memsidecar/.
+# UDS socket; configs are expected at /etc/mindd/.
 WORKDIR /
 
-COPY --from=build /out/memsidecar /usr/local/bin/memsidecar
-COPY --from=build /out/memctl    /usr/local/bin/memctl
+COPY --from=build /out/mindd /usr/local/bin/mindd
+COPY --from=build /out/mindctl    /usr/local/bin/mindctl
 
 EXPOSE 7777 8080 9090
 
-ENTRYPOINT ["/usr/local/bin/memsidecar"]
-CMD ["--config", "/etc/memsidecar/config.yaml"]
+ENTRYPOINT ["/usr/local/bin/mindd"]
+CMD ["--config", "/etc/mindd/config.yaml"]

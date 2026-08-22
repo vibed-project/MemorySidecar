@@ -3,14 +3,14 @@ requires = ["hatchling>=1.18"]
 build-backend = "hatchling.build"
 
 [project]
-name = "memsidecar"
+name = "mindd"
 version = "0.1.0"
-description = "Python client for the memsidecar agent memory sidecar."
+description = "Python client for the mindD agent memory sidecar."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-authors = [{ name = "memsidecar contributors" }]
-keywords = ["memsidecar", "agent", "memory", "grpc", "llm", "sidecar"]
+authors = [{ name = "mindD contributors" }]
+keywords = ["mindd", "agent", "memory", "grpc", "llm", "sidecar"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -31,17 +31,17 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/vibed-project/MemorySidecar"
-Repository = "https://github.com/vibed-project/MemorySidecar"
-Documentation = "https://github.com/vibed-project/MemorySidecar/tree/main/website/docs"
-Issues = "https://github.com/vibed-project/MemorySidecar/issues"
+Homepage = "https://github.com/vibed-project/mindD"
+Repository = "https://github.com/vibed-project/mindD"
+Documentation = "https://github.com/vibed-project/mindD/tree/main/website/docs"
+Issues = "https://github.com/vibed-project/mindD/issues"
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7",
 ]
-# Framework adapters (memsidecar.ext.*). Each is optional and pulls in its
-# framework only when installed, e.g. `pip install memsidecar[langgraph]`.
+# Framework adapters (mindd.ext.*). Each is optional and pulls in its
+# framework only when installed, e.g. `pip install mindd[langgraph]`.
 langgraph = [
     "langgraph-checkpoint>=2.0,<5",
 ]
@@ -50,7 +50,7 @@ crewai = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/memsidecar"]
+packages = ["src/mindd"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/memsidecar/**", "README.md"]
+include = ["src/mindd/**", "README.md"]

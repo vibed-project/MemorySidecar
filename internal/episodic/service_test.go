@@ -15,10 +15,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
-	episodicv1 "memsidecar/gen/memsidecar/episodic/v1"
-	"memsidecar/internal/auth"
-	"memsidecar/internal/episodic"
-	memdrv "memsidecar/internal/episodic/drivers/memory"
+	episodicv1 "github.com/vibed-project/mindD/gen/mindd/episodic/v1"
+	"github.com/vibed-project/mindD/internal/auth"
+	"github.com/vibed-project/mindD/internal/episodic"
+	memdrv "github.com/vibed-project/mindD/internal/episodic/drivers/memory"
 )
 
 func newTestServer(t *testing.T, cap *auth.Capability) episodicv1.EpisodicClient {

@@ -1,4 +1,4 @@
-module memsidecar
+module github.com/vibed-project/mindD
 
 go 1.26
 

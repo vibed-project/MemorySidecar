@@ -6,7 +6,7 @@ sidebar_position: 1
 # Python SDK
 
 A thin client wrapping the gRPC stubs. Lives in `sdk/python/` and
-installs as `memsidecar`.
+installs as `mindd`.
 
 ## Install
 
@@ -22,16 +22,16 @@ Requires Python 3.10+. Runtime deps are just `grpcio` + `protobuf`.
 
 ```python
 import datetime as dt
-from memsidecar import MemSidecar
+from mindd import MindD
 
-with MemSidecar("127.0.0.1:7777", token=MEMSIDECAR_TOKEN) as m:
+with MindD("127.0.0.1:7777", token=MINDD_TOKEN) as m:
     m.kv.put("scratchpad", "hello", b"world", ttl=dt.timedelta(minutes=5))
     rec = m.kv.get("scratchpad", "hello")
     print(rec.value)  # b"world"
 ```
 
-`MemSidecar` opens a gRPC channel wrapped with a `CapabilityInterceptor`
-that attaches `x-memsidecar-capability: Bearer <token>` to every outgoing
+`MindD` opens a gRPC channel wrapped with a `CapabilityInterceptor`
+that attaches `x-mindd-capability: Bearer <token>` to every outgoing
 call (unary, server-stream, client-stream, bidi). The token is shared
 across the six per-block sub-clients (`m.kv`, `m.episodic`, `m.semantic`,
 `m.artifact`, `m.lease`, `m.graph`) plus `m.admin` (cross-namespace
@@ -53,7 +53,7 @@ for item in m.kv.scan(ns, key_prefix="", limit=100, start_after=""):
 ### Episodic
 
 ```python
-from memsidecar.episodic.v1 import episodic_pb2
+from mindd.episodic.v1 import episodic_pb2
 
 # dedup_key makes the append idempotent under retry; supersedes tombstones
 # earlier events (revision); source is opaque provenance.
@@ -76,7 +76,7 @@ for ev in m.episodic.tail(ns, include_historical=True, after_cursor=0):
 ### Semantic
 
 ```python
-from memsidecar.semantic.v1 import semantic_pb2
+from mindd.semantic.v1 import semantic_pb2
 
 resp = m.semantic.upsert(ns, [
     semantic_pb2.Record(id="a", content="apple"),
@@ -158,7 +158,7 @@ cleanup).
 ### Graph
 
 ```python
-from memsidecar.graph.v1 import graph_pb2
+from mindd.graph.v1 import graph_pb2
 
 m.graph.upsert_nodes(ns, [
     graph_pb2.Node(id="alice", labels=["Person"], props={"team": "core"}),
@@ -213,7 +213,7 @@ See [Admin](../blocks/admin.md).
 import grpc
 creds = grpc.ssl_channel_credentials(
     root_certificates=open("server.crt","rb").read())
-m = MemSidecar("memsidecar.example.com:7777",
+m = MindD("mindd.example.com:7777",
                token=TOK,
                secure=True,
                channel_credentials=creds)
@@ -236,7 +236,7 @@ Buf uses **remote** plugins (`buf.build/protocolbuffers/python` +
 
 ## Smoke test
 
-With a running sidecar and `MEMSIDECAR_TOKEN` exported:
+With a running sidecar and `MINDD_TOKEN` exported:
 
 ```bash
 cd sdk/python

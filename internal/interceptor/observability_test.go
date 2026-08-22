@@ -30,14 +30,14 @@ func collectOpDuration(t *testing.T, reader sdkmetric.Reader) metricdata.Histogr
 	require.NoError(t, reader.Collect(context.Background(), &rm))
 	for _, sm := range rm.ScopeMetrics {
 		for _, m := range sm.Metrics {
-			if m.Name == "memsidecar.op.duration" {
+			if m.Name == "mindd.op.duration" {
 				h, ok := m.Data.(metricdata.Histogram[float64])
 				require.True(t, ok, "op.duration must be a float histogram")
 				return h
 			}
 		}
 	}
-	t.Fatal("memsidecar.op.duration metric not found")
+	t.Fatal("mindd.op.duration metric not found")
 	return metricdata.Histogram[float64]{}
 }
 
@@ -58,12 +58,12 @@ func TestObservabilityUnary_OpDurationSplit(t *testing.T) {
 
 	// A write method on kv.
 	_, err := intercept(context.Background(), nsReq{ns: "scratchpad"},
-		&grpc.UnaryServerInfo{FullMethod: "/memsidecar.kv.v1.KV/Put"}, ok)
+		&grpc.UnaryServerInfo{FullMethod: "/mindd.kv.v1.KV/Put"}, ok)
 	require.NoError(t, err)
 
 	// A read method on semantic.
 	_, err = intercept(context.Background(), nsReq{ns: "notes"},
-		&grpc.UnaryServerInfo{FullMethod: "/memsidecar.semantic.v1.Semantic/Search"}, ok)
+		&grpc.UnaryServerInfo{FullMethod: "/mindd.semantic.v1.Semantic/Search"}, ok)
 	require.NoError(t, err)
 
 	// An unrecognized method must not produce a data point.
@@ -104,7 +104,7 @@ func TestObservabilityUnary_ErrorCode(t *testing.T) {
 		return nil, status.Error(codes.PermissionDenied, "nope")
 	}
 	_, err := intercept(context.Background(), nsReq{ns: "scratchpad"},
-		&grpc.UnaryServerInfo{FullMethod: "/memsidecar.kv.v1.KV/Get"}, fail)
+		&grpc.UnaryServerInfo{FullMethod: "/mindd.kv.v1.KV/Get"}, fail)
 	require.Error(t, err)
 
 	hist := collectOpDuration(t, reader)

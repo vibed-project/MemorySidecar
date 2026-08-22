@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 
-	"memsidecar/internal/graph"
-	pgdrv "memsidecar/internal/graph/drivers/postgres"
-	"memsidecar/internal/graph/graphtest"
+	"github.com/vibed-project/mindD/internal/graph"
+	pgdrv "github.com/vibed-project/mindD/internal/graph/drivers/postgres"
+	"github.com/vibed-project/mindD/internal/graph/graphtest"
 )
 
 type harness struct{}
@@ -21,7 +21,7 @@ func (harness) New(t *testing.T) graph.Driver {
 	ctx := context.Background()
 
 	container, err := tcpostgres.Run(ctx, "postgres:16-alpine",
-		tcpostgres.WithDatabase("memsidecar_test"),
+		tcpostgres.WithDatabase("mindd_test"),
 		tcpostgres.WithUsername("test"),
 		tcpostgres.WithPassword("test"),
 		tcpostgres.BasicWaitStrategies(),
