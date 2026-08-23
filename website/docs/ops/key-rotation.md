@@ -31,7 +31,7 @@ auth:
 auth:
   verifier: paseto
   paseto:
-    # stage 2 — add the new key alongside, SIGHUP
+    # stage 2: add the new key alongside, SIGHUP
     public_key_hexes:
       - "<new>"
       - "<old>"
@@ -41,7 +41,7 @@ auth:
 auth:
   verifier: paseto
   paseto:
-    # stage 3 — drop the old key once tokens minted under it have expired
+    # stage 3: drop the old key once tokens minted under it have expired
     public_key_hex: "<new>"
 ```
 
@@ -68,7 +68,7 @@ old key in the list for an hour after switching the issuer's private key.
 Drop it on the next SIGHUP.
 
 If you discover a key compromise and need to invalidate **immediately**,
-skip the overlap — remove the old key in one SIGHUP. Every in-flight
+skip the overlap: remove the old key in one SIGHUP. Every in-flight
 token signed by it dies on the next request, which is the right
 trade-off for that scenario.
 
@@ -86,12 +86,12 @@ auth:
       - /etc/mindd/jwt/old-key.pem
 ```
 
-`HS256` uses a single shared secret and doesn't benefit from multi-key —
-rotation there means changing the secret, which invalidates every token
+`HS256` uses a single shared secret and doesn't benefit from multi-key.
+Rotation there means changing the secret, which invalidates every token
 in one step (no overlap is possible with symmetric keys without
 coordination).
 
 ## See also
 
-- [Capability tokens](../concepts/capabilities.md) — what's in a token.
-- [Hot reload](../config/hot-reload.md) — what reloads, what doesn't.
+- [Capability tokens](../concepts/capabilities.md): what's in a token.
+- [Hot reload](../config/hot-reload.md): what reloads, what doesn't.

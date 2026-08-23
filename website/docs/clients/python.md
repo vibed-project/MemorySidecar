@@ -105,17 +105,17 @@ m.semantic.upsert(ns, [
                         supersedes=["a"], source="tool:web"),
 ])
 
-# Point-in-time recall — what we believed as of a past instant.
+# Point-in-time recall: what we believed as of a past instant.
 past = Timestamp(); past.FromJsonString("2026-01-01T00:00:00Z")
 m.semantic.search(ns, query_text="apple", as_of=past.ToDatetime())
 
-# Audit view — also return tombstoned / expired / not-yet-valid rows.
+# Audit view: also return tombstoned / expired / not-yet-valid rows.
 m.semantic.search(ns, query_text="apple", include_invalidated=True)
 
 # Hard delete (physical) instead of a tombstone.
 m.semantic.delete(ns, "b", hard=True)
 
-# Bounded bulk lifecycle action — max_rows is required.
+# Bounded bulk lifecycle action: max_rows is required.
 n = m.semantic.expire(
     ns, filter={"topic": "food"},
     action=semantic_pb2.EXPIRE_ACTION_INVALIDATE, max_rows=500)
@@ -175,7 +175,7 @@ nb = m.graph.neighbors(ns, "alice", edge_types=["AUTHORED"],
                        direction=graph_pb2.DIRECTION_OUT, limit=50)
 nb.nodes, nb.edges
 
-# Bounded multi-hop expansion — depth/max_nodes of 0 use server defaults;
+# Bounded multi-hop expansion: depth/max_nodes of 0 use server defaults;
 # both are hard-capped server-side and reject with ResourceExhausted.
 sub = m.graph.traverse(ns, "alice", depth=2, max_nodes=100,
                        direction=graph_pb2.DIRECTION_BOTH)
@@ -189,8 +189,8 @@ construct with `Edge(**{"from": "alice"})` and read it with
 `getattr(edge, "from")` (there is no `from_` alias). Node and edge ids are
 caller-supplied, so they can be shared with `semantic` record ids to compose
 hybrid recall (semantic search → graph expand) in the agent. Seed the graph
-cheaply with `m.semantic.search(ns, query_text=..., ids_only=True)` — it returns
-just `id`+`score`, skipping content/payload/vector — then feed those ids into
+cheaply with `m.semantic.search(ns, query_text=..., ids_only=True)` (it returns
+just `id`+`score`, skipping content/payload/vector), then feed those ids into
 `m.graph.neighbors` / `m.graph.traverse`. See [Graph](../blocks/graph.md).
 
 ### Admin

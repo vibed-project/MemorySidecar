@@ -15,7 +15,7 @@ sees the new one.
 | Subsystem | Reloads on SIGHUP? | Notes |
 |---|---|---|
 | **Policy rules** | yes | The active `policy.Engine` is wrapped in an `atomic.Pointer` holder. |
-| **Auth verifier** | yes | PASETO/JWT verifier is in a `VerifierHolder`. Add or remove keys, rotate algorithms, swap PASETO for JWT — all live. |
+| **Auth verifier** | yes | PASETO/JWT verifier is in a `VerifierHolder`. Add or remove keys, rotate algorithms, swap PASETO for JWT; all live. |
 | **Log level** | yes | Backed by an `slog.LevelVar`. |
 | Listeners (TCP/UDS/HTTP/metrics) | no | Restart required. |
 | Tracing & metrics exporters | no | Restart required. |
@@ -53,13 +53,13 @@ Inside the process, each hot-reloadable subsystem hides behind a thin
 holder that satisfies the same interface the rest of the code already
 talks to:
 
-- [`policy.Holder`](https://github.com/vibed-project/mindD/blob/main/internal/policy/holder.go)
-  — wraps an `Engine` in `atomic.Pointer`. The policy interceptor calls
+- [`policy.Holder`](https://github.com/vibed-project/mindD/blob/main/internal/policy/holder.go):
+  wraps an `Engine` in `atomic.Pointer`. The policy interceptor calls
   `holder.PreRead` / `holder.PreWrite`; the holder loads the current
   engine and delegates.
-- [`auth.VerifierHolder`](https://github.com/vibed-project/mindD/blob/main/internal/auth/holder.go)
-  — mirrors the pattern for `TokenVerifier`.
-- `slog.LevelVar` — the standard library's own atomic level.
+- [`auth.VerifierHolder`](https://github.com/vibed-project/mindD/blob/main/internal/auth/holder.go):
+  mirrors the pattern for `TokenVerifier`.
+- `slog.LevelVar`: the standard library's own atomic level.
 
 No reads are blocked during a swap; no in-flight request can land in a
 half-swapped state.

@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # Architecture
 
-mindD runs as a co-process to one or more agents — typically in the
+mindD runs as a co-process to one or more agents, typically in the
 same Kubernetes pod, the same VM, or the same container network in local
 dev. Agents make local calls over Unix domain socket or loopback gRPC; the
 sidecar fans out to configured backends and enforces policy on the way
@@ -37,7 +37,7 @@ The interceptor chain is intentional:
 2. **Observability** records a span and an access-log line at the wire
    boundary. OTel metrics flow through the same `otelgrpc.StatsHandler`,
    so `/metrics` reports per-method latency histograms and counters for
-   free — plus a memory-aware `mindd.op.duration` split by
+   free, plus a memory-aware `mindd.op.duration` split by
    write/query op-class and per-block backend-latency / result-shape
    metrics. See [Observability](../ops/observability.md).
 3. **Auth** reads `x-mindd-capability` from gRPC metadata, verifies
@@ -58,16 +58,16 @@ Every block follows the same internal shape, which makes adding a new one
 
 ```
 internal/<block>/
-├── driver.go      # Driver interface — every backend must satisfy this
+├── driver.go      # Driver interface: every backend must satisfy this
 ├── registry.go    # namespace → Driver lookup
 ├── service.go     # gRPC service: scope checks, request → Driver call
 └── drivers/
-    ├── memory/    # always present — used in tests and dev
+    ├── memory/    # always present, used in tests and dev
     ├── postgres/  # //go:build integration tests + embedded migrations
     └── ...
 ```
 
-The driver interface is deliberately narrow — five to seven methods per
+The driver interface is deliberately narrow: five to seven methods per
 block. New backends only need to satisfy that interface; the rest of the
 stack (auth, policy, observability, HTTP gateway) costs them nothing.
 
@@ -102,7 +102,7 @@ full restart. See [Hot reload](../config/hot-reload.md).
 - **No vector index or graph engine of its own.** The semantic block fronts
   pgvector / Qdrant / Pinecone (it doesn't implement ANN search), and the
   graph block fronts graph engines (it doesn't implement storage, a query
-  planner, or a query language) — both stay thin substrate layers.
+  planner, or a query language). Both stay thin substrate layers.
 - **No retrieval orchestration.** "Semantic-search then graph-expand" hybrid
   recall is composed by the agent (sharing ids across blocks), not by the
   sidecar.

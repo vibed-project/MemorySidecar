@@ -6,7 +6,7 @@ sidebar_position: 5
 # Lease
 
 Distributed locks with TTL. The right block when two cooperating agents
-need bounded exclusive access to a shared resource — and you want the
+need bounded exclusive access to a shared resource, and you want the
 lock to expire automatically if the holder dies.
 
 ## API
@@ -41,12 +41,12 @@ message LeaseHandle {
 - `Acquire` either returns a `LeaseHandle` or fails with
   `FailedPrecondition: already held`. With `wait_for > 0` the caller
   blocks up to that duration for the key to free.
-- `Renew` and `Release` require the `holder_id` from `Acquire` —
-  presenting the wrong one returns `FailedPrecondition: not held by this
+- `Renew` and `Release` require the `holder_id` from `Acquire`.
+  Presenting the wrong one returns `FailedPrecondition: not held by this
   holder`.
 - `Inspect` is a read-only peek at one key that never blocks.
 - `List` returns every currently-held (unexpired) lease in a namespace, ordered
-  by key — `Inspect` is single-key, so `List` is what you use for deadlock /
+  by key. `Inspect` is single-key, so `List` is what you use for deadlock /
   orphan-lease discovery and cleanup.
 
 ## Drivers
@@ -54,7 +54,7 @@ message LeaseHandle {
 | Driver | Notes |
 |---|---|
 | `memory` | Mutex + `sync.Cond`. Atomic acquire (taking over expired leases is one step), poll-with-broadcast for `wait_for`. |
-| `postgres` | Single table `leases`. Acquire is one `INSERT … ON CONFLICT (namespace, key) DO UPDATE … WHERE leases.expires_at <= now()` — atomic and observable as a SQL row. `wait_for` polls every 100 ms (configurable). |
+| `postgres` | Single table `leases`. Acquire is one `INSERT … ON CONFLICT (namespace, key) DO UPDATE … WHERE leases.expires_at <= now()`, atomic and observable as a SQL row. `wait_for` polls every 100 ms (configurable). |
 
 ## Configuration
 
@@ -116,7 +116,7 @@ for h in m.lease.list("locks"):
   reuse the same handle for `Renew` rather than re-`Acquire` (which would
   fail until the existing lease expires).
 - A renew that arrives **after** the deadline returns
-  `FailedPrecondition` — the lease can't be revived. Holders should renew
+  `FailedPrecondition`. The lease can't be revived. Holders should renew
   comfortably ahead of `expires_at`.
 - Cross-process correctness depends on the driver. The memory driver is
   in-process only. Use the Postgres (or future Redis/etcd) driver for

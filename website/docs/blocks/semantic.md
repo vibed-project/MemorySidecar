@@ -97,12 +97,12 @@ message ExpireResponse {
 ## Lifecycle & revisability
 
 The semantic block is **bitemporal** and
-**revisable** — the substrate stores the timestamps and applies the read filter; the
+**revisable**. The substrate stores the timestamps and applies the read filter; the
 agent decides what is valid or superseded (no inference is done server-side).
 
 - **As-of-now by default.** `Search` returns only records that are live and valid *now*:
   `deleted_at IS NULL AND valid_from ≤ now < valid_to`. Invalidated, retracted, and
-  not-yet-valid records are hidden — no client change required. This is what stops an
+  not-yet-valid records are hidden; no client change required. This is what stops an
   agent recalling stale facts ("hallucinations of the past").
 - **Point-in-time recall.** Pass `as_of` to evaluate validity at a past instant, or
   `include_invalidated=true` to bypass the filter entirely (audit / supersession chains).
@@ -110,7 +110,7 @@ agent decides what is valid or superseded (no inference is done server-side).
   `include_invalidated`); `hard=true` removes it physically. Re-`Upsert`ing an id
   resurrects it (clears the tombstone) unless you set `deleted_at` yourself.
 - **Supersession.** Set `supersedes=[id,…]` on a new record and the server sets those
-  records' `valid_to` to the new record's `valid_from` in the same transaction —
+  records' `valid_to` to the new record's `valid_from` in the same transaction:
   localized, id-targeted, self-references ignored. `source` is an opaque provenance
   handle (e.g. an episodic cursor or artifact id).
 - **Optimistic concurrency.** Each id carries a monotonic `version`; pass `if_version`
@@ -119,7 +119,7 @@ agent decides what is valid or superseded (no inference is done server-side).
   versions.
 - **Bulk maintenance.** `Expire` applies `invalidate` / `soft_delete` / `hard_delete` to
   every record matching a metadata filter in one bounded server-side statement
-  (`max_rows` required) — instead of a client-side read-all + per-id delete loop.
+  (`max_rows` required), instead of a client-side read-all + per-id delete loop.
 
 ## Drivers
 
@@ -136,7 +136,7 @@ agent decides what is valid or superseded (no inference is done server-side).
 | `ollama` | Local dev with real embeddings | Calls `POST /api/embed`. Zero API key. |
 | `openai` | Production | Calls `POST /v1/embeddings`. API key from a config-named env var (never in YAML). Sends the `dimensions` request param for `text-embedding-3-*` truncation. |
 
-All three implement the `Embedder` interface — adding Voyage, Cohere, or
+All three implement the `Embedder` interface. Adding Voyage, Cohere, or
 a local llama.cpp endpoint is a one-file adapter.
 
 ## Configuration
@@ -183,7 +183,7 @@ grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"notes","query_text":"apple","top_k":2}' \
   127.0.0.1:7777 mindd.semantic.v1.Semantic/Search
 
-# Revise a fact: "b" supersedes "a" — "a" is invalidated as of the new record.
+# Revise a fact: "b" supersedes "a", so "a" is invalidated as of the new record.
 grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   -d '{"namespace":"notes","records":[
         {"id":"c","content":"how to debug a Go race","supersedes":["b"]}]}' \
@@ -235,22 +235,22 @@ n = m.semantic.expire("notes", filter={"topic": "food"},
 
 ## Notes
 
-- Either `query_text` **or** `query_vector` may be set, never both —
+- Either `query_text` **or** `query_vector` may be set, never both;
   ambiguous combinations are rejected with `InvalidArgument`.
 - `Search` returns cosine similarity in `[-1, 1]`, higher is more similar.
   Memory driver's normalisation may overshoot 1.0 by ~1e-6 due to float32
   precision; pgvector clamps server-side.
-- Records can carry a pre-computed `vector` instead of `content` — useful
+- Records can carry a pre-computed `vector` instead of `content`, useful
   when you embed offline and only use mindD for storage + search.
 - `filter` is exact-match (AND of equalities); `predicates` adds ranges and
   set membership. `EQ`/`NEQ`/`IN` compare metadata values as strings;
-  `GT`/`GTE`/`LT`/`LTE` compare **numerically** — the predicate value must
+  `GT`/`GTE`/`LT`/`LTE` compare **numerically**. The predicate value must
   parse as a number (else `InvalidArgument`), and a record whose stored value
   isn't numeric is simply skipped, never erroring the query. A predicate only
   matches when the key is present. `filter` and all `predicates` AND together
   and run as a pre-filter before the ANN ordering.
 - `created_after` / `created_before` bound the record's `created_at`
-  (exclusive on each side), applied as a pre-filter before ranking — for
+  (exclusive on each side), applied as a pre-filter before ranking, for
   "recent" recall. **No recency scoring** is added: results are still ordered
   by similarity, and the agent re-ranks by the `created_at` already returned.
   Postgres backs the window with a btree index on `created_at`.
@@ -258,14 +258,14 @@ n = m.semantic.expire("notes", filter={"topic": "food"},
   unchanged. **SPARSE** is lexical only (Postgres full-text `ts_rank`; the
   memory driver uses term overlap). **HYBRID** runs both lanes to
   `rerank_candidate_k` candidates each and fuses them with **Reciprocal Rank
-  Fusion** (k=60) — deterministic, no cross-encoder or learned reranker. SPARSE
+  Fusion** (k=60): deterministic, no cross-encoder or learned reranker. SPARSE
   and HYBRID require `query_text`; HYBRID's `Hit.score` is the fused RRF score,
   not cosine. `rerank_candidate_k` is bounded by the policy `cap` effect. The
   sparse lane's language comes from the namespace's `text_search` config
   (default `simple`); Postgres backs it with a GIN index on the content's
   `tsvector`.
 - Lifecycle timestamps and `supersedes`/`source` are **stored, not interpreted**:
-  the sidecar never decides what supersedes what or resolves entities — the agent
+  the sidecar never decides what supersedes what or resolves entities; the agent
   supplies the values (consistent with the block's non-goals).
 - `ids_only=true` returns just each hit's `record.id` and `score`, skipping
   content/payload/vector/metadata (and the storage load / marshaling they cost);
@@ -273,5 +273,5 @@ n = m.semantic.expire("notes", filter={"topic": "food"},
   agent-orchestrated hybrid recall: a semantic `Search` selects candidate ids,
   then the [Graph block](graph.md) expands them via `Neighbors`/`Traverse`. By
   convention a semantic record id and a graph node id denote the same entity, so
-  the seed ids drop straight into a traversal — the sidecar does **no** traversal
+  the seed ids drop straight into a traversal. The sidecar does **no** traversal
   or orchestration itself.

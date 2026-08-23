@@ -7,13 +7,19 @@ const config: Config = {
   tagline: 'A framework-agnostic memory sidecar for agentic systems',
   favicon: 'img/favicon.svg',
 
-  url: 'https://mindd.dev',
-  baseUrl: '/',
+  // GitHub Pages project site. This works with no DNS setup.
+  //
+  // To move to a custom domain later: set url to 'https://mindd.dev',
+  // baseUrl to '/', add a CNAME file to website/static/, and point the DNS at
+  // GitHub Pages. Nothing else changes. (mindd.dev currently resolves
+  // elsewhere, so it is deliberately not used here yet.)
+  url: 'https://vibed-project.github.io',
+  baseUrl: '/mindD/',
 
   organizationName: 'vibed-project',
   projectName: 'mindD',
 
-  onBrokenLinks: 'warn',
+  onBrokenLinks: 'throw',
   markdown: {
     hooks: {
       onBrokenMarkdownLinks: 'warn',

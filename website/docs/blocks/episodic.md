@@ -24,15 +24,15 @@ service Episodic {
 - Server assigns each event a UUID `id` and a monotonic `cursor` per
   namespace (the first event has `cursor=1`). Cursors never repeat, even after
   events are removed by `Expire`.
-- Events carry first-class `role` (speaker/actor — `user` / `assistant` /
+- Events carry first-class `role` (speaker/actor: `user` / `assistant` /
   `tool` / …) and `session_id` grouping keys, so conversation grouping and
   cross-session assembly aren't a metadata convention.
 - `Range` supports `after_cursor` / `before_cursor` / `limit` / `reverse`,
   plus an exclusive event-timestamp window (`after_time` / `before_time`)
-  that ANDs with the cursor bounds — backed by a `(namespace, timestamp)`
+  that ANDs with the cursor bounds, backed by a `(namespace, timestamp)`
   index.
 - `Range` also takes `session_id` / `role` / `type` **equality predicates**
-  (empty = no filter), ANDed with the window — so "reconstruct session X"
+  (empty = no filter), ANDed with the window, so "reconstruct session X"
   (optionally one role or type) is a bounded, index-backed scan instead of an
   O(namespace) transfer. Backed by a partial `(namespace, session_id, cursor)`
   index.
@@ -50,12 +50,12 @@ service Episodic {
 - **`supersedes` / `source`** carry provenance and revisability. `supersedes`
   lists ids of earlier events this one revises; the server tombstones each named
   live event (`deleted_at = now()`) in the same transaction (self-references and
-  already-tombstoned ids are ignored — no inference). `source` is an opaque
+  already-tombstoned ids are ignored; no inference). `source` is an opaque
   provenance handle, stored and returned verbatim.
 - A tombstoned event is **retained** (the log stays append-only) and hidden from
   `Range` unless `include_deleted=true`.
 - **`Expire`** is the retention/compaction path: it tombstones or physically
-  removes events inside a bounded window (`before_cursor` and/or `before_time` —
+  removes events inside a bounded window (`before_cursor` and/or `before_time`;
   at least one required), oldest-first, capped by a required `max_rows`. Actions
   are `EXPIRE_ACTION_SOFT_DELETE` (set `deleted_at`, retain) and
   `EXPIRE_ACTION_HARD_DELETE` (remove the row). Returns the number affected.
