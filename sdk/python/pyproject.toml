@@ -9,6 +9,7 @@ description = "Python client for the mindD agent memory sidecar."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
+license-files = { paths = ["LICENSE", "NOTICE"] }
 authors = [{ name = "mindD contributors" }]
 keywords = ["mindd", "agent", "memory", "grpc", "llm", "sidecar"]
 classifiers = [
@@ -51,6 +52,9 @@ crewai = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mindd"]
+# Apache-2.0 §4(a)/§4(d): the license and NOTICE must travel with the
+# distribution. Hatchling places these under <dist-info>/licenses/.
+
 
 [tool.hatch.build.targets.sdist]
-include = ["src/mindd/**", "README.md"]
+include = ["src/mindd/**", "README.md", "LICENSE", "NOTICE"]

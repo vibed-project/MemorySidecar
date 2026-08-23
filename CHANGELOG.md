@@ -9,6 +9,23 @@ minor versions.
 
 ## [Unreleased]
 
+### Fixed
+
+- Neither SDK shipped its license text. Both declare Apache-2.0, whose §4(a)
+  requires the license to travel with each distribution and §4(d) the NOTICE;
+  the built wheel, sdist and npm tarball contained neither. Both packages now
+  carry `LICENSE` and `NOTICE`.
+- The Python SDK declared the `Typing :: Typed` classifier but shipped no
+  PEP 561 marker, so every consumer's type checker silently ignored its
+  annotations:
+
+  ```
+  error: Skipping analyzing "mindd.kv.v1": module is installed,
+         but missing library stubs or py.typed marker  [import-untyped]
+  ```
+
+  `src/mindd/py.typed` is now included in the wheel.
+
 ### Security
 
 - **Namespace-scoped policy rules now apply to streaming RPCs.** `PolicyStream`
