@@ -81,20 +81,90 @@ func PolicyUnary(eng policy.Engine) grpc.UnaryServerInterceptor {
 }
 
 // PolicyStream is the streaming-call equivalent of PolicyUnary.
+//
+// The namespace and the cost fields live in the stream's first message, which
+// has not arrived when the interceptor is entered. This previously built a
+// HookCtx with Block and Op only, leaving Namespace empty -- so a rule matching
+// on namespace (e.g. `deny namespace: ["secret-*"]`) never matched a streaming
+// method and fell through to the default effect. KV/Scan, Episodic/Range,
+// Episodic/Tail and all three Artifact streams were unfiltered by any
+// namespace-scoped rule, and every `cap` rule was inert on them.
+//
+// The decision is therefore deferred to the first RecvMsg, where the request
+// message is available and the hook can be populated exactly as PolicyUnary
+// does. It is evaluated once per RPC and not once per message: a rate_limit
+// rule consumes a token from its bucket on every evaluation, so checking up
+// front *and* on the first message would charge each streaming call twice.
 func PolicyStream(eng policy.Engine) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		mapping, ok := methodToOp[info.FullMethod]
 		if !ok {
 			return handler(srv, ss)
 		}
-		cap, _ := auth.FromContext(ss.Context())
-		hook := policy.HookCtx{Capability: cap, Block: mapping.block, Op: mapping.op}
-		dec := decide(ss.Context(), eng, mapping.write, hook)
-		if !dec.Allow {
-			return status.Errorf(policyCode(dec), "policy: %s", dec.Reason)
+
+		ps := &policyStream{
+			ServerStream: ss,
+			check: func(msg any) error {
+				cap, _ := auth.FromContext(ss.Context())
+				cost := costFromRequest(msg)
+				hook := policy.HookCtx{
+					Capability:       cap,
+					Block:            mapping.block,
+					Op:               mapping.op,
+					Namespace:        namespaceFromRequest(msg),
+					TopK:             cost.topK,
+					Limit:            cost.limit,
+					Depth:            cost.depth,
+					FanOut:           cost.fanOut,
+					RerankCandidateK: cost.rerankK,
+				}
+				dec := decide(ss.Context(), eng, mapping.write, hook)
+				if !dec.Allow {
+					return status.Errorf(policyCode(dec), "policy: %s", dec.Reason)
+				}
+				return nil
+			},
 		}
-		return handler(srv, ss)
+
+		err := handler(srv, ps)
+
+		// A handler that streamed successfully without ever receiving a
+		// message would never have triggered the check above. No generated
+		// handler for the six mapped streaming methods behaves that way -- all
+		// of them receive the request before doing anything -- but a silent
+		// policy bypass is not something to leave resting on that. Fail loudly
+		// instead. Only when the handler otherwise succeeded, so a client that
+		// disconnects before sending still reports its own error.
+		if err == nil && !ps.checked {
+			return status.Error(codes.Internal,
+				"policy: stream completed without evaluating policy; refusing to report success")
+		}
+		return err
 	}
+}
+
+// policyStream defers the policy decision to the first message of a stream.
+//
+// RecvMsg is documented as not safe for concurrent use, and gRPC calls it
+// sequentially from the handler's goroutine, so `checked` needs no
+// synchronization.
+type policyStream struct {
+	grpc.ServerStream
+	check   func(msg any) error
+	checked bool
+}
+
+func (s *policyStream) RecvMsg(m any) error {
+	if err := s.ServerStream.RecvMsg(m); err != nil {
+		return err
+	}
+	if !s.checked {
+		s.checked = true
+		if err := s.check(m); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // policyCode maps a rejected decision to a gRPC status code: resource/cost

@@ -66,13 +66,17 @@ minted with `--ops inspect` for leases additionally satisfies `admin.inspect`,
 which is not namespace-scoped and exposes cross-namespace introspection. This
 is tracked as a known limitation for v0.1.0.
 
-### Do not rely on namespace deny rules for streaming RPCs
+### Namespace deny rules and streaming RPCs
 
-In v0.1.0 the policy engine receives an empty namespace for the streaming
+**In v0.1.0** the policy engine receives an empty namespace for the streaming
 methods (`KV/Scan`, `Episodic/Range`, `Episodic/Tail`, and the three
 `Artifact` streams), so a rule matching on `namespace` does not apply to them.
-Enforce those boundaries with the token's namespace pattern, which is checked
-on every RPC.
+On that release, enforce those boundaries with the token's namespace pattern,
+which is checked on every RPC regardless.
+
+This is fixed after v0.1.0: the policy decision for a stream is made once the
+first message has arrived, so namespace and `cap` rules apply to streaming
+methods the same way they do to unary ones.
 
 ### Turn on tenant isolation if you are multi-tenant
 

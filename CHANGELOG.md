@@ -9,6 +9,27 @@ minor versions.
 
 ## [Unreleased]
 
+### Security
+
+- **Namespace-scoped policy rules now apply to streaming RPCs.** `PolicyStream`
+  built its hook with an empty `Namespace`, because the namespace arrives in
+  the stream's first message rather than in the interceptor's arguments. A rule
+  such as `deny namespace: ["secret-*"]` — the shape used in
+  `configs/example.yaml` — therefore never matched `KV/Scan`,
+  `Episodic/Range`, `Episodic/Tail`, `Artifact/Put`, `Artifact/Get` or
+  `Artifact/List`, and those calls fell through to the default effect. `cap`
+  rules were inert on the same methods for the same reason.
+
+  The decision is now deferred to the first `RecvMsg`, where the request is
+  available and the hook is populated exactly as the unary path does. It is
+  evaluated once per RPC, not once per message: a `rate_limit` rule consumes a
+  bucket token per evaluation, so a per-message check would charge a streaming
+  call many times over. A handler that reports success without ever receiving
+  a message now fails closed rather than reading as an allow.
+
+  Note this only affected the *policy engine*. The capability token's own
+  namespace pattern was, and is, enforced on every RPC inside each service.
+
 ## [0.1.0] - 2026-08-23
 
 First tagged release. All six memory blocks work over their documented
@@ -95,7 +116,7 @@ a policy engine, OpenTelemetry tracing and Prometheus metrics.
   and `Artifact/List` reach the policy hook with an empty namespace, so a rule
   like `deny namespace: ["secret-*"]` does not match them and they fall through
   to the default effect. Namespace-scoped deny rules are only reliable on unary
-  RPCs in this release.
+  RPCs in this release. *(Fixed after v0.1.0 — see Unreleased.)*
 - **Capability ops match on the bare verb.** A token minted with `--ops inspect`
   for the `lease` block also satisfies `admin.inspect`, which is not namespace
   scoped and exposes cross-namespace introspection. Mint tokens with
