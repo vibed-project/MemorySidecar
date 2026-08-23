@@ -190,6 +190,14 @@ func (d *Driver) Put(ctx context.Context, namespace, key string, opts kv.PutOpti
 	if !rowExists {
 		nextVersion = 1
 	}
+	// nextVersion is only trustworthy when the SELECT ... FOR UPDATE above
+	// actually locked something. On a key that does not exist yet it matches
+	// zero rows and takes no lock, so concurrent first writers all compute
+	// version 1 and the ON CONFLICT branch below would write that stale value
+	// instead of incrementing -- silently dropping increments during the
+	// create burst. Letting Postgres derive the new version from the locked
+	// conflicting row closes that window; the row lock ON CONFLICT DO UPDATE
+	// takes is what makes it atomic.
 
 	var (
 		outKey      string
@@ -207,7 +215,14 @@ func (d *Driver) Put(ctx context.Context, namespace, key string, opts kv.PutOpti
 		    SET value = EXCLUDED.value,
 		        content_type = EXCLUDED.content_type,
 		        metadata = EXCLUDED.metadata,
-		        version = EXCLUDED.version,
+		        -- An expired row is logically absent: the memory driver drops
+		        -- it and starts again at 1, and the pre-fix behaviour here did
+		        -- the same via EXCLUDED.version. Preserve that, and increment
+		        -- from the locked row otherwise.
+		        version = CASE
+		            WHEN kv_items.expires_at IS NOT NULL AND kv_items.expires_at <= now() THEN 1
+		            ELSE kv_items.version + 1
+		        END,
 		        updated_at = now(),
 		        expires_at = EXCLUDED.expires_at
 		RETURNING key, value, content_type, metadata, version, created_at, expires_at`,

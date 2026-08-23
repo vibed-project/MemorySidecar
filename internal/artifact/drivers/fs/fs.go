@@ -16,7 +16,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -25,7 +24,6 @@ import (
 	"github.com/vibed-project/mindD/internal/artifact"
 )
 
-var safeID = regexp.MustCompile(`^[a-zA-Z0-9_.-]{1,128}$`)
 
 // Options configures a Driver.
 type Options struct {
@@ -61,14 +59,10 @@ func (d *Driver) Put(_ context.Context, namespace string, header artifact.PutHea
 	if id == "" {
 		id = randomID()
 	}
-	if !safeID.MatchString(id) {
-		return artifact.Meta{}, fmt.Errorf("artifact/fs: id must match %s", safeID.String())
+	dir, dataPath, metaPath, err := d.paths(namespace, id)
+	if err != nil {
+		return artifact.Meta{}, err
 	}
-	if !safeID.MatchString(namespace) {
-		return artifact.Meta{}, fmt.Errorf("artifact/fs: namespace must match %s", safeID.String())
-	}
-
-	dir, dataPath, metaPath := d.paths(namespace, id)
 	d.mu.Lock()
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		d.mu.Unlock()
@@ -116,8 +110,11 @@ func (d *Driver) Open(ctx context.Context, namespace, id string, opts artifact.G
 	if err != nil {
 		return artifact.Meta{}, nil, err
 	}
-	_, dataPath, _ := d.paths(namespace, id)
-	f, err := os.Open(dataPath) //nolint:gosec // base is operator-controlled, id is regex-validated
+	_, dataPath, _, err := d.paths(namespace, id)
+	if err != nil {
+		return artifact.Meta{}, nil, err
+	}
+	f, err := os.Open(dataPath) //nolint:gosec // paths() validates namespace and id
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return artifact.Meta{}, nil, artifact.ErrNotFound
@@ -138,8 +135,11 @@ func (d *Driver) Open(ctx context.Context, namespace, id string, opts artifact.G
 }
 
 func (d *Driver) Stat(_ context.Context, namespace, id string) (artifact.Meta, error) {
-	_, _, metaPath := d.paths(namespace, id)
-	body, err := os.ReadFile(metaPath) //nolint:gosec // id is regex-validated
+	_, _, metaPath, err := d.paths(namespace, id)
+	if err != nil {
+		return artifact.Meta{}, err
+	}
+	body, err := os.ReadFile(metaPath) //nolint:gosec // paths() validates namespace and id
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return artifact.Meta{}, artifact.ErrNotFound
@@ -163,13 +163,16 @@ func (d *Driver) PatchMeta(ctx context.Context, namespace, id, sha256Hex string,
 	}
 	meta.SHA256 = sha256Hex
 	meta.Size = size
-	_, _, metaPath := d.paths(namespace, id)
+	_, _, metaPath, err := d.paths(namespace, id)
+	if err != nil {
+		return err
+	}
 	return writeMeta(metaPath, meta)
 }
 
 func (d *Driver) List(ctx context.Context, namespace string, opts artifact.ListOptions, yield func(artifact.Meta) error) error {
-	if !safeID.MatchString(namespace) {
-		return fmt.Errorf("artifact/fs: namespace must match %s", safeID.String())
+	if err := artifact.ValidateNamespace(namespace); err != nil {
+		return err
 	}
 	nsDir := filepath.Join(d.base, namespace)
 	shards, err := os.ReadDir(nsDir)
@@ -228,7 +231,10 @@ func (d *Driver) List(ctx context.Context, namespace string, opts artifact.ListO
 }
 
 func (d *Driver) Delete(_ context.Context, namespace, id string) (bool, error) {
-	_, dataPath, metaPath := d.paths(namespace, id)
+	_, dataPath, metaPath, err := d.paths(namespace, id)
+	if err != nil {
+		return false, err
+	}
 	if _, err := os.Stat(dataPath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
@@ -246,7 +252,18 @@ func (d *Driver) Delete(_ context.Context, namespace, id string) (bool, error) {
 
 // paths computes (dir, data, meta) on disk. Two-char sharding keeps any one
 // dir reasonably shallow when ids are UUIDs.
-func (d *Driver) paths(namespace, id string) (dir, data, meta string) {
+// paths resolves the on-disk locations for an artifact, validating both
+// inputs first. Every filesystem path in this driver is built here, so this is
+// the single place that has to be right: an unvalidated id reaches
+// filepath.Join and a value like "./../../other/secret" resolves outside the
+// namespace directory entirely.
+func (d *Driver) paths(namespace, id string) (dir, data, meta string, err error) {
+	if err := artifact.ValidateNamespace(namespace); err != nil {
+		return "", "", "", err
+	}
+	if err := artifact.ValidateID(id); err != nil {
+		return "", "", "", err
+	}
 	shard := id
 	if len(shard) >= 2 {
 		shard = shard[:2]
@@ -254,7 +271,7 @@ func (d *Driver) paths(namespace, id string) (dir, data, meta string) {
 	dir = filepath.Join(d.base, namespace, shard)
 	data = filepath.Join(dir, id)
 	meta = filepath.Join(dir, id+".json")
-	return
+	return dir, data, meta, nil
 }
 
 func writeMeta(path string, m artifact.Meta) error {

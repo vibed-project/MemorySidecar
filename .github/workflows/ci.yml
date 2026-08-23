@@ -23,6 +23,28 @@ jobs:
       - name: unit tests
         run: go test -race -count=1 ./...
 
+  integration:
+    name: integration (postgres, minio)
+    runs-on: ubuntu-latest
+    # Every production driver -- postgres for kv/episodic/semantic/graph/lease
+    # and s3 for artifact -- lives behind the `integration` build tag, so the
+    # unit job above compiles none of them. Without this job the only storage
+    # code CI has ever executed is the in-memory drivers, and the shared
+    # conformance suite it runs is exactly what caught the kv version race.
+    # Ubuntu runners ship a Docker daemon, which is all testcontainers needs.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          check-latest: true
+
+      - name: integration tests
+        # Each package starts its own containers, so this is slower than the
+        # unit job; 25m leaves headroom without hanging a stuck run forever.
+        run: go test -tags=integration -count=1 -timeout=25m ./...
+
   lint:
     name: golangci-lint
     runs-on: ubuntu-latest
