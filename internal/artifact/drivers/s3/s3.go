@@ -81,8 +81,25 @@ func New(ctx context.Context, opts Options) (*Driver, error) {
 
 func (d *Driver) Close() error { return nil }
 
+// key builds the object key for an artifact. Callers must validate first --
+// see keyFor, which is what every RPC path uses.
 func (d *Driver) key(namespace, id string) string {
 	return d.prefix + namespace + "/" + id
+}
+
+// keyFor validates before building. S3 object keys are opaque on AWS, so "../"
+// is not traversal there, but MinIO (the driver's documented local backend)
+// stores objects on a filesystem, and an unvalidated namespace makes the List
+// prefix ambiguous between sibling namespaces. Same rule as the fs driver so
+// the two behave identically.
+func (d *Driver) keyFor(namespace, id string) (string, error) {
+	if err := artifact.ValidateNamespace(namespace); err != nil {
+		return "", err
+	}
+	if err := artifact.ValidateID(id); err != nil {
+		return "", err
+	}
+	return d.key(namespace, id), nil
 }
 
 const (
@@ -113,7 +130,11 @@ func (d *Driver) Put(ctx context.Context, namespace string, header artifact.PutH
 		objSize = int64(header.Size)
 	}
 
-	_, err := d.c.PutObject(ctx, d.bucket, d.key(namespace, id), r, objSize,
+	objKey, err := d.keyFor(namespace, id)
+	if err != nil {
+		return artifact.Meta{}, err
+	}
+	_, err = d.c.PutObject(ctx, d.bucket, objKey, r, objSize,
 		miniogo.PutObjectOptions{
 			ContentType:  header.ContentType,
 			UserMetadata: userMeta,
@@ -145,7 +166,11 @@ func (d *Driver) Open(ctx context.Context, namespace, id string, opts artifact.G
 		_ = getOpts.SetRange(int64(opts.Offset), 0)
 	}
 
-	obj, err := d.c.GetObject(ctx, d.bucket, d.key(namespace, id), getOpts)
+	objKey, err := d.keyFor(namespace, id)
+	if err != nil {
+		return artifact.Meta{}, nil, err
+	}
+	obj, err := d.c.GetObject(ctx, d.bucket, objKey, getOpts)
 	if err != nil {
 		return artifact.Meta{}, nil, fmt.Errorf("artifact/s3: get: %w", err)
 	}
@@ -158,7 +183,11 @@ func (d *Driver) Open(ctx context.Context, namespace, id string, opts artifact.G
 }
 
 func (d *Driver) Stat(ctx context.Context, namespace, id string) (artifact.Meta, error) {
-	info, err := d.c.StatObject(ctx, d.bucket, d.key(namespace, id), miniogo.StatObjectOptions{})
+	objKey, err := d.keyFor(namespace, id)
+	if err != nil {
+		return artifact.Meta{}, err
+	}
+	info, err := d.c.StatObject(ctx, d.bucket, objKey, miniogo.StatObjectOptions{})
 	if err != nil {
 		if isNotFoundErr(err) {
 			return artifact.Meta{}, artifact.ErrNotFound
@@ -208,6 +237,9 @@ func (d *Driver) List(ctx context.Context, namespace string, opts artifact.ListO
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	if err := artifact.ValidateNamespace(namespace); err != nil {
+		return err
+	}
 	prefix := d.prefix + namespace + "/"
 	listOpts := miniogo.ListObjectsOptions{Prefix: prefix, Recursive: true}
 	if opts.StartAfter != "" {
@@ -256,7 +288,11 @@ func (d *Driver) Delete(ctx context.Context, namespace, id string) (bool, error)
 		}
 		return false, err
 	}
-	err := d.c.RemoveObject(ctx, d.bucket, d.key(namespace, id), miniogo.RemoveObjectOptions{})
+	objKey, err := d.keyFor(namespace, id)
+	if err != nil {
+		return false, err
+	}
+	err = d.c.RemoveObject(ctx, d.bucket, objKey, miniogo.RemoveObjectOptions{})
 	if err != nil {
 		return false, fmt.Errorf("artifact/s3: delete: %w", err)
 	}

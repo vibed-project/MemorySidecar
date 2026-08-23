@@ -163,6 +163,9 @@ func (s *Service) Get(req *artifactv1.GetRequest, stream artifactv1.Artifact_Get
 		return err
 	}
 
+	if err := ValidateID(req.GetId()); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
 	meta, rc, err := d.Open(ctx, ns, req.GetId(), GetOptions{
 		Offset: req.GetOffset(),
 		Length: req.GetLength(),
@@ -208,6 +211,9 @@ func (s *Service) Stat(ctx context.Context, req *artifactv1.StatRequest) (*artif
 	if err != nil {
 		return nil, err
 	}
+	if err := ValidateID(req.GetId()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 	meta, err := d.Stat(ctx, ns, req.GetId())
 	if errors.Is(err, ErrNotFound) {
 		return &artifactv1.StatResponse{Found: false}, nil
@@ -225,6 +231,9 @@ func (s *Service) Delete(ctx context.Context, req *artifactv1.DeleteRequest) (*a
 	d, ns, err := s.driverFor(ctx, req.GetNamespace(), auth.OpArtifactDelete)
 	if err != nil {
 		return nil, err
+	}
+	if err := ValidateID(req.GetId()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	existed, err := d.Delete(ctx, ns, req.GetId())
 	if err != nil {
