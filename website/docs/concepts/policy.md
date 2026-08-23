@@ -7,18 +7,18 @@ sidebar_position: 4
 
 The policy engine sits in the interceptor chain right after auth. Its job
 is to decide whether a call that's correctly scoped should still be
-allowed — and, optionally, rate-limited or cost-capped.
+allowed and, optionally, rate-limited or cost-capped.
 
 mindD ships two engines:
 
-- `NoopEngine` — allows everything. The default when `policy:` is omitted.
-- `RuleEngine` — driven by declarative YAML rules, hot-reloadable.
+- `NoopEngine`: allows everything. The default when `policy:` is omitted.
+- `RuleEngine`: driven by declarative YAML rules, hot-reloadable.
 
 ## Rule shape
 
 ```yaml
 policy:
-  default: allow       # allow | deny — fallback when no rule matches
+  default: allow       # allow | deny; fallback when no rule matches
   rules:
     - name: block-secret-namespaces
       effect: deny
@@ -46,16 +46,16 @@ policy:
 
 Each rule has:
 
-- `name` — required, unique.
-- `effect` — `allow`, `deny`, `rate_limit`, or `cap`.
-- `reason` — optional string surfaced in the rejection status message and
+- `name`: required, unique.
+- `effect`: `allow`, `deny`, `rate_limit`, or `cap`.
+- `reason`: optional string surfaced in the rejection status message and
   audit logs.
-- `match` — filter on `tenant`, `agent`, `block`, `namespace` (glob),
+- `match`: filter on `tenant`, `agent`, `block`, `namespace` (glob),
   `op`. Empty fields match anything.
-- `bucket` (rate_limit only) — `rate_per_second`, `burst`, plus boolean
+- `bucket` (rate_limit only): `rate_per_second`, `burst`, plus boolean
   axes (`per_tenant`, `per_agent`, `per_namespace`, `per_op`) that scope
   the limiter.
-- `max` (cap only) — per-request magnitude bounds: `top_k` (semantic
+- `max` (cap only) sets per-request magnitude bounds: `top_k` (semantic
   Search), `limit` (scan/range page size), `depth` / `fan_out` (graph
   traversal), `rerank_candidate_k` (semantic hybrid per-lane candidate
   depth). At least one bound is required;
@@ -78,7 +78,7 @@ If nothing matches, the engine returns `policy.default` (default `allow`).
 
 Rejection status codes distinguish the two failure classes: a `deny`
 (or `default: deny`) surfaces as **`PermissionDenied`**, while a
-`rate_limit` or `cap` rejection surfaces as **`ResourceExhausted`** — so
+`rate_limit` or `cap` rejection surfaces as **`ResourceExhausted`**, so
 clients can back off on the latter without treating it as an auth failure.
 
 The fall-through on rate-limit/cap success is the useful bit: you can chain
@@ -96,7 +96,7 @@ See [Hot reload](../config/hot-reload.md) for the full reload contract.
 
 ## What policy is *not*
 
-The policy engine handles **access and cost decisions** —
+The policy engine handles **access and cost decisions**:
 allow / deny / rate-limit / cost-cap. A larger policy story (PII redaction,
 post-read transforms, retention enforcement) is intentionally deferred;
 the [HookCtx](https://github.com/vibed-project/mindD/blob/main/internal/policy/engine.go)

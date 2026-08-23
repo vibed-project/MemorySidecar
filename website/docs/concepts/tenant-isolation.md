@@ -6,7 +6,7 @@ sidebar_position: 5
 # Tenant isolation
 
 A namespace is a physical store. By default every capability that is scoped to a
-namespace shares it — so if two tenants both hold tokens for `kv/scratchpad`,
+namespace shares it, so if two tenants both hold tokens for `kv/scratchpad`,
 they read and write the **same** data. That's fine for a single-tenant
 deployment, but in a multi-tenant one it's a data-leak.
 
@@ -24,8 +24,8 @@ tenant_isolation: true
   isolation existed. A single-tenant deployment is unaffected and existing data
   keeps working. This is why it's opt-in.
 - **On.** Every block's storage key is prefixed with the caller's tenant
-  (from the capability token). Enforcement lives in **one place** — the service
-  layer, before the driver is ever touched — so a driver can't leak across
+  (from the capability token). Enforcement lives in **one place** (the service
+  layer, before the driver is ever touched), so a driver can't leak across
   tenants even by accident. All tokens must carry a `tenant`.
 
 ```
@@ -39,7 +39,7 @@ namespace, and vice-versa.
 
 ## Coverage
 
-Isolation covers **all six blocks** — kv, episodic, lease, graph, artifact, and
+Isolation covers **all six blocks**: kv, episodic, lease, graph, artifact, and
 semantic. The first five qualify the storage namespace string; the semantic
 block, which is bound per-namespace, carries a `tenant` column so `(tenant, id)`
 is a record's identity and every search/delete/expire is tenant-scoped. Two
@@ -49,7 +49,7 @@ tenants can reuse the same semantic record id without colliding.
 
 Turning isolation on changes where data is addressed. Data written **before**
 enabling it lives under the un-prefixed namespace and won't be visible to
-tenant-scoped reads afterward — which is the point (it was previously shared).
+tenant-scoped reads afterward, which is the point (it was previously shared).
 Enable it from the start of a multi-tenant deployment, or migrate deliberately.
 
 The `tenant` comes from the capability token, so issue every token with one:

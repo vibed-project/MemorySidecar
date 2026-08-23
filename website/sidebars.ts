@@ -3,8 +3,11 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   main: [
     'intro',
+    'install',
     'quickstart',
+    'security',
     'guides/use-cases',
+    'guides/framework-adapters',
     {
       type: 'category',
       label: 'Concepts',
@@ -54,6 +57,7 @@ const sidebars: SidebarsConfig = {
       label: 'Clients',
       items: [
         'clients/python',
+        'clients/typescript',
         'clients/http-gateway',
         'clients/grpc',
         'clients/mcp',

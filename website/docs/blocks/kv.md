@@ -22,13 +22,13 @@ service KV {
 
 Notable fields:
 
-- `ttl` — `google.protobuf.Duration`; 0 means no expiry.
-- `if_version` — optional uint64 for optimistic concurrency (CAS).
-- `MultiGet.keys` — fetch many keys in one round-trip. Missing/expired keys are
+- `ttl`: `google.protobuf.Duration`; 0 means no expiry.
+- `if_version`: optional uint64 for optimistic concurrency (CAS).
+- `MultiGet.keys`: fetch many keys in one round-trip. Missing/expired keys are
   omitted and repeats deduplicated; results are ordered by key.
-- `Scan.key_prefix` + `limit` — prefix scan with ordered (ascending, byte-order)
+- `Scan.key_prefix` + `limit`: prefix scan with ordered (ascending, byte-order)
   results.
-- `Scan.start_after` — an exclusive keyset **resume cursor**. Because `Scan`
+- `Scan.start_after`: an exclusive keyset **resume cursor**. Because `Scan`
   streams keys ascending, the last key received is the next page token, so a
   large namespace pages without re-reading.
 - `KVItem.content_type` is returned by `Scan` and `MultiGet` too (not just
@@ -60,7 +60,7 @@ namespaces:
 ### Cache-tier access policy (in-memory only)
 
 An in-memory namespace can opt into cache-tier behaviour. It's **off by
-default** — a namespace without an `access` block never writes on a read:
+default**. A namespace without an `access` block never writes on a read:
 
 ```yaml
 namespaces:

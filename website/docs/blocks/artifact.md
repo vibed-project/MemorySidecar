@@ -5,7 +5,7 @@ sidebar_position: 4
 
 # Artifact
 
-Blob storage with metadata. The right block for generated files —
+Blob storage with metadata. The right block for generated files:
 images, audio, structured outputs, anything that's bigger than a record
 and that you want to fetch back later by id.
 
@@ -39,7 +39,7 @@ SHA-256** and **byte count** of the upload.
 via `offset` / `length` work on every driver.
 
 `List` **enumerates** a namespace's artifacts as a stream of `ArtifactMeta`
-(metadata only, no bytes) in ascending id order — artifact is otherwise
+(metadata only, no bytes) in ascending id order. Artifact is otherwise
 addressable only by known id, so `List` lets an agent discover contents without
 an external index. It takes an exact-match metadata `filter`, a `start_after`
 resume cursor (the last id from the previous page), and a `limit`.
@@ -93,8 +93,8 @@ grpcurl -plaintext -H "x-mindd-capability: Bearer $TOKEN" \
   127.0.0.1:7777 mindd.artifact.v1.Artifact/Stat
 ```
 
-The `Put` response carries the SHA-256 the server computed while streaming
-— use it to verify integrity client-side.
+The `Put` response carries the SHA-256 the server computed while streaming.
+Use it to verify integrity client-side.
 
 ## Python example
 
@@ -124,7 +124,7 @@ for meta in m.artifact.list("blobs", filter={"kind": "render"}, limit=100):
 
 ## Notes
 
-- The HTTP/JSON gateway can't surface client-streaming RPCs — `Put` is
+- The HTTP/JSON gateway can't surface client-streaming RPCs. `Put` is
   gRPC-only. `Stat` / `Get` / `Delete` work over HTTP fine (server-stream
   Get emits NDJSON envelopes).
 - Capability scope checks on `Put` happen after the first message

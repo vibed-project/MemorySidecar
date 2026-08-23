@@ -5,15 +5,21 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'mindD',
   tagline: 'A framework-agnostic memory sidecar for agentic systems',
-  favicon: 'img/favicon.svg',
+  favicon: 'img/favicon.png',
 
-  url: 'https://mindd.dev',
-  baseUrl: '/',
+  // GitHub Pages project site. This works with no DNS setup.
+  //
+  // To move to a custom domain later: set url to 'https://mindd.dev',
+  // baseUrl to '/', add a CNAME file to website/static/, and point the DNS at
+  // GitHub Pages. Nothing else changes. (mindd.dev currently resolves
+  // elsewhere, so it is deliberately not used here yet.)
+  url: 'https://vibed-project.github.io',
+  baseUrl: '/mindD/',
 
   organizationName: 'vibed-project',
   projectName: 'mindD',
 
-  onBrokenLinks: 'warn',
+  onBrokenLinks: 'throw',
   markdown: {
     hooks: {
       onBrokenMarkdownLinks: 'warn',
@@ -53,7 +59,7 @@ const config: Config = {
       title: 'mindD',
       logo: {
         alt: 'mindD logo',
-        src: 'img/favicon.svg',
+        src: 'img/mindd-logo.png',
       },
       items: [
         {

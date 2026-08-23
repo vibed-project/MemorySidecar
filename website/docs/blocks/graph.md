@@ -9,7 +9,7 @@ Relationship-aware recall: typed nodes and edges with **bounded, structured
 traversal**, scoped by namespace. The `semantic` block answers
 *"what is like this?"*; `graph` answers *"what is connected to this, and how?"*.
 
-Like every block it **fronts** an engine — it does not implement graph storage,
+Like every block it **fronts** an engine. It does not implement graph storage,
 indexing, a query planner, a query language, or any reasoning / entity
 resolution. The agent decides which nodes and edges to write; the sidecar stores
 and serves them, and hard-caps traversal cost.
@@ -71,13 +71,13 @@ message TraverseRequest {
 **Bitemporal edges.** An edge holds while `valid_from <= t < valid_to`; unset
 bounds are open (both unset ⇒ always valid, so existing edges are unaffected).
 `Neighbors`/`Traverse` skip edges not valid *now* by default and never cross an
-invalidated relationship — the same "hallucinations of the past" fix the
+invalidated relationship: the same "hallucinations of the past" fix the
 [semantic block](semantic.md) applies to facts, applied to relationships
 (`Alice WORKS_AT Acme` until she leaves). Pass `as_of` for point-in-time recall.
 
 Reads are **structured, not free-form**: the caller specifies node/edge type
-filters, direction, depth, and a fan-out/result cap. There is no query string —
-this keeps the protocol portable across backends and traversal cost bounded.
+filters, direction, depth, and a fan-out/result cap. There is no query string.
+This keeps the protocol portable across backends and traversal cost bounded.
 
 ## Bounded traversal
 
@@ -88,9 +88,9 @@ Traversal cost is capped in two layers:
    before the driver is touched. `Traverse` additionally enforces fixed,
    non-tunable bounds on the total **edges** returned and the **fan-out**
    examined per node, so even a dense or high-degree region can never blow up
-   the response or the scan — with no policy configured.
+   the response or the scan, with no policy configured.
 2. **Policy caps (operator-configurable).** A policy `cap` rule can additionally
-   reject over-budget requests up front with `ResourceExhausted` — e.g. cap
+   reject over-budget requests up front with `ResourceExhausted`, e.g. cap
    `depth` on `graph.query`. See [Policy](../concepts/policy.md).
 
 ## Drivers
@@ -98,13 +98,13 @@ Traversal cost is capped in two layers:
 | Driver | Notes |
 |---|---|
 | `memory` | Reference driver: nodes/edges in maps with out/in adjacency and bounded BFS traversal. Zero-dependency; the conformance baseline. |
-| `postgres` | Production driver. Two shared tables (`graph_nodes`, `graph_edges`) keyed by `(namespace, id)`, adjacency indexes on `(namespace, from_id)` / `(namespace, to_id)`. `Neighbors`/`Traverse` fetch adjacency and run the same bounded walk in Go inside a read transaction (consistent snapshot) — it fronts Postgres rather than pushing a recursive query down, trading traversal throughput for a faithful, portable implementation of the hard-capped contract. Passes the same conformance suite as `memory`. |
+| `postgres` | Production driver. Two shared tables (`graph_nodes`, `graph_edges`) keyed by `(namespace, id)`, adjacency indexes on `(namespace, from_id)` / `(namespace, to_id)`. `Neighbors`/`Traverse` fetch adjacency and run the same bounded walk in Go inside a read transaction (consistent snapshot). It fronts Postgres rather than pushing a recursive query down, trading traversal throughput for a faithful, portable implementation of the hard-capped contract. Passes the same conformance suite as `memory`. |
 
 ## Composing with `semantic`
 
 Because node ids are caller-supplied, an agent can **seed** a recall with a
 dense `semantic.Search`, then **expand** the returned ids via `Neighbors` /
-`Traverse` — a hybrid "search then walk" pattern. The orchestration lives in the
+`Traverse`, a hybrid "search then walk" pattern. The orchestration lives in the
 agent, not the sidecar.
 
 ## Configuration
@@ -178,4 +178,4 @@ print([n.id for n in sub.nodes])
 - Edges do not cross namespaces; cross-namespace linking is out of scope
   (tenant isolation boundary).
 - Not a graph query language, not a reasoning engine, not a hybrid-retrieval
-  orchestrator — those stay out of the sidecar by design.
+  orchestrator. Those stay out of the sidecar by design.

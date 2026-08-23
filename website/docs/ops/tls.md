@@ -6,7 +6,7 @@ sidebar_position: 1
 # Transport security
 
 The gRPC TCP listener supports TLS and mTLS. UDS connections are always
-plaintext — filesystem permissions are the authz boundary, and TLS on a
+plaintext. Filesystem permissions are the authz boundary, and TLS on a
 unix socket is just overhead.
 
 ## Modes

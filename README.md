@@ -4,7 +4,8 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](go.mod)
-[![Status](https://img.shields.io/badge/status-pre--release-blue)](#status)
+[![Release](https://img.shields.io/badge/release-v0.1.0-blue)](https://github.com/vibed-project/mindD/releases/tag/v0.1.0)
+[![Docs](https://img.shields.io/badge/docs-vibed--project.github.io%2FmindD-blue)](https://vibed-project.github.io/mindD/)
 
 mindD runs as a co-process to one or more agents and exposes a small,
 opinionated gRPC API over **pluggable backends** for the kinds of memory

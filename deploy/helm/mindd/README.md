@@ -5,15 +5,24 @@ Installs the mindD gRPC server into Kubernetes.
 ## TL;DR
 
 ```bash
-helm install msc deploy/helm/mindd \
-  --set image.repository=ghcr.io/your-org/mindd \
-  --set image.tag=latest
+# Mint a keypair first. The chart has no default key and will not render
+# without one.
+mindctl token gen-keypair
+
+helm install mindd deploy/helm/mindd \
+  --set config.auth.paseto.public_key_hex=<public-half-hex>
 ```
 
-By default the chart ships with the **dev keypair** baked in (matches
-`configs/example.yaml`). For real deployments override
-`config.auth.paseto.public_key_hex` with the public half of a freshly minted
-keypair, and keep the private half outside the cluster.
+`image.repository` defaults to `ghcr.io/vibed-project/mindd`, so no registry
+override is needed unless you mirror the image.
+
+The chart deliberately ships **no default signing key**. Earlier versions
+defaulted to the development keypair from `configs/example.yaml`, whose private
+half is published in this repository, alongside `policy.default: allow`. A
+default install therefore trusted tokens that anyone who had read the repository
+could mint, for any tenant. The chart now fails at template time if
+`config.auth.paseto.public_key_hex` is unset, and fails again if it is set to
+that known keypair. Keep the private half outside the cluster.
 
 ## Common overrides
 

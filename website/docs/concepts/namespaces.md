@@ -9,7 +9,7 @@ mindD's data plane is configured around three concepts:
 
 | Concept | Definition |
 |---|---|
-| **Backend** | A connection — Postgres pool, S3 client, filesystem path, in-memory store. Defined once at top level, named, then referenced. |
+| **Backend** | A connection: Postgres pool, S3 client, filesystem path, in-memory store. Defined once at top level, named, then referenced. |
 | **Namespace** | A logical grouping within a building block. Maps to a Postgres table prefix, an S3 key prefix, a pgvector table, etc. |
 | **Block** | One of `kv` / `episodic` / `semantic` / `artifact` / `lease` / `graph`. |
 
@@ -33,8 +33,8 @@ namespaces:
   - { block: graph,    name: knowledge,   backend: mem-default }
 ```
 
-A backend can serve **multiple namespaces** across **multiple blocks** —
-the chart's default config shares one in-memory backend across kv,
+A backend can serve **multiple namespaces** across **multiple blocks**.
+The chart's default config shares one in-memory backend across kv,
 episodic, artifact, and lease. Each namespace gets its own driver instance
 under the hood; the backend config just supplies the connection parameters.
 
@@ -63,7 +63,7 @@ not raw namespace strings. A token with `ns: ["kv/tool-*"]` covers any
 existing or future namespace whose name starts with `tool-`. This lets
 issuers grant a scope without knowing every namespace name up front.
 
-The match runs against the qualified form `<block>/<name>` — so
+The match runs against the qualified form `<block>/<name>`, so
 `semantic/notes` and `kv/notes` are distinct, and a single pattern
 `*/notes` is *not* supported (intentional, to keep the matcher easy to
 reason about).
@@ -71,7 +71,7 @@ reason about).
 ## Adding a new namespace
 
 1. Edit the `namespaces:` list in the YAML config.
-2. Restart the sidecar (namespaces aren't currently hot-reloadable — adding
+2. Restart the sidecar (namespaces aren't currently hot-reloadable; adding
    one requires building a fresh driver instance against the backend).
 3. Mint tokens whose `ns` pattern covers the new name.
 
