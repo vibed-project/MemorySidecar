@@ -24,10 +24,10 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "grpcio>=1.60",
+    "grpcio>=1.63",
     # gencode comes from `buf generate --template buf.gen.python.yaml` which
     # uses a recent protocolbuffers/python plugin; runtime must match or newer.
-    "protobuf>=7.35",
+    "protobuf>=7.36",
 ]
 
 [project.urls]

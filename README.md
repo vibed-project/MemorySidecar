@@ -64,7 +64,8 @@ What works:
 - Python SDK with idiomatic per-block clients.
 - Multi-stage Docker image (distroless `nonroot`) + Helm chart.
 
-What's not in yet: bidi-streaming RPCs, a TypeScript SDK, real release tooling.
+What's not in yet: bidi-streaming RPCs. See the Known limitations section of
+[CHANGELOG.md](CHANGELOG.md) for what v0.1.0 does not enforce yet.
 
 ## Quickstart
 
@@ -126,7 +127,7 @@ cd sdk/python && pip install -e ".[dev]"
 ```bash
 make docker DOCKER_TAG=v0.1.0
 docker run --rm -p 7777:7777 -p 8080:8080 -p 9090:9090 \
-  -v $(pwd)/configs:/etc/mindd:ro mindd:v0.1.0
+  -v $(pwd)/configs/example.yaml:/etc/mindd/config.yaml:ro mindd:v0.1.0
 ```
 
 Multi-stage build, distroless `nonroot` runtime — no shell, no package
@@ -201,8 +202,9 @@ make proto                 # regenerate Go gRPC stubs from proto/
 make proto-python          # regenerate Python stubs (uses buf remote plugins)
 ```
 
-The full test suite (`go test -race ./...`) passes on every push. `buf
-lint` and `helm lint` are run alongside.
+CI runs `go vet`, the race-enabled unit suite, the integration suite against
+real Postgres and MinIO (`-tags=integration`), `golangci-lint`, and `buf lint`
+/ `buf format` on every push and pull request.
 
 ## Contributing
 

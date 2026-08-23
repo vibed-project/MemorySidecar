@@ -1,0 +1,123 @@
+# GoReleaser builds the mindd server and the mindctl CLI for a tagged release
+# and attaches them, with checksums, to the GitHub Release.
+#
+# Container images are NOT built here: the `image` job in
+# .github/workflows/release.yml owns image publication, so images and binaries
+# share one ldflags contract via internal/version.
+#
+# Validate locally: goreleaser check
+version: 2
+
+project_name: mindd
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: mindd
+    main: ./cmd/mindd
+    binary: mindd
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/vibed-project/mindD/internal/version.Version={{ .Version }}
+      - -X github.com/vibed-project/mindD/internal/version.Commit={{ .FullCommit }}
+      - -X github.com/vibed-project/mindD/internal/version.BuildDate={{ .Date }}
+
+  - id: mindctl
+    main: ./cmd/mindctl
+    binary: mindctl
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/vibed-project/mindD/internal/version.Version={{ .Version }}
+      - -X github.com/vibed-project/mindD/internal/version.Commit={{ .FullCommit }}
+      - -X github.com/vibed-project/mindD/internal/version.BuildDate={{ .Date }}
+
+archives:
+  # One archive per platform holding both binaries: mindctl mints the tokens
+  # the mindd it ships with will accept, so they should never be skewed.
+  - id: mindd
+    ids:
+      - mindd
+      - mindctl
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+      - CHANGELOG.md
+      - configs/example.yaml
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot"
+
+changelog:
+  # CHANGELOG.md is curated by hand; this is only the commit-level detail.
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
+
+release:
+  draft: false
+  prerelease: auto
+  header: |
+    ## mindD {{ .Tag }}
+
+    mindD is a self-hosted memory sidecar for agentic systems: one gRPC API
+    (with an HTTP/JSON mirror) over six memory blocks — kv, episodic, semantic,
+    artifact, lease and graph — with pluggable backends.
+
+    mindD is pre-1.0. Proto shapes under `proto/mindd/*/v1` may still change
+    between minor versions. See CHANGELOG.md for the curated notes, including
+    known limitations.
+
+    ### Container image
+
+    ```
+    docker pull ghcr.io/vibed-project/mindd:{{ .Tag }}
+    ```
+
+    ### Before you deploy
+
+    Generate your own signing keypair — do **not** use the development key in
+    the repository's examples, whose private half is public:
+
+    ```
+    mindctl token gen-keypair
+    ```
+  footer: |
+    ---
+
+    Verify a download against `checksums.txt`:
+
+    ```
+    sha256sum -c checksums.txt --ignore-missing
+    ```

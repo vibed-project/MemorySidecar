@@ -3,7 +3,7 @@
 replicaCount: 1
 
 image:
-  repository: mindd
+  repository: ghcr.io/vibed-project/mindd
   pullPolicy: IfNotPresent
   tag: ""  # defaults to .Chart.AppVersion
 
@@ -88,8 +88,17 @@ config:
   auth:
     verifier: paseto
     paseto:
-      # DEV key — override for real deployments.
-      public_key_hex: "61a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9"
+      # REQUIRED. There is deliberately no default: the key that used to sit
+      # here is the development keypair from this repository's examples, and
+      # its private half is published alongside it — anyone who has read the
+      # repo could mint a valid token for any tenant against a chart installed
+      # with defaults. Generate your own:
+      #
+      #   mindctl token gen-keypair
+      #
+      # then pass it with --set config.auth.paseto.public_key_hex=<hex>
+      # (or via a values file / a secret you template in).
+      public_key_hex: ""
 
   policy:
     default: allow

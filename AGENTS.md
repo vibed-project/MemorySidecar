@@ -17,7 +17,7 @@ six kinds of memory agent stacks keep reinventing:
 | `semantic` | Embed-and-search over records; bitemporal & revisable (validity, soft-delete, supersedes/source, as-of reads, bulk Expire, `if_version` CAS) | memory (brute-force cosine), postgres (pgvector) |
 | `artifact` | Blob storage with metadata | memory, fs, s3/minio |
 | `lease` | Distributed locks with TTL | memory, postgres |
-| `graph` | Typed nodes/edges with bounded, hard-capped traversal (Neighbors/Traverse) | memory |
+| `graph` | Typed nodes/edges with bounded, hard-capped traversal (Neighbors/Traverse) | memory, postgres |
 
 Agents talk to the sidecar; the sidecar talks to the substrate. The design
 follows Dapr's building-block model, narrowed to memory/state. Status is

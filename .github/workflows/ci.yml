@@ -64,6 +64,58 @@ jobs:
       - name: golangci-lint
         run: golangci-lint run --timeout=5m
 
+  sdk-python:
+    name: python sdk
+    runs-on: ubuntu-latest
+    # The Python SDK had no automated test execution anywhere: not in CI, and
+    # not in release-python-sdk.yml, which only builds and runs `twine check`.
+    # A broken dependency floor or a stale proto stub could only be discovered
+    # by a user after publish.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install (at the declared dependency floors)
+        working-directory: sdk/python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" || pip install -e .
+          pip install pytest
+      - name: import the generated stubs
+        working-directory: sdk/python
+        # Catches the class of bug where the committed stubs need a newer
+        # protobuf/grpcio than pyproject.toml declares: the import and the
+        # stub construction are what actually fail.
+        run: |
+          python -c "
+          import grpc, mindd.kv.v1.kv_pb2_grpc as m
+          m.KVStub(grpc.insecure_channel('localhost:1'))
+          print('generated stubs import and construct')
+          "
+      - name: pytest
+        working-directory: sdk/python
+        # Note: every test in sdk/python/tests is skipif'd on MINDD_TOKEN /
+        # MINDD_ADDR, so without a live server this only proves the suite
+        # imports and collects. The stub check above is what actually has
+        # teeth. Running them for real needs a mindd instance in the job.
+        run: pytest -q
+
+  sdk-typescript:
+    name: typescript sdk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: build + test
+        working-directory: sdk/typescript
+        run: |
+          npm ci
+          npm run build
+          npm test
+
   proto:
     name: buf lint
     runs-on: ubuntu-latest
