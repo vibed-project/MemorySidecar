@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'mindD',
   tagline: 'A framework-agnostic memory sidecar for agentic systems',
-  favicon: 'img/favicon.svg',
+  favicon: 'img/favicon.png',
 
   // GitHub Pages project site. This works with no DNS setup.
   //
@@ -59,7 +59,7 @@ const config: Config = {
       title: 'mindD',
       logo: {
         alt: 'mindD logo',
-        src: 'img/favicon.svg',
+        src: 'img/mindd-logo.png',
       },
       items: [
         {
