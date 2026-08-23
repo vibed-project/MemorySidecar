@@ -82,7 +82,9 @@ const config: Config = {
           title: 'Docs',
           items: [
             {label: 'Overview', to: '/'},
+            {label: 'Install', to: '/install'},
             {label: 'Quickstart', to: '/quickstart'},
+            {label: 'Security', to: '/security'},
             {label: 'Architecture', to: '/concepts/architecture'},
           ],
         },
@@ -94,11 +96,17 @@ const config: Config = {
             {label: 'Semantic', to: '/blocks/semantic'},
             {label: 'Artifact', to: '/blocks/artifact'},
             {label: 'Lease', to: '/blocks/lease'},
+            {label: 'Graph', to: '/blocks/graph'},
           ],
         },
         {
-          title: 'More',
+          // The sibling projects. Each of their sites links back here, so the
+          // four are reachable from any one of them.
+          title: 'The stack',
           items: [
+            {label: 'hiveD (control plane)', href: 'https://vibed-project.github.io/hiveD/'},
+            {label: 'routeD (model routing)', href: 'https://vibed-project.github.io/routeD/'},
+            {label: 'vibeD (sandbox)', href: 'https://vibed.run/'},
             {label: 'GitHub', href: 'https://github.com/vibed-project/mindD'},
           ],
         },
