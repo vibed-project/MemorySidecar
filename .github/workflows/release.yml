@@ -1,0 +1,116 @@
+name: Release
+
+# Server releases only. The SDKs publish independently from their own tag
+# prefixes (python-sdk-v*, typescript-sdk-v*) — see RELEASING.md.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  # Re-run the full gate set against the tagged commit. CI itself is
+  # branch/PR-only, so without this a tag would publish code that was never
+  # tested at that exact ref.
+  verify:
+    name: verify (vet, unit, integration, lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          check-latest: true
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: unit tests
+        run: go test -race -count=1 ./...
+
+      - name: integration tests
+        run: go test -tags=integration -count=1 -timeout=25m ./...
+
+      - name: golangci-lint
+        env:
+          GOTOOLCHAIN: local
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+          golangci-lint run --timeout=5m
+
+  image:
+    name: multi-arch image
+    runs-on: ubuntu-latest
+    needs: [verify]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute tags
+        id: meta
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          image="ghcr.io/${OWNER,,}/mindd"
+          version="${GITHUB_REF#refs/tags/}"
+          # Multi-line outputs need the heredoc form; a bare newline in
+          # $GITHUB_OUTPUT is not parsed as a second value.
+          {
+            echo "tags<<EOF"
+            echo "${image}:${version}"
+            echo "${image}:latest"
+            echo "EOF"
+            echo "version=${version}"
+            echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ steps.meta.outputs.build_date }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.build_date }}
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.title=mindd
+            org.opencontainers.image.description=Memory sidecar for agentic systems
+
+  release:
+    name: binaries + GitHub Release
+    runs-on: ubuntu-latest
+    needs: [verify, image]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # goreleaser needs full history for the changelog
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          check-latest: true
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

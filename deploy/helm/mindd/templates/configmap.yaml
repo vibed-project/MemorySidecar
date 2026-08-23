@@ -1,3 +1,9 @@
+{{- if eq (default "" .Values.config.auth.paseto.public_key_hex) "" }}
+{{- fail "config.auth.paseto.public_key_hex is required. Generate a keypair with `mindctl token gen-keypair` and pass the public half, e.g. --set config.auth.paseto.public_key_hex=<hex>. The chart ships no default on purpose: the previous one was this repository's development key, whose private half is public." }}
+{{- end }}
+{{- if eq .Values.config.auth.paseto.public_key_hex "61a2d0067233cf8d6570c76f37573cbc31d33032ab256fe0c8032c0987d0fbf9" }}
+{{- fail "config.auth.paseto.public_key_hex is the development key from this repository's examples and its private half is published with it. Anyone who has read the repo can forge tokens for any tenant. Generate your own with `mindctl token gen-keypair`." }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

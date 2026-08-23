@@ -3,9 +3,13 @@
 # --- build stage --------------------------------------------------------------
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 
-# TARGETOS / TARGETARCH are set automatically by `docker buildx build`.
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+# TARGETOS / TARGETARCH are injected by BuildKit for each --platform.
+# Declare them WITHOUT defaults: assigning a default shadows the value BuildKit
+# injects, so every platform cross-compiles to that default and the linux/arm64
+# manifest ends up holding amd64 binaries (verified: `make docker` on an arm64
+# host produced an arm64-labelled image containing x86-64 executables).
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /src
 
